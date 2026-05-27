@@ -50,6 +50,8 @@ type ProProfile = {
   pro_status?: string | null;
   pro_demo_started_at?: string | null;
   pro_demo_converted_at?: string | null;
+  pro_agence_subscription_unlocked?: boolean; // 🏛 TRUE si admin a envoyé la proposition
+  pro_agence_proposition_sent_at?: string | null; // 🏛 Date d'envoi de la proposition
   credits_document?: number;
   credits_complete?: number;
   cgv_pro_accepted_at?: string | null;
@@ -931,53 +933,72 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
         </div>
       )}
 
-      {/* 🆕 BANNIÈRE DÉMO ÉPUISÉE — Affichée quand tous les crédits démo ont été utilisés */}
-      {isDemo && demoCreditsUsed && (() => {
-        const isAgence = proProfile?.pro_profile_type === 'agence';
-        return (
-          <div style={{
-            background: 'linear-gradient(135deg, #0a1f2d 0%, #1a4a5e 100%)',
-            borderRadius: 18,
-            padding: '26px 28px',
-            marginBottom: 24,
-            border: '1px solid rgba(125,211,252,0.2)',
-            position: 'relative' as const,
-            overflow: 'hidden',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' as const }}>
-              <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
-                {isAgence ? '🏛' : '🚀'}
-              </div>
-              <div style={{ flex: 1, minWidth: 240 }}>
-                <h2 style={{ fontSize: 19, fontWeight: 900, color: '#fff', margin: '0 0 6px 0' }}>
-                  Vous avez testé Verimo, qu'en pensez-vous ?
-                </h2>
-                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
-                  {isAgence
-                    ? "Pour équiper toute votre agence, on en discute directement — un échange court, et nous vous transmettons une proposition adaptée."
-                    : "Une question sur ce que vous avez vu ? Un doute sur la formule à choisir ? Demandez à être rappelé, on en discute. Sinon, vous pouvez vous abonner directement."}
-                </p>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
-                  <button
-                    onClick={() => openCallback(isAgence ? 'abonnement_agence' : 'demo_expired')}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#fff', color: '#0f2d3d', borderRadius: 11, fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-                  >
-                    <Phone size={15} /> Je souhaite être rappelé
-                  </button>
-                  {!isAgence && (
+      {/* 🆕 BANNIÈRE DÉMO ÉPUISÉE — Affichée quand tous les crédits démo ont été utilisés
+           🏛 Version adaptée selon le profil : agence (un seul bouton "Je souhaite être rappelé") vs solo (2 boutons) */}
+      {isDemo && demoCreditsUsed && (
+        <div style={{
+          background: 'linear-gradient(135deg, #0a1f2d 0%, #1a4a5e 100%)',
+          borderRadius: 18,
+          padding: '26px 28px',
+          marginBottom: 24,
+          border: '1px solid rgba(125,211,252,0.2)',
+          position: 'relative' as const,
+          overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' as const }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
+              {proProfile.pro_profile_type === 'agence' ? '🏛' : '🚀'}
+            </div>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              {proProfile.pro_profile_type === 'agence' ? (
+                <>
+                  <h2 style={{ fontSize: 19, fontWeight: 900, color: '#fff', margin: '0 0 6px 0' }}>
+                    Discutons de votre formule agence
+                  </h2>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
+                    Pour équiper toute votre agence, on en discute directement — un échange court, et nous vous transmettons une proposition adaptée.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
+                    <button
+                      onClick={() => openCallback('abonnement_agence')}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#fff', color: '#0f2d3d', borderRadius: 11, fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                    >
+                      <Phone size={15} /> Je souhaite être rappelé
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 style={{ fontSize: 19, fontWeight: 900, color: '#fff', margin: '0 0 6px 0' }}>
+                    Vous avez testé Verimo, qu'en pensez-vous ?
+                  </h2>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
+                    Vos crédits découverte sont utilisés. Pour continuer à analyser vos dossiers et rassurer vos clients,
+                    deux options selon votre activité :
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
+                    <button
+                      onClick={() => openCallback('demo_expired')}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#fff', color: '#0f2d3d', borderRadius: 11, fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                    >
+                      <Phone size={15} /> Je souhaite être rappelé
+                    </button>
                     <Link
                       to="/dashboard/abonnement"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 20px', background: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: 11, fontSize: 14, fontWeight: 700, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.2)' }}
                     >
                       Voir les forfaits <ArrowRight size={14} />
                     </Link>
-                  )}
-                </div>
-              </div>
+                  </div>
+                  <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', margin: '12px 0 0', lineHeight: 1.5 }}>
+                    Si vous travaillez seul, vous pouvez vous abonner directement. Pour une agence ou une équipe, demandez à être rappelé pour un forfait adapté.
+                  </p>
+                </>
+              )}
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* Pas d'abonnement ? Bandeau personnalisé avec plan recommandé ou bandeau générique — masqué en mode démo */}
       {!subscription && !isDemo && (
@@ -2888,118 +2909,6 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     setCgvAcceptedLocal(!!proProfile?.cgv_pro_accepted_at);
   }, [proProfile?.cgv_pro_accepted_at]);
 
-  // ─── 🏛 GUARD AGENCE ──────────────────────────────────────────────────
-  // Si le pro est de type "agence", on remplace toute la page Mon abonnement
-  // par un bloc dédié orientant vers un devis sur mesure (rappel manuel par l'admin).
-  // Les agences n'ont pas accès aux 3 plans solo (Découverte/Starter/Power).
-  if (proProfile?.pro_profile_type === 'agence') {
-    return (
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 20px' }}>
-        <div style={{
-          background: '#fff',
-          borderRadius: 20,
-          overflow: 'hidden',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 20px rgba(15,45,61,0.06)',
-        }}>
-          {/* Header bleu nuit */}
-          <div style={{
-            background: 'linear-gradient(135deg, #0e3a4a 0%, #134454 60%, #1a526a 100%)',
-            padding: '40px 32px',
-            textAlign: 'center' as const,
-            color: '#fff',
-          }}>
-            <div style={{
-              width: 72, height: 72,
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.1)',
-              border: '2px solid rgba(255,255,255,0.18)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 18px',
-              fontSize: 34,
-            }}>
-              🏛
-            </div>
-            <h1 style={{ fontSize: 26, fontWeight: 900, margin: '0 0 10px 0', letterSpacing: '-0.3px' }}>
-              Votre formule agence se construit avec nous
-            </h1>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', margin: 0, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.55 }}>
-              Chaque agence est différente — nombre d'agents, volume de dossiers, organisation interne.
-            </p>
-          </div>
-
-          {/* Body */}
-          <div style={{ padding: '32px 32px 28px' }}>
-            <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.7, marginBottom: 24, textAlign: 'center' as const }}>
-              Plutôt que de vous proposer une formule générique, nous prenons le temps de cadrer ensemble vos besoins, puis nous vous transmettons une proposition adaptée à votre fonctionnement.
-            </p>
-
-            {/* CTA principal */}
-            <div style={{ textAlign: 'center' as const, marginBottom: 22 }}>
-              <button
-                onClick={() => setCallbackModalOpen(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '14px 28px',
-                  background: 'linear-gradient(135deg, #0e3a4a, #2a7d9c)',
-                  color: '#fff',
-                  borderRadius: 12,
-                  fontSize: 15,
-                  fontWeight: 800,
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 6px 18px rgba(14,58,74,0.25)',
-                }}
-              >
-                <Phone size={16} /> Demander mon devis personnalisé
-              </button>
-            </div>
-
-            {/* Solde de crédits éventuel (si admin a crédité le compte) */}
-            {((proProfile?.credits_document ?? 0) > 0 || (proProfile?.credits_complete ?? 0) > 0) && (
-              <div style={{
-                marginTop: 20,
-                padding: '16px 20px',
-                background: '#f8fafc',
-                borderRadius: 12,
-                border: '1px solid #e2e8f0',
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 10 }}>
-                  Vos crédits disponibles
-                </div>
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
-                  {(proProfile?.credits_document ?? 0) > 0 && (
-                    <div style={{ fontSize: 14, color: '#0f2d3d' }}>
-                      <strong>{proProfile.credits_document}</strong> analyse{(proProfile.credits_document ?? 0) > 1 ? 's' : ''} simple{(proProfile.credits_document ?? 0) > 1 ? 's' : ''}
-                    </div>
-                  )}
-                  {(proProfile?.credits_complete ?? 0) > 0 && (
-                    <div style={{ fontSize: 14, color: '#0f2d3d' }}>
-                      <strong>{proProfile.credits_complete}</strong> analyse{(proProfile.credits_complete ?? 0) > 1 ? 's' : ''} complète{(proProfile.credits_complete ?? 0) > 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modal callback (réutilise le composant existant) */}
-        <CallbackRequestModal
-          open={callbackModalOpen}
-          onClose={() => setCallbackModalOpen(false)}
-          context="abonnement_agence"
-          defaultPhone={proProfile?.telephone || ''}
-        />
-      </div>
-    );
-  }
-  // ─── Fin du guard agence ──────────────────────────────────────────────
-
   /**
    * Garde-fou CGV Pro : si le pro n'a pas encore accepté, ouvre la popup et
    * exécute `paymentAction` UNIQUEMENT après acceptation. Sinon exécute direct.
@@ -3026,6 +2935,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     decouverte: { name: 'Découverte', price: '19,90', completes: 1, simples: 3 },
     starter: { name: 'Starter', price: '49,90', completes: 5, simples: 15 },
     power: { name: 'Power', price: '89,90', completes: 10, simples: 30 },
+    agence: { name: 'Agence', price: '149,90', completes: 15, simples: 30 },
   };
   const recommendedPlanId = proProfile?.pro_recommended_plan || '';
   const recommendedPlan = PLAN_INFO_MAP[recommendedPlanId] || null;
@@ -3708,23 +3618,36 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
         </div>
       )}
 
-      {/* Popup succès paiement */}
+      {/* Popup succès paiement
+           🏛 Version dédiée pour le profil agence (subscribe + agence souscrit) */}
       <AnimatePresence>
-        {successPopup && (
+        {successPopup && (() => {
+          const isAgenceSuccess = successPopup === 'subscribe' && proProfile.pro_profile_type === 'agence';
+          return (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}
             onClick={() => { setSuccessPopup(null); window.location.reload(); }}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', position: 'relative' }}>
-              <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '3px solid #bbf7d0' }}>
-                <CheckCircle size={36} style={{ color: '#16a34a' }} />
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', position: 'relative' }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%',
+                background: isAgenceSuccess ? 'linear-gradient(135deg, #fef3c7, #fde68a)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+                border: isAgenceSuccess ? '3px solid #fcd34d' : '3px solid #bbf7d0',
+                fontSize: isAgenceSuccess ? 32 : undefined,
+              }}>
+                {isAgenceSuccess ? '🏛' : <CheckCircle size={36} style={{ color: '#16a34a' }} />}
               </div>
               <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>
-                {successPopup === 'subscribe' ? 'Abonnement activé !' : successPopup === 'upgrade' ? 'Plan mis à jour !' : successPopup === 'reactivate' ? 'Abonnement réactivé !' : 'Crédits ajoutés !'}
+                {isAgenceSuccess
+                  ? '✨ Bienvenue sur Verimo Pro · Agence !'
+                  : successPopup === 'subscribe' ? 'Abonnement activé !' : successPopup === 'upgrade' ? 'Plan mis à jour !' : successPopup === 'reactivate' ? 'Abonnement réactivé !' : 'Crédits ajoutés !'}
               </h2>
               <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.7, marginBottom: 28 }}>
-                {successPopup === 'subscribe'
+                {isAgenceSuccess
+                  ? <>Votre formule agence est maintenant active. <strong style={{ color: '#0f172a' }}>15 analyses complètes + 30 analyses simples</strong> sont disponibles immédiatement. Une facture PDF vous a été envoyée par email.</>
+                  : successPopup === 'subscribe'
                   ? 'Votre abonnement Verimo Pro est maintenant actif. Vos crédits sont disponibles immédiatement.'
                   : successPopup === 'upgrade'
                   ? 'Votre plan a été mis à jour avec succès. Vos nouveaux crédits sont disponibles.'
@@ -3735,7 +3658,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Link to="/dashboard/nouvelle-analyse"
                   style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 28px', borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, textDecoration: 'none', boxShadow: '0 8px 24px rgba(15,45,61,0.2)' }}>
-                  Lancer une analyse <ArrowRight size={16} />
+                  {isAgenceSuccess ? 'Commencer à analyser' : 'Lancer une analyse'} <ArrowRight size={16} />
                 </Link>
                 <button onClick={() => { setSuccessPopup(null); window.location.reload(); }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
@@ -3744,7 +3667,8 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               </div>
             </motion.div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Bandeau plan recommandé (uniquement pour les nouveaux pros jamais abonnés) ── */}
@@ -4188,7 +4112,204 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
         )}
       </AnimatePresence>
 
-      {/* 🆕 Banniere "Vous gerez une equipe ?" — au-dessus des plans solo */}
+      {/* ═══ 🏛 BLOC AGENCE — Visible uniquement pour pro_profile_type === 'agence' ═══
+           Remplace la bannière "Vous gérez une agence ?" + les forfaits solo.
+           Affiche un des 3 états selon l'avancement :
+             État 1 — Démo / proposition pas encore envoyée par l'admin
+             État 2 — Proposition envoyée, en attente de souscription Stripe
+             État 3 — Abonnement actif (plan === 'agence')
+      ═══ */}
+      {proProfile.pro_profile_type === 'agence' && (() => {
+        const agenceUnlocked = !!proProfile.pro_agence_subscription_unlocked;
+        const agenceActive = subscription?.plan === 'agence' && subscription?.status === 'active';
+
+        // ─── État 3 : ACTIF ───
+        if (agenceActive) {
+          const renewDate = subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—';
+          const completesLeft = proProfile?.credits_complete ?? 0;
+          const simplesLeft = proProfile?.credits_document ?? 0;
+          return (
+            <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
+              {/* Header doré */}
+              <div style={{ padding: '20px 26px', background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderBottom: '1px solid #fcd34d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' as const }}>
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontSize: 22 }}>🏛</span>
+                    <h2 style={{ fontSize: 22, fontWeight: 900, color: '#78350f', margin: 0, letterSpacing: '-0.02em' }}>
+                      Verimo Pro · Agence
+                    </h2>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: '#fff', background: '#16a34a', padding: '3px 10px', borderRadius: 100, letterSpacing: '0.06em' }}>ACTIF</span>
+                  </div>
+                  <p style={{ fontSize: 13.5, color: '#92400e', margin: 0 }}>
+                    Renouvellement automatique le <strong>{renewDate}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Récap chiffres + compteurs */}
+              <div style={{ padding: '22px 26px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14 }}>
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f0fdf4', border: '1px solid #86efac', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#15803d', letterSpacing: '0.08em', marginBottom: 4 }}>COMPLÈTES</div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: '#15803d', lineHeight: 1 }}>{completesLeft}<span style={{ fontSize: 14, fontWeight: 700, color: '#86efac' }}> / 15</span></div>
+                  </div>
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #c7dde8', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 4 }}>SIMPLES</div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: '#2a7d9c', lineHeight: 1 }}>{simplesLeft}<span style={{ fontSize: 14, fontWeight: 700, color: '#c7dde8' }}> / 30</span></div>
+                  </div>
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fef3c7', border: '1px solid #fcd34d', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#92400e', letterSpacing: '0.08em', marginBottom: 4 }}>AGENTS MAX</div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: '#92400e', lineHeight: 1 }}>3</div>
+                  </div>
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b', letterSpacing: '0.08em', marginBottom: 4 }}>TARIF</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>149,90€</div>
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>HT / mois</div>
+                  </div>
+                </div>
+                <p style={{ fontSize: 11.5, color: '#94a3b8', margin: '14px 0 0', textAlign: 'center' as const, lineHeight: 1.5 }}>
+                  💡 Vos crédits non utilisés sont reportés sur le mois suivant. Cumul plafonné à 2 mois.
+                </p>
+              </div>
+
+              {/* Boutons actions */}
+              <div style={{ padding: '20px 26px', display: 'flex', gap: 10, flexWrap: 'wrap' as const, justifyContent: 'center' }}>
+                <button
+                  onClick={handleBillingPortal}
+                  disabled={loading === 'billing_portal'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', fontSize: 13.5, fontWeight: 700, cursor: loading === 'billing_portal' ? 'wait' : 'pointer', boxShadow: '0 4px 12px rgba(15,45,61,0.18)' }}
+                >
+                  <CreditCard size={14} /> {loading === 'billing_portal' ? 'Redirection…' : 'Gérer mon abonnement'}
+                </button>
+                <button
+                  onClick={() => setCallbackModalOpen(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 11, background: '#fff', color: '#2a7d9c', border: '1.5px solid #2a7d9c', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  <Phone size={14} /> Demander un rappel
+                </button>
+                <button
+                  onClick={() => {
+                    const openHelp = (window as unknown as Record<string, (subject?: string) => void>).__openHelp;
+                    if (openHelp) openHelp('Question sur ma formule agence');
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 11, background: '#fff', color: '#64748b', border: '1.5px solid #e2e8f0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  💬 Ouvrir un ticket
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        // ─── État 2 : PROPOSITION ENVOYÉE — prête à souscrire ───
+        if (agenceUnlocked) {
+          return (
+            <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #fcd34d', overflow: 'hidden', background: '#fff' }}>
+              <div style={{ padding: '24px 28px', background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderBottom: '1px solid #fcd34d' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: 26 }}>🏛</span>
+                  <h2 style={{ fontSize: 22, fontWeight: 900, color: '#78350f', margin: 0, letterSpacing: '-0.02em' }}>
+                    Votre formule agence est prête
+                  </h2>
+                </div>
+                <p style={{ fontSize: 14, color: '#92400e', margin: 0, lineHeight: 1.55 }}>
+                  Voici votre formule Verimo Pro · Agence. Cliquez sur le bouton ci-dessous pour finaliser votre souscription en quelques secondes.
+                </p>
+              </div>
+
+              {/* Récap visuel */}
+              <div style={{ padding: '24px 28px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14, marginBottom: 22 }}>
+                  <div style={{ padding: '16px 18px', borderRadius: 12, background: '#f0fdf4', border: '1px solid #86efac', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 24, marginBottom: 4 }}>📊</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#15803d', lineHeight: 1 }}>15</div>
+                    <div style={{ fontSize: 11.5, color: '#15803d', marginTop: 4, fontWeight: 600 }}>analyses complètes/mois</div>
+                  </div>
+                  <div style={{ padding: '16px 18px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #c7dde8', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 24, marginBottom: 4 }}>📄</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#2a7d9c', lineHeight: 1 }}>30</div>
+                    <div style={{ fontSize: 11.5, color: '#2a7d9c', marginTop: 4, fontWeight: 600 }}>analyses simples/mois</div>
+                  </div>
+                  <div style={{ padding: '16px 18px', borderRadius: 12, background: '#fef3c7', border: '1px solid #fcd34d', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 24, marginBottom: 4 }}>👥</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#92400e', lineHeight: 1 }}>3</div>
+                    <div style={{ fontSize: 11.5, color: '#92400e', marginTop: 4, fontWeight: 600 }}>agents max</div>
+                  </div>
+                </div>
+
+                {/* Prix mis en avant */}
+                <div style={{ padding: '18px 24px', borderRadius: 14, background: 'linear-gradient(135deg, #0e3a4a, #2a7d9c)', textAlign: 'center' as const, marginBottom: 18 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em', marginBottom: 4 }}>TARIF MENSUEL</div>
+                  <div style={{ fontSize: 34, fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-1px' }}>
+                    149,90 €<span style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}> HT</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 6 }}>
+                    soit 179,88 € TTC / mois (TVA 20 %)
+                  </div>
+                </div>
+
+                {/* Bouton finaliser */}
+                <button
+                  onClick={() => requireCgvThen('Souscription Verimo Pro · Agence — 149,90 € HT/mois', () => handleSubscribe('agence'))}
+                  disabled={loading === 'subscribe:agence' || loading === 'cgv_check'}
+                  style={{
+                    width: '100%',
+                    padding: '16px 24px',
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                    color: '#fff',
+                    border: 'none',
+                    fontSize: 15.5,
+                    fontWeight: 800,
+                    cursor: (loading === 'subscribe:agence' || loading === 'cgv_check') ? 'wait' : 'pointer',
+                    boxShadow: '0 8px 24px rgba(22,163,74,0.28)',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  💳 {loading === 'subscribe:agence' ? 'Redirection vers Stripe…' : 'Finaliser ma souscription'}
+                </button>
+
+                <p style={{ fontSize: 11.5, color: '#94a3b8', margin: '12px 0 0', textAlign: 'center' as const, lineHeight: 1.5 }}>
+                  Sans engagement · Résiliable à tout moment · Paiement sécurisé Stripe<br />
+                  Facture PDF envoyée automatiquement chaque mois
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        // ─── État 1 : DÉMO / NON DÉBLOQUÉE ───
+        return (
+          <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
+            <div style={{ padding: '24px 28px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 26 }}>🏛</span>
+                <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', margin: 0, letterSpacing: '-0.02em' }}>
+                  Votre formule agence se construit avec nous
+                </h2>
+              </div>
+              <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: 1.6 }}>
+                Chaque agence est différente — nombre d'agents, volume de dossiers, organisation interne. Plutôt que de vous proposer une formule générique, nous prenons le temps de cadrer ensemble vos besoins, puis nous vous transmettons une proposition adaptée à votre fonctionnement.
+              </p>
+            </div>
+            <div style={{ padding: '22px 28px', textAlign: 'center' as const }}>
+              <button
+                onClick={() => setCallbackModalOpen(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 9, padding: '13px 28px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', fontSize: 14.5, fontWeight: 800, cursor: 'pointer', boxShadow: '0 6px 18px rgba(15,45,61,0.2)' }}
+              >
+                <Phone size={15} /> Demander mon devis personnalisé
+              </button>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '12px 0 0', lineHeight: 1.5 }}>
+                Vous serez rappelé sous peu pour un échange court qui définira votre formule.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 🆕 Banniere "Vous gerez une equipe ?" — au-dessus des plans solo
+           🏛 Masquée pour les profils agence : ils voient le bloc dédié au-dessus à la place */}
+      {proProfile.pro_profile_type !== 'agence' && (
       <div style={{ marginBottom: 18, padding: '14px 18px', background: '#f0f7fb', borderRadius: 12, border: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const }}>
         <div style={{ fontSize: 22, flexShrink: 0 }}>🏢</div>
         <div style={{ flex: 1, minWidth: 220 }}>
@@ -4206,8 +4327,10 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
           <Phone size={13} /> Demander un devis agence
         </button>
       </div>
+      )}
 
-      {/* ═══ SECTION 1 : Choisir / Changer de plan ═══ */}
+      {/* ═══ SECTION 1 : Choisir / Changer de plan — masquée pour les profils agence ═══ */}
+      {proProfile.pro_profile_type !== 'agence' && (
       <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
         <div className="plan-header" style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
           <div className="plan-header-text" style={{ flex: 1, minWidth: 220 }}>
@@ -4454,6 +4577,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
         </div>
         </div>
       </div>
+      )}
 
       {/* ═══ SECTION 2 : Achats unitaires + Code promo (une seule ligne) ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: isSubscribed ? '1.5px solid #bbf7d0' : '1.5px solid #fde68a', overflow: 'hidden', background: '#fff' }}>
