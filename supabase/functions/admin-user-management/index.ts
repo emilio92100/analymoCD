@@ -888,6 +888,57 @@ Deno.serve(async (req) => {
         }).eq('id', contact_pro_id)
       }
 
+      // ════════════════════════════════════════════════════════════════
+      // 🏛 SI compte agence → créer l'entité agences + rattacher le pro comme responsable
+      // L'agence est créée avec nb_users_max=1 (le responsable uniquement).
+      // Quand il paiera son abonnement Stripe, le webhook passera à nb_users_max=3.
+      // Cela permet à l'admin de pré-configurer l'agence avant même le paiement.
+      // ════════════════════════════════════════════════════════════════
+      if (pro_profile_type === 'agence') {
+        try {
+          const raisonSociale = pro_company_name || full_name || 'Agence sans nom'
+
+          const { data: newAgence, error: agenceErr } = await adminClient
+            .from('agences')
+            .insert({
+              raison_sociale: raisonSociale,
+              siret: pro_siret || null,
+              adresse: pro_company_address || null,
+              email_contact: email,
+              telephone: telephone || null,
+              plan: 'agence_3',
+              nb_users_max: 1, // 1 user max tant que pas d'abonnement Stripe actif
+              status: 'active',
+              credits_complete: 0,
+              credits_document: 0,
+              activated_by_admin: user.id,
+              admin_notes: pro_notes_admin || null,
+            })
+            .select('id')
+            .single()
+
+          if (agenceErr || !newAgence) {
+            console.error('[create_pro/agence] Erreur création agence:', agenceErr)
+            // On laisse passer : compte créé même si l'entité agence échoue
+          } else {
+            const { error: memberErr } = await adminClient
+              .from('agence_members')
+              .insert({
+                agence_id: newAgence.id,
+                user_id: userId,
+                role: 'responsable',
+              })
+            if (memberErr) {
+              console.error('[create_pro/agence] Erreur rattachement responsable:', memberErr)
+            } else {
+              console.log(`[create_pro/agence] Agence ${newAgence.id} créée + ${email} rattaché comme responsable`)
+            }
+          }
+        } catch (e) {
+          console.error('[create_pro/agence] Exception non-critique:', e)
+        }
+      }
+
       return new Response(JSON.stringify({
         user: authData.user,
         invite_token: inviteToken,
@@ -1239,6 +1290,52 @@ Deno.serve(async (req) => {
       await adminClient.from('pro_invitations').update({
         sent_at: nowIso
       }).eq('token', inviteToken)
+
+      // ════════════════════════════════════════════════════════════════
+      // 🏛 SI compte démo type agence → créer l'entité agences + responsable
+      // ════════════════════════════════════════════════════════════════
+      if (pro_profile_type === 'agence') {
+        try {
+          const raisonSociale = pro_company_name || full_name || 'Agence sans nom'
+          const { data: newAgence, error: agenceErr } = await adminClient
+            .from('agences')
+            .insert({
+              raison_sociale: raisonSociale,
+              siret: pro_siret || null,
+              adresse: pro_company_address || null,
+              email_contact: email,
+              telephone: telephone || null,
+              plan: 'agence_3',
+              nb_users_max: 1, // 1 user max tant que pas d'abonnement actif
+              status: 'active',
+              credits_complete: 0,
+              credits_document: 0,
+              activated_by_admin: user.id,
+              admin_notes: pro_notes_admin || null,
+            })
+            .select('id')
+            .single()
+
+          if (agenceErr || !newAgence) {
+            console.error('[create_pro_demo/agence] Erreur création agence:', agenceErr)
+          } else {
+            const { error: memberErr } = await adminClient
+              .from('agence_members')
+              .insert({
+                agence_id: newAgence.id,
+                user_id: userId,
+                role: 'responsable',
+              })
+            if (memberErr) {
+              console.error('[create_pro_demo/agence] Erreur rattachement responsable:', memberErr)
+            } else {
+              console.log(`[create_pro_demo/agence] Agence ${newAgence.id} créée + ${email} rattaché responsable (mode démo)`)
+            }
+          }
+        } catch (e) {
+          console.error('[create_pro_demo/agence] Exception non-critique:', e)
+        }
+      }
 
       return new Response(JSON.stringify({
         success: true,
