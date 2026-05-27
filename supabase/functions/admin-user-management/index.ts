@@ -889,6 +889,30 @@ Deno.serve(async (req) => {
       }
 
       // ════════════════════════════════════════════════════════════════
+      // 📧 ENVOI AUTO du mail d'activation (création de mot de passe)
+      // Évite à l'admin de devoir cliquer "Envoyer mail de connexion" après
+      // ════════════════════════════════════════════════════════════════
+      try {
+        const prenom = (full_name as string)?.split(' ')[0] || 'Bonjour'
+        const htmlActivation = buildInvitationEmail(prenom, inviteToken, pro_recommended_plan)
+        const mailActivationResult = await sendMailjet(
+          email,
+          '🏢 Bienvenue sur Verimo Pro — Activez votre compte',
+          htmlActivation
+        )
+        if (mailActivationResult.success) {
+          await adminClient.from('pro_invitations').update({
+            sent_at: new Date().toISOString()
+          }).eq('token', inviteToken)
+          console.log(`[create_pro] ✅ Mail d'activation envoyé à ${email}`)
+        } else {
+          console.error(`[create_pro] ⚠️ Mail d'activation échoué: ${mailActivationResult.error}`)
+        }
+      } catch (e) {
+        console.error('[create_pro] Exception non-critique envoi mail activation:', e)
+      }
+
+      // ════════════════════════════════════════════════════════════════
       // 🏛 SI compte agence → créer l'entité agences + rattacher le pro comme responsable
       // L'agence est créée avec nb_users_max=1 (le responsable uniquement).
       // Quand il paiera son abonnement Stripe, le webhook passera à nb_users_max=3.
