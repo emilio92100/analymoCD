@@ -5899,7 +5899,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   };
 
   const proTypeBadges: Record<string, { label: string; color: string; bg: string }> = {
-    agent: { label: '🏢 Agent', color: '#2a7d9c', bg: '#f0f7fb' },
+    agent: { label: '🏠 Agent solo', color: '#2a7d9c', bg: '#f0f7fb' },
+    agence: { label: '🏛 Agence', color: '#b45309', bg: '#fef3c7' },
     investisseur: { label: '📈 Investisseur', color: '#7c3aed', bg: '#f5f3ff' },
     marchand: { label: '🔑 Marchand', color: '#d97706', bg: '#fffbeb' },
     notaire: { label: '⚖️ Notaire', color: '#0f2d3d', bg: '#f4f7f9' },
@@ -6863,7 +6864,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
                 {([
                   { id: 'all', label: 'Tous' },
-                  { id: 'agent', label: '🏢 Agent' },
+                  { id: 'agent', label: '🏠 Agent solo' },
+                  { id: 'agence', label: '🏛 Agence' },
                   { id: 'investisseur', label: '📈 Investisseur' },
                   { id: 'notaire', label: '⚖️ Notaire' },
                   { id: 'autre', label: '💼 Autre' },
@@ -6991,7 +6993,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               <div>
                 <label style={labelStyle}>Type de profil</label>
                 <select value={demoForm.pro_profile_type} onChange={e => setDemoForm(f => ({ ...f, pro_profile_type: e.target.value }))} style={inputStyle as React.CSSProperties}>
-                  <option value="agent">🏢 Agent immobilier</option>
+                  <option value="agent">🏠 Agent solo / Mandataire indépendant</option>
+                  <option value="agence">🏛 Agence</option>
                   <option value="investisseur">📈 Investisseur</option>
                   <option value="notaire">⚖️ Notaire</option>
                   <option value="autre">💼 Autre</option>
@@ -7163,7 +7166,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               <div>
                 <label style={labelStyle}>Profil métier</label>
                 <select value={form.pro_profile_type} onChange={e => setForm(f => ({ ...f, pro_profile_type: e.target.value }))} style={inputStyle}>
-                  <option value="agent">Agent immobilier</option>
+                  <option value="agent">Agent solo / Mandataire indépendant</option>
+                  <option value="agence">Agence</option>
                   <option value="investisseur">Investisseur</option>
                   <option value="marchand">Marchand de bien</option>
                   <option value="notaire">Notaire</option>
