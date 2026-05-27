@@ -188,6 +188,146 @@ function buildResendEmail(prenom: string, token: string) {
 </html>`
 }
 
+/* ── 🏛 Template mail proposition agence ─────────────────
+   Envoyé quand l'admin clique "Envoyer la proposition agence"
+   sur la fiche d'un compte pro_profile_type='agence'.
+   Mobile responsive, signature L'équipe Verimo + Alexandre Rogelet.
+─────────────────────────────────────────────────────── */
+function buildAgenceProposalEmail(prenom: string) {
+  const dashboardUrl = 'https://pro.verimo.fr/dashboard/abonnement'
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Verimo Pro · Votre formule agence est prête</title>
+  <style>
+    body, table, td, p, a, h1, h2 { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
+    img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; }
+    @media only screen and (max-width:680px) {
+      .ag-container { width:100% !important; max-width:100% !important; border-radius:0 !important; }
+      .ag-padding { padding-left:20px !important; padding-right:20px !important; }
+      .ag-header-pad { padding:36px 20px 30px !important; }
+      .ag-h1 { font-size:22px !important; line-height:1.3 !important; }
+      .ag-cta { display:block !important; width:100% !important; box-sizing:border-box !important; padding:16px 20px !important; }
+      .ag-feature-row td { display:block !important; width:100% !important; padding:8px 0 !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f5f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+  <!-- Texte fallback pour les clients qui ne rendent pas le HTML -->
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
+    Bonjour ${prenom}, suite à notre échange votre formule Verimo Pro · Agence est prête à activer. 149,90 € HT/mois — 15 analyses complètes + 30 analyses simples par mois, jusqu'à 3 agents. Activez votre formule sur ${dashboardUrl}
+  </div>
+
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f9fb;padding:30px 0;">
+    <tr><td align="center">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="640" class="ag-container" style="max-width:640px;width:100%;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(15,45,61,0.08);">
+
+        <!-- ═════ Header dégradé bleu nuit + logo + badge AGENCE ═════ -->
+        <tr><td class="ag-header-pad" style="background:linear-gradient(135deg,#0e3a4a 0%,#134454 50%,#1a526a 100%);padding:42px 32px 36px;text-align:center;">
+          <img src="https://www.verimo.fr/logo-blanc.png" alt="Verimo" width="180" style="display:block;margin:0 auto 18px;max-width:180px;height:auto;" />
+          <span style="display:inline-block;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#0e3a4a;font-size:11px;font-weight:800;padding:6px 18px;border-radius:100px;letter-spacing:0.12em;">🏛 AGENCE</span>
+        </td></tr>
+
+        <!-- ═════ Titre + accroche ═════ -->
+        <tr><td class="ag-padding" style="padding:36px 36px 8px;">
+          <h1 class="ag-h1" style="color:#0f2d3d;font-size:26px;font-weight:900;margin:0 0 14px;text-align:center;letter-spacing:-0.5px;line-height:1.25;">
+            Votre formule agence est prête à activer
+          </h1>
+          <p style="color:#475569;font-size:15px;line-height:1.7;margin:0;text-align:center;">
+            Bonjour ${prenom},<br>
+            Suite à notre échange, voici votre formule <strong>Verimo Pro · Agence</strong>.
+          </p>
+        </td></tr>
+
+        <!-- ═════ Prix mis en avant ═════ -->
+        <tr><td class="ag-padding" style="padding:24px 36px 8px;text-align:center;">
+          <div style="display:inline-block;background:linear-gradient(135deg,#f0f7fb,#e8f4f8);border-radius:14px;padding:18px 32px;border:1px solid #d0e8f0;">
+            <div style="color:#2a7d9c;font-size:11px;font-weight:700;letter-spacing:0.12em;margin-bottom:6px;">TARIF MENSUEL</div>
+            <div style="color:#0f2d3d;font-size:34px;font-weight:900;line-height:1;letter-spacing:-1px;">
+              149,90 € <span style="font-size:16px;font-weight:600;color:#64748b;">HT</span>
+            </div>
+            <div style="color:#64748b;font-size:12px;margin-top:6px;">soit 179,88 € TTC / mois (TVA 20 %)</div>
+          </div>
+        </td></tr>
+
+        <!-- ═════ Récap features avec emojis ═════ -->
+        <tr><td class="ag-padding" style="padding:28px 36px 8px;">
+          <div style="background:#f8fafc;border-radius:14px;padding:22px 24px;border:1px solid #e2e8f0;">
+            <div style="color:#0f2d3d;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;text-align:center;">
+              Inclus dans votre formule
+            </div>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+              <tr><td style="padding:7px 0;font-size:14.5px;color:#334155;line-height:1.5;">
+                <span style="font-size:18px;margin-right:8px;">📊</span> <strong>15 analyses complètes</strong> par mois (jusqu'à 15 documents par bien)
+              </td></tr>
+              <tr><td style="padding:7px 0;font-size:14.5px;color:#334155;line-height:1.5;">
+                <span style="font-size:18px;margin-right:8px;">📄</span> <strong>30 analyses simples</strong> par mois (1 document)
+              </td></tr>
+              <tr><td style="padding:7px 0;font-size:14.5px;color:#334155;line-height:1.5;">
+                <span style="font-size:18px;margin-right:8px;">👥</span> Jusqu'à <strong>3 agents</strong> par compte agence
+              </td></tr>
+              <tr><td style="padding:7px 0;font-size:14.5px;color:#334155;line-height:1.5;">
+                <span style="font-size:18px;margin-right:8px;">🎨</span> Rapports en <strong>marque blanche</strong> à vos couleurs
+              </td></tr>
+              <tr><td style="padding:7px 0;font-size:14.5px;color:#334155;line-height:1.5;">
+                <span style="font-size:18px;margin-right:8px;">⏰</span> Crédits <strong>cumulables jusqu'à 2 mois</strong>
+              </td></tr>
+              <tr><td style="padding:7px 0;font-size:14.5px;color:#334155;line-height:1.5;">
+                <span style="font-size:18px;margin-right:8px;">✅</span> <strong>Sans engagement</strong>, résiliable à tout moment
+              </td></tr>
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- ═════ CTA principal ═════ -->
+        <tr><td style="padding:32px 36px 8px;text-align:center;">
+          <a href="${dashboardUrl}" class="ag-cta" style="display:inline-block;background:linear-gradient(135deg,#0e3a4a,#2a7d9c);color:#fff;font-size:16px;font-weight:800;padding:16px 44px;border-radius:14px;text-decoration:none;box-shadow:0 8px 24px rgba(15,45,61,0.22);letter-spacing:0.02em;">
+            Activer ma formule →
+          </a>
+          <p style="color:#94a3b8;font-size:12.5px;line-height:1.6;margin:14px 0 0;">
+            Paiement sécurisé via Stripe · Facture PDF envoyée automatiquement chaque mois
+          </p>
+        </td></tr>
+
+        <!-- ═════ Note finale ═════ -->
+        <tr><td class="ag-padding" style="padding:24px 36px 28px;">
+          <p style="color:#64748b;font-size:13.5px;line-height:1.7;margin:0;text-align:center;font-style:italic;">
+            Si vous avez la moindre question avant de finaliser, n'hésitez pas à nous répondre directement à ce mail.
+          </p>
+        </td></tr>
+
+        <!-- ═════ Signature ═════ -->
+        <tr><td class="ag-padding" style="padding:0 36px 32px;">
+          <div style="border-top:1px solid #f1f5f9;padding-top:22px;">
+            <p style="color:#475569;font-size:14px;line-height:1.7;margin:0;">
+              À très vite,<br>
+              <strong style="color:#0f2d3d;">L'équipe Verimo</strong><br>
+              <span style="color:#64748b;font-size:13px;">Alexandre Rogelet — Fondateur</span><br>
+              <a href="mailto:pro@verimo.fr" style="color:#2a7d9c;font-size:13px;text-decoration:none;">pro@verimo.fr</a>
+            </p>
+          </div>
+        </td></tr>
+
+        <!-- ═════ Footer ═════ -->
+        <tr><td style="background:#f8fafc;padding:22px 36px;text-align:center;border-top:1px solid #f1f5f9;">
+          <p style="color:#94a3b8;font-size:11.5px;margin:0;line-height:1.6;">
+            <strong style="color:#64748b;">Verimo</strong> — Vos documents décryptés, votre décision éclairée.<br>
+            <a href="https://verimo.fr" style="color:#2a7d9c;text-decoration:none;">verimo.fr</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
 /* ── Template mail invitation découverte (DEMO) ────────── */
 function buildDemoInvitationEmail(prenom: string, token: string, customMessage?: string | null, hasAttachment?: boolean) {
   const setupUrl = `https://pro.verimo.fr/setup-account?token=${token}`
@@ -824,6 +964,103 @@ Deno.serve(async (req) => {
       }).eq('id', newInvite.id)
 
       return new Response(JSON.stringify({ success: true, sent_to: proProfile.email }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    /* ── 🏛 Envoyer la proposition agence ──────────────────
+       Débloque la souscription Stripe agence pour ce compte +
+       envoie un mail HTML avec récap tarifaire + CTA d'activation.
+       Action déclenchée par le bouton admin "🏛 Envoyer la proposition agence".
+    ───────────────────────────────────────────────────────────── */
+    if (action === 'unlock_agence_subscription') {
+      const { profile_id } = body
+
+      const { data: proProfile, error: profileErr } = await adminClient
+        .from('profiles')
+        .select('id, email, full_name, pro_profile_type, pro_agence_subscription_unlocked')
+        .eq('id', profile_id)
+        .single()
+
+      if (profileErr || !proProfile) {
+        return new Response(JSON.stringify({ error: 'Profil introuvable' }), { status: 404, headers: corsHeaders })
+      }
+
+      if (proProfile.pro_profile_type !== 'agence') {
+        return new Response(JSON.stringify({ error: 'Ce compte n\'est pas de type Agence. Modifiez son profil avant d\'envoyer la proposition.' }), { status: 400, headers: corsHeaders })
+      }
+
+      // UPDATE flag + timestamp
+      const { error: updErr } = await adminClient
+        .from('profiles')
+        .update({
+          pro_agence_subscription_unlocked: true,
+          pro_agence_proposition_sent_at: new Date().toISOString(),
+        })
+        .eq('id', profile_id)
+
+      if (updErr) {
+        return new Response(JSON.stringify({ error: 'Erreur DB: ' + updErr.message }), { status: 500, headers: corsHeaders })
+      }
+
+      // Envoi du mail HTML
+      const prenom = proProfile.full_name?.split(' ')[0] || 'Bonjour'
+      const html = buildAgenceProposalEmail(prenom)
+      const mailResult = await sendMailjet(
+        proProfile.email,
+        'Verimo Pro · Votre formule agence est prête à activer',
+        html,
+      )
+
+      if (!mailResult.success) {
+        // Le flag a été mis à true en DB mais le mail a échoué : on retourne quand même OK
+        // pour ne pas bloquer l'admin, mais on signale l'erreur mail.
+        console.error('[unlock_agence_subscription] Mail Mailjet échoué:', mailResult.error)
+        return new Response(JSON.stringify({
+          success: true,
+          mail_sent: false,
+          mail_error: mailResult.error,
+          message: 'Souscription débloquée mais erreur d\'envoi du mail. Vérifiez Mailjet.',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        mail_sent: true,
+        sent_to: proProfile.email,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    /* ── 🚫 Annuler la proposition agence ─────────────────
+       Remet le flag à false (suppression silencieuse côté client,
+       sans mail). Utile si l'admin a cliqué par erreur ou si la
+       négo est annulée.
+    ───────────────────────────────────────────────────────────── */
+    if (action === 'cancel_agence_proposition') {
+      const { profile_id } = body
+
+      const { data: proProfile, error: profileErr } = await adminClient
+        .from('profiles')
+        .select('id, pro_profile_type, pro_agence_subscription_unlocked')
+        .eq('id', profile_id)
+        .single()
+
+      if (profileErr || !proProfile) {
+        return new Response(JSON.stringify({ error: 'Profil introuvable' }), { status: 404, headers: corsHeaders })
+      }
+
+      // UPDATE flag à false + reset timestamp
+      const { error: updErr } = await adminClient
+        .from('profiles')
+        .update({
+          pro_agence_subscription_unlocked: false,
+          pro_agence_proposition_sent_at: null,
+        })
+        .eq('id', profile_id)
+
+      if (updErr) {
+        return new Response(JSON.stringify({ error: 'Erreur DB: ' + updErr.message }), { status: 500, headers: corsHeaders })
+      }
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     /* ── Inviter par email (existant) ──────────────────── */
