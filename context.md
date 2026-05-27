@@ -45,15 +45,23 @@
 - Crédits jamais expirés
 
 ### Pros — Abonnements mensuels HT
-| Plan | Prix HT/mois | Complètes | Simples |
-|------|-------------|-----------|---------|
-| Découverte | 19,90€ | 1 | 3 |
-| Starter | 49,90€ | 5 | 15 |
-| Power | 89,90€ | 10 | 30 |
+| Plan | Prix HT/mois | Complètes | Simples | Agents max |
+|------|-------------|-----------|---------|------------|
+| Découverte | 19,90€ | 1 | 3 | 1 |
+| Starter | 49,90€ | 5 | 15 | 1 |
+| Power | 89,90€ | 10 | 30 | 1 |
+| **🏛 Agence** | **149,90€** | **15** | **30** | **3 (login partagé)** |
 
 **Achats unitaires pro (réservés aux abonnés)** : Complète 9,90€ HT · Simple 2,90€ HT
 
 **Argumentaire commercial Découverte** : 1,30€ "surcoût" vs achat unitaire (19,90€ vs 18,60€) défendable via dashboard pro, support dédié, tarif préférentiel à 9,90€ (vs 19,90€ particulier). Rentable dès 2 analyses supplémentaires dans l'année.
+
+**🏛 Plan Agence — activé le 27 mai 2026** :
+- Cible : structures multi-collaborateurs (3 agents max en V1, login partagé)
+- Activation sur invitation : admin clique "🏛 Envoyer la proposition agence" sur la fiche → mail HTML envoyé + flag `pro_agence_subscription_unlocked` passe à true → l'agence voit le bouton Stripe Checkout dans son dashboard
+- Cumul de crédits identique aux plans solo (plafond 2× = 30 complètes / 60 simples max)
+- Sans engagement, résiliable depuis Stripe Customer Portal
+- Article 4.5 ajouté aux CGV Pro
 
 **Coûts réels Claude API** : ~0,50€/analyse complète (médiane), ~0,15€/analyse simple. Marges saines à 55-90%.
 
@@ -68,16 +76,21 @@ complete : price_1TTtd2BesXB76oWEsZ9LsLS9
 pack2    : price_1TTtcxBesXB76oWETkokxLgB
 pack3    : price_1TTtczBesXB76oWEloTMvEZF
 
-# Pro
+# Pro — abonnements mensuels
 DECOUVERTE 19,90€ → price_1TTtd1BesXB76oWEZuILxjwe
 STARTER 49,90€    → price_1TTtczBesXB76oWEcKaNR2BW
 POWER 89,90€      → price_1TTtcxBesXB76oWEPyVYZjCj
+AGENCE 149,90€    → price_1TbnpDBesXB76oWEdOjLZRh3   # 🏛 Ajouté le 27 mai 2026 (prod_UazolFHs7gghhx)
+
+# Pro — achats unitaires (réservés aux abonnés)
 UNIT_COMPLETE 9,90€ → price_1TTtcyBesXB76oWEBF1TLHYz
 UNIT_SIMPLE 2,90€   → price_1TTtd2BesXB76oWEVM0p27GS
 
 # TVA France 20% (mode exclusif HT)
 TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 ```
+
+**Secret Supabase Edge Functions** : `STRIPE_PRICE_AGENCE` = `price_1TbnpDBesXB76oWEdOjLZRh3` (lu dynamiquement par `pro-checkout-create` et `stripe-webhook-pro`).
 
 ---
 
@@ -462,27 +475,83 @@ Trop transversal pour être fait en bout de session. Quand prêt, traiter ensemb
 
 ---
 
-## 🔮 Feature Compte Agence multi-utilisateurs (PRÉVUE PLUS TARD)
+## 🏛 Plan Agence V1 — LIVRÉ (27 mai 2026)
 
-⚠️ **À développer quand 2-3 vraies agences clientes seront acquises** — pas avant. Estimation : **5-15 jours de dev** selon scope.
+**Modèle** : 1 compte agence = login partagé entre jusqu'à 3 agents collaborateurs (pas de multi-comptes en V1).
 
-**Tables BDD à créer** :
+### Activation côté admin (workflow)
+
+**Cas 1 — Création directe (négo déjà faite)** :
+1. Admin → Clients Pro → "Créer un compte pro"
+2. Sélectionner `🏛 Agence` dans le dropdown profil → champs crédits offerts masqués, plan recommandé auto-set à "Agence — 149,90€"
+3. Bouton final renommé "🏛 Créer le compte et envoyer la proposition" → 2 actions enchaînées : `create_pro` + `unlock_agence_subscription` → mail HTML envoyé
+
+**Cas 2 — Conversion démo → agence** :
+1. Admin → fiche du compte démo de type 'agence'
+2. Bloc doré "🏛 Compte Agence" → bouton "🏛 Envoyer la proposition agence"
+3. Modal de confirmation → débloque `pro_agence_subscription_unlocked = true` + envoi mail HTML
+4. Le bouton change d'état : "✅ Proposition envoyée le DD/MM" + liens [🔄 Renvoyer] [🚫 Annuler]
+
+### Activation côté agence (3 états visuels du bloc 🏛 Mon Abonnement)
+
+- **État 1 (`!unlocked`)** : "Votre formule agence se construit avec nous" + bouton "Demander mon devis personnalisé"
+- **État 2 (`unlocked && !subscription`)** : "Votre formule agence est prête" + récap 15/30/3 + gros bouton "💳 Finaliser ma souscription" (Stripe Checkout)
+- **État 3 (`subscription === agence`)** : "Verimo Pro · Agence — ACTIF" + compteurs (X/15, X/30, 3 agents max, 149,90€) + boutons [⚙️ Gérer mon abonnement] [📞 Demander un rappel] [💬 Ouvrir un ticket]
+
+**Bandeau démo épuisée — version agence** : 1 seul bouton "📞 Je souhaite être rappelé" (pas de "Voir les forfaits" qui enverrait l'agence dans le funnel solo).
+
+**Forfaits solo masqués** pour les profils agence sur `/dashboard/abonnement` (l'agence ne voit que son bloc dédié).
+
+### Tables BDD — colonnes ajoutées
+
+```sql
+ALTER TABLE profiles ADD COLUMN pro_agence_subscription_unlocked BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN pro_agence_proposition_sent_at TIMESTAMPTZ;
+```
+
+### Edge functions Supabase — actions ajoutées
+
+- `admin-user-management` : `unlock_agence_subscription` (débloque + mail HTML) + `cancel_agence_proposition` (suppression silencieuse, sans mail)
+- `pro-checkout-create` : double guard sur le plan agence (vérif `pro_profile_type === 'agence'` + `pro_agence_subscription_unlocked === true` avant création session Checkout)
+- `stripe-webhook-pro` : reconnaît `STRIPE_PRICE_AGENCE` et crédite 15 complètes + 30 simples (réutilise plomberie générique cumul plafond 2× + relance échec paiement 7j)
+
+### Template mail HTML proposition
+
+- Sujet : `Verimo Pro · Votre formule agence est prête à activer`
+- Header bleu nuit + logo + badge doré "🏛 AGENCE"
+- Encart prix 149,90 € HT + mention 179,88 € TTC
+- Récap 6 features (📊 📄 👥 🎨 ⏰ ✅)
+- CTA "Activer ma formule →" vers `pro.verimo.fr/dashboard/abonnement`
+- Signature : L'équipe Verimo / Alexandre Rogelet — Fondateur / pro@verimo.fr (sans téléphone)
+- Mobile responsive (@media 680px)
+
+### CGV Pro
+
+Article 4.5 ajouté : tarif, crédits, limite 3 agents, cumul 2 mois, sans engagement, activation sur invitation.
+
+---
+
+## 🔮 Plan Agence V2 multi-utilisateurs (TOUJOURS PRÉVUE PLUS TARD)
+
+⚠️ **À développer quand 2-3 vraies agences clientes V1 confirmeront le besoin** — pas avant. Estimation : **5-15 jours de dev** selon scope.
+
+**Limitation V1** : 1 compte = 1 login partagé entre les 3 agents. Pas de séparation des activités par agent, pas de hiérarchie owner/agent, pas d'invitation autonome de nouveaux agents par l'admin agence.
+
+**V2 — Tables BDD à créer** :
 - `agencies` : nom, adresse, SIRET, logo, plan_actif
 - `agency_members` : agency_id, user_id, role ('owner' / 'admin' / 'agent'), invited_at, status
 
-**Modifs tables existantes** :
+**V2 — Modifs tables existantes** :
 - `pro_subscriptions` : lier à `agency_id` plutôt qu'à user unique
 - `credit_grants` + consommation : pool partagé au niveau agence
 - `analyses` : ajouter `agency_id` pour tracking
 
-**Tarifs visés** :
+**V2 — Plans tarifaires hypothétiques (à valider commercialement)** :
 | Plan agence | Prix HT | Users | Complètes | Simples |
 |------|---------|-------|-----------|---------|
-| Agence Starter | 149€ | 3 | 20 | 60 |
+| Agence Starter | 149€ | 3 | 15 | 30 | (= V1 actuelle)
 | Agence Pro | 249€ | 5 | 40 | 100 |
 | Agence Premium | 499€ | 10+ | 100 | 250 |
-
-**Workaround immédiat si agence intéressée** : vendre 3 comptes Power séparés avec code promo "AGENCE3" = -30% sur Power.
 
 ---
 
@@ -602,7 +671,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 36. Une fois les 4 landings existantes, simplifier `/pro` en hub court
 
 ### Stratégique pro
-37. **Compte Agence multi-utilisateurs** (5-15j dev) — quand 2-3 agences clientes
+37. ~~**Compte Agence V1 (login partagé, 149,90€)**~~ ✅ **LIVRÉ le 27 mai 2026** — V2 multi-utilisateurs (5-15j dev) prévue quand 2-3 agences V1 valideront le besoin
 38. **B2B targeting mandataires indépendants** (IAD, Capifrance, SAFTI)
 39. **Speak to 10 real pro prospects** avant de coder pro-specific features
 40. **Projections honnêtes** : 25k€ MRR sur 18-24 mois, mix solo + agences
@@ -623,6 +692,13 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### Sessions récentes (mai 2026)
 
+- **Session 27 mai 2026 ⭐ : Plan Agence V1 LIVRÉ + Plaquette PDF Mandataires V8**
+  - Produit Stripe créé en LIVE : `prod_UazolFHs7gghhx` / price_id `price_1TbnpDBesXB76oWEdOjLZRh3` (149,90€ HT/mois)
+  - Secret Supabase `STRIPE_PRICE_AGENCE` configuré
+  - SQL : 2 colonnes ajoutées à `profiles` (`pro_agence_subscription_unlocked`, `pro_agence_proposition_sent_at`)
+  - 3 Edge Functions modifiées : `stripe-webhook-pro` (reconnaît plan agence, crédite 15+30), `pro-checkout-create` (double guard avant Checkout), `admin-user-management` (actions `unlock_agence_subscription` + `cancel_agence_proposition` + mail HTML responsive)
+  - 3 fichiers front modifiés : `AdminPage.tsx` (bouton 🏛 + 3 états + formulaire création adapté + dropdowns), `DashboardProPage.tsx` (bloc 🏛 avec 3 états + bandeau démo adaptatif + popup succès agence), `CGVProPage.tsx` (article 4.5)
+  - Plaquette PDF mandataires V8+ finalisée (13 slides A4 paysage, 3 plans tarifaires solo Découverte/Starter/Power + encart unitaires)
 - **Session 25-26 mai 2026 ⭐ : Système rappels pro + Auto-conversion démo + UX polish** (détail section dédiée plus haut)
 - **Session 19 mai 2026 ⭐ : Sidebar clair/sombre + refonte Admin Messages + framework priorisation**
   - Système toggle clair/sombre sidebar pro + particulier (localStorage `verimo_sidebar_theme`)
