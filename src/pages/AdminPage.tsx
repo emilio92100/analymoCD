@@ -5982,7 +5982,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                                 transition={{ duration: 0.15, ease: 'easeOut' }}
                                 style={{ position: 'absolute' as const, top: 'calc(100% + 6px)', left: 0, zIndex: 999, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.12)', padding: 4, minWidth: 180 }}
                               >
-                                {(['agent', 'investisseur', 'notaire', 'autre'] as const).map(t => {
+                                {(['agent', 'agence', 'investisseur', 'notaire', 'autre'] as const).map(t => {
                                   const opt = proTypeBadges[t];
                                   const isCurrent = currentType === t;
                                   return (
