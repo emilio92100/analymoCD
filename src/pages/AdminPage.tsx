@@ -5527,6 +5527,8 @@ type ProClient = {
   pro_onboarding_done?: boolean; credits_document?: number; credits_complete?: number;
   cgv_pro_accepted_at?: string | null; cgv_pro_version?: string | null;
   pro_status?: string | null;
+  pro_agence_subscription_unlocked?: boolean; // 🏛 TRUE si l'admin a envoyé la proposition agence
+  pro_agence_proposition_sent_at?: string | null; // 🏛 Date d'envoi de la proposition
   suspended?: boolean; created_at: string;
 };
 type ProInvitation = { id: string; profile_id: string; email: string; token: string; sent_at?: string; accepted_at?: string; created_at: string };
@@ -5739,15 +5741,45 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setCreating(true); setCreateError('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // Si type=agence : force le plan recommandé à 'agence' et vide les crédits offerts
+      const formToSend = form.pro_profile_type === 'agence'
+        ? { ...form, pro_recommended_plan: 'agence', credits_document: '0', credits_complete: '0' }
+        : form;
+
       const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ action: 'create_pro', ...form }),
+        body: JSON.stringify({ action: 'create_pro', ...formToSend }),
       });
       const data = await res.json();
       if (data.error) { setCreateError(data.error); setCreating(false); return; }
       await logAction('Compte pro créé', form.email);
-      showToast(`Compte pro ${form.email} créé`);
+
+      // 🏛 Si type=agence : enchaîner avec l'envoi automatique de la proposition agence
+      if (form.pro_profile_type === 'agence' && data.user?.id) {
+        try {
+          const resAgence = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+            body: JSON.stringify({ action: 'unlock_agence_subscription', profile_id: data.user.id }),
+          });
+          const dataAgence = await resAgence.json();
+          if (dataAgence.error) {
+            showToast(`Compte créé mais ⚠️ proposition agence non envoyée : ${dataAgence.error}`);
+          } else if (dataAgence.mail_sent === false) {
+            showToast(`Compte créé mais ⚠️ mail proposition non envoyé : ${dataAgence.mail_error || 'erreur Mailjet'}`);
+          } else {
+            showToast(`🏛 Compte agence créé et proposition envoyée à ${form.email}`);
+            await logAction('Proposition agence envoyée (auto à la création)', form.email);
+          }
+        } catch (e) {
+          showToast(`Compte créé mais ⚠️ erreur envoi proposition : ${String(e)}`);
+        }
+      } else {
+        showToast(`Compte pro ${form.email} créé`);
+      }
+
       setShowCreate(false);
       setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' });
       loadClients();
@@ -5878,6 +5910,66 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     }
     setUpdatingType(false);
   };
+
+  // 🏛 ─── State + handlers pour la proposition agence ──────────────
+  const [agenceActionLoading, setAgenceActionLoading] = useState(false);
+  const [showConfirmUnlockAgence, setShowConfirmUnlockAgence] = useState(false);
+  const [showConfirmCancelAgence, setShowConfirmCancelAgence] = useState(false);
+
+  // Envoyer la proposition agence : débloque la souscription Stripe + envoie le mail HTML
+  const handleUnlockAgenceProposal = async (isResend = false) => {
+    if (!selected) return;
+    setAgenceActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'unlock_agence_subscription', profile_id: selected.id }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        showToast('Erreur : ' + data.error);
+      } else {
+        if (data.mail_sent === false) {
+          showToast('Souscription débloquée mais ⚠️ mail non envoyé : ' + (data.mail_error || 'erreur Mailjet'));
+        } else {
+          showToast(isResend ? `🔄 Proposition renvoyée à ${data.sent_to}` : `🏛 Proposition agence envoyée à ${data.sent_to}`);
+        }
+        await logAction(isResend ? 'Proposition agence renvoyée' : 'Proposition agence envoyée', selected.email || '');
+        loadClients();
+        if (selected) loadClientDetail(selected);
+      }
+    } catch (e) { showToast('Erreur : ' + String(e)); }
+    setAgenceActionLoading(false);
+    setShowConfirmUnlockAgence(false);
+  };
+
+  // Annuler la proposition agence : remet le flag à false (suppression silencieuse, sans mail)
+  const handleCancelAgenceProposal = async () => {
+    if (!selected) return;
+    setAgenceActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'cancel_agence_proposition', profile_id: selected.id }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        showToast('Erreur : ' + data.error);
+      } else {
+        showToast('🚫 Proposition agence annulée');
+        await logAction('Proposition agence annulée', selected.email || '');
+        loadClients();
+        if (selected) loadClientDetail(selected);
+      }
+    } catch (e) { showToast('Erreur : ' + String(e)); }
+    setAgenceActionLoading(false);
+    setShowConfirmCancelAgence(false);
+  };
+  // ─── Fin handlers agence ─────────────────────────────────────────
 
   const sendInvitation = async (profileId: string, isResend = false) => {
     setSendingInvite(true);
@@ -6052,6 +6144,97 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 </button>
               </div>
             </div>
+
+            {/* 🏛 BLOC AGENCE — visible uniquement pour les comptes pro_profile_type === 'agence' */}
+            {selected.pro_profile_type === 'agence' && !clientSubscription && (
+              <div style={{
+                marginTop: 14,
+                padding: '14px 18px',
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                border: '1px solid #fcd34d',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' as const }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 4 }}>
+                      🏛 Compte Agence
+                    </div>
+                    {!selected.pro_agence_subscription_unlocked ? (
+                      <div style={{ fontSize: 13, color: '#78350f', lineHeight: 1.5 }}>
+                        Cliquez sur "Envoyer la proposition agence" pour débloquer la souscription Stripe et envoyer le mail de proposition tarifaire (149,90 € HT/mois).
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 13, color: '#78350f', lineHeight: 1.5 }}>
+                        ✅ Proposition envoyée{selected.pro_agence_proposition_sent_at ? ` le ${new Date(selected.pro_agence_proposition_sent_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}` : ''}.
+                        En attente de souscription par l'agence.
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+                    {!selected.pro_agence_subscription_unlocked ? (
+                      <button
+                        onClick={() => setShowConfirmUnlockAgence(true)}
+                        disabled={agenceActionLoading}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '10px 18px', borderRadius: 10,
+                          background: 'linear-gradient(135deg, #0e3a4a, #2a7d9c)',
+                          border: 'none', color: '#fff',
+                          fontSize: 12.5, fontWeight: 800,
+                          cursor: agenceActionLoading ? 'wait' : 'pointer',
+                          opacity: agenceActionLoading ? 0.6 : 1,
+                          boxShadow: '0 4px 12px rgba(14,58,74,0.2)',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        🏛 Envoyer la proposition agence
+                      </button>
+                    ) : (
+                      <>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '10px 16px', borderRadius: 10,
+                          background: '#d1fae5', border: '1px solid #86efac',
+                          color: '#166534', fontSize: 12, fontWeight: 700,
+                        }}>
+                          ✅ Proposition envoyée
+                        </div>
+                        <button
+                          onClick={() => handleUnlockAgenceProposal(true)}
+                          disabled={agenceActionLoading}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '8px 12px', borderRadius: 8,
+                            background: '#fff', border: '1px solid #cbd5e1',
+                            color: '#475569', fontSize: 11.5, fontWeight: 600,
+                            cursor: agenceActionLoading ? 'wait' : 'pointer',
+                            opacity: agenceActionLoading ? 0.6 : 1,
+                          }}
+                          title="Renvoyer le mail de proposition"
+                        >
+                          🔄 Renvoyer
+                        </button>
+                        <button
+                          onClick={() => setShowConfirmCancelAgence(true)}
+                          disabled={agenceActionLoading}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '8px 12px', borderRadius: 8,
+                            background: '#fff', border: '1px solid #fecaca',
+                            color: '#dc2626', fontSize: 11.5, fontWeight: 600,
+                            cursor: agenceActionLoading ? 'wait' : 'pointer',
+                            opacity: agenceActionLoading ? 0.6 : 1,
+                          }}
+                          title="Retirer la proposition (suppression silencieuse, pas de mail)"
+                        >
+                          🚫 Annuler
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Stats rapides */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
@@ -6791,6 +6974,97 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               </div>
             </div>
           )}
+
+          {/* 🏛 Modal Confirmation — Envoyer la proposition agence */}
+          {showConfirmUnlockAgence && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 500, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                    🏛
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Envoyer la proposition agence</h3>
+                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Verimo Pro · Agence — 149,90 € HT/mois</p>
+                  </div>
+                </div>
+
+                <div style={{ padding: 14, background: '#fef9e7', borderRadius: 10, marginBottom: 16, border: '1px solid #fde68a' }}>
+                  <p style={{ fontSize: 13, color: '#78350f', margin: '0 0 8px', lineHeight: 1.5, fontWeight: 600 }}>
+                    Vous êtes sur le point de :
+                  </p>
+                  <ul style={{ fontSize: 12.5, color: '#78350f', margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
+                    <li>Débloquer la souscription Stripe agence pour ce compte</li>
+                    <li>Envoyer un mail HTML à <strong>{selected.email}</strong></li>
+                    <li>Permettre à l'agence de souscrire au plan 149,90 € HT/mois</li>
+                  </ul>
+                </div>
+
+                <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px', lineHeight: 1.5 }}>
+                  Le mail contient le récap des chiffres (15 complètes + 30 simples, 3 agents, sans engagement) et un bouton "Activer ma formule →" vers son dashboard.
+                </p>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setShowConfirmUnlockAgence(false)}
+                    disabled={agenceActionLoading}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: agenceActionLoading ? 'wait' : 'pointer' }}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => handleUnlockAgenceProposal(false)}
+                    disabled={agenceActionLoading}
+                    style={{ flex: 1.5, padding: '11px', borderRadius: 10, border: 'none', background: agenceActionLoading ? '#94a3b8' : 'linear-gradient(135deg, #0e3a4a, #2a7d9c)', fontSize: 13, fontWeight: 800, color: '#fff', cursor: agenceActionLoading ? 'wait' : 'pointer', boxShadow: '0 4px 12px rgba(14,58,74,0.25)' }}
+                  >
+                    {agenceActionLoading ? 'Envoi...' : '🏛 Envoyer la proposition'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 🚫 Modal Confirmation — Annuler la proposition agence */}
+          {showConfirmCancelAgence && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 460, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                    🚫
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Annuler la proposition</h3>
+                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Suppression silencieuse — pas de mail envoyé</p>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px', lineHeight: 1.6 }}>
+                  La souscription agence sera re-bloquée pour <strong style={{ color: '#0f172a' }}>{selected.full_name || selected.email}</strong>. L'agence ne pourra plus voir le bouton de souscription Stripe.
+                </p>
+
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 16px', lineHeight: 1.5, fontStyle: 'italic' as const }}>
+                  Aucun mail d'annulation ne sera envoyé. Si vous souhaitez l'informer, contactez-la directement.
+                </p>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setShowConfirmCancelAgence(false)}
+                    disabled={agenceActionLoading}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: agenceActionLoading ? 'wait' : 'pointer' }}
+                  >
+                    Garder
+                  </button>
+                  <button
+                    onClick={handleCancelAgenceProposal}
+                    disabled={agenceActionLoading}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: agenceActionLoading ? '#94a3b8' : '#dc2626', fontSize: 13, fontWeight: 700, color: '#fff', cursor: agenceActionLoading ? 'wait' : 'pointer' }}
+                  >
+                    {agenceActionLoading ? 'Annulation...' : '🚫 Annuler la proposition'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       ) : (
         /* ── Liste ── */
@@ -7193,17 +7467,55 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>Plan recommandé</label>
-              <select value={form.pro_recommended_plan} onChange={e => setForm(f => ({ ...f, pro_recommended_plan: e.target.value }))} style={inputStyle}>
-                <option value="">Aucun (le pro choisira)</option>
-                <option value="decouverte">Découverte — 19,90€ HT/mois</option>
-                <option value="starter">Starter — 49,90€ HT/mois</option>
-                <option value="power">Power — 89,90€ HT/mois</option>
-              </select>
+              {form.pro_profile_type === 'agence' ? (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  border: '1px solid #fcd34d',
+                  color: '#78350f',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  🏛 Agence — 149,90 € HT/mois
+                  <span style={{ fontSize: 11, fontWeight: 500, color: '#92400e', marginLeft: 'auto' }}>
+                    (auto-sélectionné pour profil Agence)
+                  </span>
+                </div>
+              ) : (
+                <select value={form.pro_recommended_plan} onChange={e => setForm(f => ({ ...f, pro_recommended_plan: e.target.value }))} style={inputStyle}>
+                  <option value="">Aucun (le pro choisira)</option>
+                  <option value="decouverte">Découverte — 19,90€ HT/mois</option>
+                  <option value="starter">Starter — 49,90€ HT/mois</option>
+                  <option value="power">Power — 89,90€ HT/mois</option>
+                </select>
+              )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-              <div><label style={labelStyle}>Crédits simples offerts</label><input type="number" value={form.credits_document} onChange={e => setForm(f => ({ ...f, credits_document: e.target.value }))} style={inputStyle} min="0" /></div>
-              <div><label style={labelStyle}>Crédits complètes offerts</label><input type="number" value={form.credits_complete} onChange={e => setForm(f => ({ ...f, credits_complete: e.target.value }))} style={inputStyle} min="0" /></div>
-            </div>
+            {/* Crédits offerts : masqués pour le profil Agence (pas de geste commercial sur ce plan, la souscription gère les crédits) */}
+            {form.pro_profile_type !== 'agence' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div><label style={labelStyle}>Crédits simples offerts</label><input type="number" value={form.credits_document} onChange={e => setForm(f => ({ ...f, credits_document: e.target.value }))} style={inputStyle} min="0" /></div>
+                <div><label style={labelStyle}>Crédits complètes offerts</label><input type="number" value={form.credits_complete} onChange={e => setForm(f => ({ ...f, credits_complete: e.target.value }))} style={inputStyle} min="0" /></div>
+              </div>
+            )}
+            {form.pro_profile_type === 'agence' && (
+              <div style={{
+                marginBottom: 14,
+                padding: '11px 14px',
+                borderRadius: 10,
+                background: '#f0f7fb',
+                border: '1px solid #c7dde8',
+                fontSize: 12.5,
+                color: '#2a7d9c',
+                lineHeight: 1.6,
+              }}>
+                ℹ️ <strong>Profil Agence détecté.</strong> À la création, la souscription Stripe sera automatiquement débloquée
+                et un mail de proposition (149,90 € HT/mois — 15 complètes + 30 simples — 3 agents) sera envoyé au compte.
+              </div>
+            )}
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Notes admin</label>
               <textarea value={form.pro_notes_admin} onChange={e => setForm(f => ({ ...f, pro_notes_admin: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="Notes internes..." />
@@ -7211,7 +7523,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             {createError && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 12, fontSize: 13, color: '#dc2626' }}>{createError}</div>}
             <button onClick={handleCreate} disabled={creating || !form.email || !form.full_name}
               style={{ width: '100%', padding: '13px', borderRadius: 12, background: (!form.email || !form.full_name) ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: creating ? 0.7 : 1 }}>
-              {creating ? 'Création en cours...' : 'Créer le client pro'}
+              {creating
+                ? 'Création en cours...'
+                : (form.pro_profile_type === 'agence' ? '🏛 Créer le compte et envoyer la proposition' : 'Créer le client pro')}
             </button>
           </Modal>
         )}
