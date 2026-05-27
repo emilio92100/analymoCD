@@ -6,8 +6,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, UserPlus, Mail, Crown, User, Trash2, RefreshCw,
-  Clock, AlertTriangle, CheckCircle, X, Send, ChevronRight,
-  Shield, MoreVertical, Phone,
+  AlertTriangle, CheckCircle, X, Send, ChevronRight,
+  Shield,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
