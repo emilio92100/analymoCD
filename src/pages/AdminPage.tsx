@@ -5756,29 +5756,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       if (data.error) { setCreateError(data.error); setCreating(false); return; }
       await logAction('Compte pro créé', form.email);
 
-      // 🏛 Si type=agence : enchaîner avec l'envoi automatique de la proposition agence
-      if (form.pro_profile_type === 'agence' && data.user?.id) {
-        try {
-          const resAgence = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-            body: JSON.stringify({ action: 'unlock_agence_subscription', profile_id: data.user.id }),
-          });
-          const dataAgence = await resAgence.json();
-          if (dataAgence.error) {
-            showToast(`Compte créé mais ⚠️ proposition agence non envoyée : ${dataAgence.error}`);
-          } else if (dataAgence.mail_sent === false) {
-            showToast(`Compte créé mais ⚠️ mail proposition non envoyé : ${dataAgence.mail_error || 'erreur Mailjet'}`);
-          } else {
-            showToast(`🏛 Compte agence créé et proposition envoyée à ${form.email}`);
-            await logAction('Proposition agence envoyée (auto à la création)', form.email);
-          }
-        } catch (e) {
-          showToast(`Compte créé mais ⚠️ erreur envoi proposition : ${String(e)}`);
-        }
-      } else {
-        showToast(`Compte pro ${form.email} créé`);
-      }
+      // 🏛 Pour les comptes agence : on n'enchaîne PLUS automatiquement l'envoi de la proposition.
+      // Le pro reçoit d'abord le mail d'activation (création mdp) comme un compte solo.
+      // L'admin enverra la proposition agence manuellement depuis la fiche client quand bon lui semble.
+      showToast(form.pro_profile_type === 'agence'
+        ? `🏛 Compte agence ${form.email} créé. Mail d'activation envoyé.`
+        : `Compte pro ${form.email} créé`);
 
       setShowCreate(false);
       setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' });
