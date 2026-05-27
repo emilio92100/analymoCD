@@ -62,21 +62,32 @@ type SupabaseClient = ReturnType<typeof createClient>;
 // Configuration : Mapping Price ID Stripe → plan / type (PRODUCTION)
 // ─────────────────────────────────────────────────────────────────────
 
-const PRICE_TO_PLAN: Record<string, 'decouverte' | 'starter' | 'power'> = {
+// Type unifié pour les plans pro
+type ProPlan = 'decouverte' | 'starter' | 'power' | 'agence';
+
+// 🏛 NOUVEAU plan agence — price_id lu depuis variable d'environnement
+const STRIPE_PRICE_AGENCE = Deno.env.get('STRIPE_PRICE_AGENCE') ?? '';
+
+const PRICE_TO_PLAN: Record<string, ProPlan> = {
   'price_1TTtd1BesXB76oWEZuILxjwe': 'decouverte',
   'price_1TTtczBesXB76oWEcKaNR2BW': 'starter',
   'price_1TTtcxBesXB76oWEPyVYZjCj': 'power',
 };
+// Ajout dynamique du plan agence si la variable est définie (évite crash au boot)
+if (STRIPE_PRICE_AGENCE) {
+  PRICE_TO_PLAN[STRIPE_PRICE_AGENCE] = 'agence';
+}
 
 const PRICE_TO_UNIT: Record<string, { type: 'complete' | 'document'; amount_ht: number }> = {
   'price_1TTtcyBesXB76oWEBF1TLHYz': { type: 'complete', amount_ht: 990 },
   'price_1TTtd2BesXB76oWEVM0p27GS': { type: 'document', amount_ht: 290 },
 };
 
-const PLAN_QUOTAS: Record<'decouverte' | 'starter' | 'power', { complete: number; simple: number }> = {
+const PLAN_QUOTAS: Record<ProPlan, { complete: number; simple: number }> = {
   decouverte: { complete: 1, simple: 3 },
   starter: { complete: 5, simple: 15 },
   power: { complete: 10, simple: 30 },
+  agence: { complete: 15, simple: 30 }, // 🏛 Plan agence : 15 complètes + 30 simples / mois
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -803,6 +814,7 @@ function planLabel(plan: string): string {
   if (plan === 'decouverte') return 'Découverte';
   if (plan === 'starter') return 'Starter';
   if (plan === 'power') return 'Power';
+  if (plan === 'agence') return 'Agence';
   return plan;
 }
 
