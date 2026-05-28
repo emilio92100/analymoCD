@@ -120,6 +120,10 @@ type ProFolder = {
   archived_at?: string | null;
   created_at: string;
   updated_at: string;
+  // 🏛 Agence
+  agence_id?: string | null;
+  creator_name?: string | null; // Nom du créateur (chargé séparément)
+  creator_role?: 'responsable' | 'co_responsable' | 'agent' | null;
   // Stats chargées séparément
   analyses_count?: number;
   sellers_count?: number;
@@ -182,18 +186,16 @@ const proNavItems = [
   { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
 ];
 
-// Navigation regroupée par sections — dynamique selon le rôle.
-// - Solo classique : tous les onglets sauf "Mon équipe"
-// - Membre d'agence "agent" : pas d'onglet "Mon abonnement" (géré par le responsable)
-// - Responsable d'agence : tous les onglets
+// Navigation regroupée — dynamique selon le rôle agence
 function getProNavGroups(agenceRole?: string | null) {
   const isAgent = agenceRole === 'agent';
-  const isMember = !!agenceRole; // appartient à une agence
+  const isMember = !!agenceRole;
+
+  // Label "Mes dossiers" → "Dossiers de l'agence" pour les membres
+  const dossiersLabel = isMember ? 'Dossiers de l\'agence' : 'Mes dossiers';
 
   const monEspaceItems = [
-    // "Mon équipe" : visible uniquement si on est dans une agence
     ...(isMember ? [{ to: '/dashboard/equipe', icon: Users, label: 'Mon équipe' }] : []),
-    // "Mon abonnement" : caché pour les agents (géré par le responsable)
     ...(!isAgent ? [{ to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' }] : []),
     { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
   ];
@@ -203,7 +205,7 @@ function getProNavGroups(agenceRole?: string | null) {
       title: 'Pilotage',
       items: [
         { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
-        { to: '/dashboard/dossiers', icon: FolderOpen, label: 'Mes dossiers' },
+        { to: '/dashboard/dossiers', icon: FolderOpen, label: dossiersLabel },
         { to: '/dashboard/compare', icon: GitCompare, label: 'Comparer' },
       ],
     },
@@ -1196,8 +1198,14 @@ function MesDossiersPro() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'name' | 'analyses'>('recent');
   const [filter, setFilter] = useState<'all' | 'thisMonth' | 'withShares' | 'noAnalyses'>('all');
+  // 🏛 Nouveau filtre agence : Tous / Mes dossiers uniquement / Par auteur
+  const [authorFilter, setAuthorFilter] = useState<'all' | 'mine' | string>('all');
   const [archiveView, setArchiveView] = useState<'active' | 'archived'>('active');
   const [archiveToast, setArchiveToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // 🏛 Contexte agence
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [agenceId, setAgenceId] = useState<string | null>(null);
+  const [agenceMembers, setAgenceMembers] = useState<Array<{ user_id: string; full_name: string; role: string }>>([]);
   const navigate = useNavigate();
 
   const loadFolders = useCallback(async () => {
@@ -1205,12 +1213,56 @@ function MesDossiersPro() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
+      setCurrentUserId(user.id);
 
-      const { data: foldersData, error } = await supabase
-        .from('pro_folders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+      // Vérifier si user membre d'une agence
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('agence_id')
+        .eq('id', user.id)
+        .single();
+
+      const userAgenceId = profile?.agence_id || null;
+      setAgenceId(userAgenceId);
+
+      // Si membre d'agence : charger la liste des membres pour les filtres + le creator_name
+      let memberMap: Map<string, { full_name: string; role: string }> = new Map();
+      if (userAgenceId) {
+        const { data: members } = await supabase
+          .from('agence_members')
+          .select('user_id, role')
+          .eq('agence_id', userAgenceId)
+          .is('removed_at', null);
+
+        if (members && members.length > 0) {
+          const userIds = members.map(m => m.user_id);
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', userIds);
+
+          const profilesMap = new Map<string, string>(
+            (profilesData || []).map(p => [p.id, p.full_name || 'Sans nom'])
+          );
+
+          const enrichedMembers = members.map(m => ({
+            user_id: m.user_id,
+            full_name: profilesMap.get(m.user_id) || 'Sans nom',
+            role: m.role,
+          }));
+          setAgenceMembers(enrichedMembers);
+          memberMap = new Map(enrichedMembers.map(m => [m.user_id, { full_name: m.full_name, role: m.role }]));
+        }
+      }
+
+      // Charger les dossiers : si agence → tous les dossiers de l'agence ; sinon → ses dossiers solo
+      let foldersQuery = supabase.from('pro_folders').select('*');
+      if (userAgenceId) {
+        foldersQuery = foldersQuery.eq('agence_id', userAgenceId);
+      } else {
+        foldersQuery = foldersQuery.eq('user_id', user.id);
+      }
+      const { data: foldersData, error } = await foldersQuery.order('updated_at', { ascending: false });
 
       if (error) {
         console.error('Erreur chargement dossiers:', error);
@@ -1225,11 +1277,14 @@ function MesDossiersPro() {
             supabase.from('pro_folder_sellers').select('id', { count: 'exact', head: true }).eq('folder_id', f.id),
             supabase.from('pro_folder_buyers').select('id', { count: 'exact', head: true }).eq('folder_id', f.id),
           ]);
+          const memberInfo = memberMap.get(f.user_id);
           return {
             ...f,
             analyses_count: analysesRes.count || 0,
             sellers_count: sellersRes.count || 0,
             buyers_count: buyersRes.count || 0,
+            creator_name: memberInfo?.full_name || null,
+            creator_role: memberInfo?.role as ProFolder['creator_role'] || null,
           };
         } catch {
           return { ...f, analyses_count: 0, sellers_count: 0, buyers_count: 0 };
@@ -1256,7 +1311,15 @@ function MesDossiersPro() {
 
     if (search) {
       const q = search.toLowerCase();
-      if (!(f.name.toLowerCase().includes(q) || (f.property_address || '').toLowerCase().includes(q) || (f.property_city || '').toLowerCase().includes(q))) return false;
+      if (!(f.name.toLowerCase().includes(q) || (f.property_address || '').toLowerCase().includes(q) || (f.property_city || '').toLowerCase().includes(q) || (f.creator_name || '').toLowerCase().includes(q))) return false;
+    }
+    // 🏛 Filtre auteur (vue agence)
+    if (agenceId && authorFilter !== 'all') {
+      if (authorFilter === 'mine') {
+        if (f.user_id !== currentUserId) return false;
+      } else {
+        if (f.user_id !== authorFilter) return false;
+      }
     }
     if (filter === 'thisMonth') return f.created_at >= startOfMonth;
     if (filter === 'noAnalyses') return (f.analyses_count || 0) === 0;
@@ -1424,6 +1487,21 @@ function MesDossiersPro() {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un dossier..."
                 style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }} />
             </div>
+            {/* 🏛 Filtre par auteur (vue agence uniquement) */}
+            {agenceId && agenceMembers.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <Users size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                <select value={authorFilter} onChange={e => setAuthorFilter(e.target.value)}
+                  style={{ padding: '9px 12px 9px 30px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 12, fontWeight: 600, color: '#64748b', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit', appearance: 'none', paddingRight: 28, WebkitAppearance: 'none' }}>
+                  <option value="all">Tous les auteurs</option>
+                  <option value="mine">Mes dossiers uniquement</option>
+                  {agenceMembers.filter(m => m.user_id !== currentUserId).map(m => (
+                    <option key={m.user_id} value={m.user_id}>{m.full_name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={12} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+              </div>
+            )}
             <div style={{ position: 'relative' }}>
               <ArrowUpDown size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
               <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
@@ -1531,6 +1609,13 @@ function MesDossiersPro() {
                     <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
                       <MapPin size={10} style={{ color: '#94a3b8', flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{[f.property_address, f.property_city].filter(Boolean).join(', ')}</span>
+                    </div>
+                  )}
+                  {/* 🏛 Créé par (vue agence) */}
+                  {f.creator_name && (
+                    <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>{f.creator_role === 'responsable' ? '👑' : f.creator_role === 'co_responsable' ? '🤝' : '👤'}</span>
+                      <span>Créé par <strong style={{ color: '#475569' }}>{f.creator_name}</strong></span>
                     </div>
                   )}
                 </div>
@@ -1698,6 +1783,13 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
             <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>{buyersCount === 1 ? 'acheteur' : 'acheteurs'}</div>
           </div>
         </div>
+        {/* 🏛 Créé par (vue agence uniquement) */}
+        {folder.creator_name && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: '#475569', marginBottom: 5, padding: '4px 8px', background: '#f0f7fb', borderRadius: 6, width: 'fit-content' }}>
+            <span style={{ fontSize: 11 }}>{folder.creator_role === 'responsable' ? '👑' : folder.creator_role === 'co_responsable' ? '🤝' : '👤'}</span>
+            <span style={{ fontWeight: 600 }}>Créé par {folder.creator_name}</span>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: '#94a3b8' }}>
           <Clock size={11} style={{ flexShrink: 0 }} />
           <span>Modifié le {fmtDate(folder.updated_at)}</span>
@@ -7735,7 +7827,6 @@ export default function DashboardProPage() {
     if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse />;
     if (path === '/dashboard/compare') return <Compare />;
     if (path === '/dashboard/equipe') {
-      // Mon équipe : visible uniquement pour les membres d'une agence
       if (!proProfile.agence_id || !proProfile.agence_role) {
         return (
           <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
@@ -7748,7 +7839,6 @@ export default function DashboardProPage() {
       return <MonEquipePage userId={proProfile.id} agenceId={proProfile.agence_id} userRole={proProfile.agence_role} />;
     }
     if (path === '/dashboard/abonnement') {
-      // Si agent d'agence (non-responsable) → bloquer l'accès et rediriger vers Mon équipe
       if (proProfile.agence_role === 'agent') {
         return (
           <div style={{ padding: 40, textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
