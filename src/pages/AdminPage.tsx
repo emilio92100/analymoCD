@@ -7300,7 +7300,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   });
 
                   // Fonction de rendu d'une carte client
-                  const renderClientCard = (c: ProClient, i: number, lastInSection: boolean, indented = false) => {
+                  const renderClientCard = (c: ProClient, lastInSection: boolean, indented = false) => {
                     const b = proTypeBadges[c.pro_profile_type || 'autre'] || proTypeBadges.autre;
                     const isSubscribed = proSubscriptions.has(c.id);
                     const isActivated = proActivated.has(c.id);
@@ -7418,7 +7418,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                             </div>
                             {/* Membres de l'agence (si dépliée) */}
                             {!isCollapsed && agenceMembers.map((m, idx) =>
-                              renderClientCard(m, idx, idx === agenceMembers.length - 1, true)
+                              renderClientCard(m, idx === agenceMembers.length - 1, true)
                             )}
                           </div>
                         );
@@ -7434,7 +7434,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       )}
 
                       {/* ═══ SOLOS individuels ═══ */}
-                      {solos.map((c, i) => renderClientCard(c, i, i === solos.length - 1, false))}
+                      {solos.map((c, i) => renderClientCard(c, i === solos.length - 1, false))}
                     </>
                   );
                 })();
