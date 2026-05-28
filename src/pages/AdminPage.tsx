@@ -5545,6 +5545,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proActivated, setProActivated] = useState<Set<string>>(new Set());
   // 🏛 Multi-utilisateurs agence : info d'appartenance par user
   const [agenceInfoByUser, setAgenceInfoByUser] = useState<Map<string, { agence_id: string; agence_name: string; role: 'responsable' | 'co_responsable' | 'agent' }>>(new Map());
+  // 🏛 Agences dépliées (set d'IDs d'agences ouvertes — par défaut toutes dépliées)
+  const [collapsedAgences, setCollapsedAgences] = useState<Set<string>>(new Set());
   const [proFilter, setProFilter] = useState<'all' | 'demo' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [filterByType, setFilterByType] = useState<string>('all'); // 🆕 Filtre par type de profil (agent/investisseur/notaire/autre)
   const [loading, setLoading] = useState(true);
@@ -7267,60 +7269,175 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   : baseFiltered.filter(c => (c.pro_profile_type || 'autre') === filterByType && !agenceInfoByUser.has(c.id));
                 return filtered.length === 0 ? (
                   <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun client dans cette catégorie.</div>
-                ) : filtered.map((c, i) => {
-                  const b = proTypeBadges[c.pro_profile_type || 'autre'] || proTypeBadges.autre;
-                  const isSubscribed = proSubscriptions.has(c.id);
-                  const isActivated = proActivated.has(c.id);
-                  const isCancelScheduled = proCancelScheduled.has(c.id);
-                  const isCanceled = proCanceled.has(c.id) && !isSubscribed;
-                  // 🏛 Info agence (si membre)
-                  const agenceInfo = agenceInfoByUser.get(c.id);
-                  const agenceRoleIcon = agenceInfo?.role === 'responsable' ? '👑' : agenceInfo?.role === 'co_responsable' ? '🤝' : '👤';
-                  const agenceRoleLabel = agenceInfo?.role === 'responsable' ? 'Responsable' : agenceInfo?.role === 'co_responsable' ? 'Co-resp.' : 'Agent';
-                  return (
-                    <div key={c.id} onClick={() => loadClientDetail(c)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
-                      onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#fafcfd'}
-                      onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                        {(c.full_name?.charAt(0) || 'P').toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {c.full_name}
-                          {agenceInfo && (
-                            <span title={`${agenceRoleLabel} de l'agence ${agenceInfo.agence_name}`} style={{ fontSize: 13 }}>{agenceRoleIcon}</span>
+                ) : (() => {
+                  // 🏛 Séparer membres d'agence vs solos
+                  const byAgence = new Map<string, ProClient[]>(); // agence_id → membres
+                  const solos: ProClient[] = [];
+                  filtered.forEach(c => {
+                    const ai = agenceInfoByUser.get(c.id);
+                    if (ai) {
+                      const arr = byAgence.get(ai.agence_id) || [];
+                      arr.push(c);
+                      byAgence.set(ai.agence_id, arr);
+                    } else {
+                      solos.push(c);
+                    }
+                  });
+                  // Trier membres dans chaque agence : responsable → co-resp → agent
+                  const roleOrder: Record<string, number> = { responsable: 0, co_responsable: 1, agent: 2 };
+                  byAgence.forEach((arr) => {
+                    arr.sort((a, b) => {
+                      const ra = agenceInfoByUser.get(a.id)?.role || 'agent';
+                      const rb = agenceInfoByUser.get(b.id)?.role || 'agent';
+                      return (roleOrder[ra] ?? 99) - (roleOrder[rb] ?? 99);
+                    });
+                  });
+                  // Trier les agences par nom
+                  const sortedAgences = Array.from(byAgence.entries()).sort((a, b) => {
+                    const nA = agenceInfoByUser.get(a[1][0]?.id || '')?.agence_name || '';
+                    const nB = agenceInfoByUser.get(b[1][0]?.id || '')?.agence_name || '';
+                    return nA.localeCompare(nB);
+                  });
+
+                  // Fonction de rendu d'une carte client
+                  const renderClientCard = (c: ProClient, i: number, lastInSection: boolean, indented = false) => {
+                    const b = proTypeBadges[c.pro_profile_type || 'autre'] || proTypeBadges.autre;
+                    const isSubscribed = proSubscriptions.has(c.id);
+                    const isActivated = proActivated.has(c.id);
+                    const isCancelScheduled = proCancelScheduled.has(c.id);
+                    const isCanceled = proCanceled.has(c.id) && !isSubscribed;
+                    const agenceInfo = agenceInfoByUser.get(c.id);
+                    const agenceRoleIcon = agenceInfo?.role === 'responsable' ? '👑' : agenceInfo?.role === 'co_responsable' ? '🤝' : '👤';
+                    const agenceRoleLabel = agenceInfo?.role === 'responsable' ? 'Responsable' : agenceInfo?.role === 'co_responsable' ? 'Co-resp.' : 'Agent';
+                    return (
+                      <div key={c.id} onClick={() => loadClientDetail(c)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 14,
+                          padding: indented ? '12px 18px 12px 30px' : '14px 18px',
+                          borderBottom: !lastInSection ? '1px solid #f8fafc' : 'none',
+                          cursor: 'pointer',
+                          transition: 'background 0.1s',
+                          background: indented ? '#fdfdfe' : 'transparent',
+                        }}
+                        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = indented ? '#f4f8fb' : '#fafcfd'}
+                        onMouseOut={e => (e.currentTarget as HTMLElement).style.background = indented ? '#fdfdfe' : 'transparent'}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                          {(c.full_name?.charAt(0) || 'P').toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {agenceInfo && <span style={{ fontSize: 14 }}>{agenceRoleIcon}</span>}
+                            {c.full_name}
+                            {agenceInfo && !indented && (
+                              <span style={{ fontSize: 10.5, fontWeight: 600, color: '#0c4a6e', background: '#e0f2fe', padding: '2px 7px', borderRadius: 5 }}>
+                                {agenceRoleLabel} · {agenceInfo.agence_name}
+                              </span>
+                            )}
+                            {agenceInfo && indented && (
+                              <span style={{ fontSize: 10.5, fontWeight: 600, color: '#64748b' }}>
+                                ({agenceRoleLabel})
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#94a3b8' }}>{c.email}{c.pro_company_name ? ` · ${c.pro_company_name}` : ''}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '3px 9px', borderRadius: 100, border: '1px solid #e2e8f0' }}>Inscrit</span>
+                          {isActivated && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '3px 9px', borderRadius: 100, border: '1px solid #bfdbfe' }}>Compte activé</span>
+                          )}
+                          {isSubscribed && !isCancelScheduled && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 9px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Abonné</span>
+                          )}
+                          {isCancelScheduled && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#ca8a04', background: '#fef3c7', padding: '3px 9px', borderRadius: 100, border: '1px solid #fde68a' }}>Résiliation programmée</span>
+                          )}
+                          {isCanceled && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '3px 9px', borderRadius: 100, border: '1px solid #fecaca' }}>Résilié</span>
                           )}
                         </div>
-                        <div style={{ fontSize: 12, color: '#94a3b8' }}>{c.email}{c.pro_company_name ? ` · ${c.pro_company_name}` : ''}</div>
-                        {agenceInfo && (
-                          <div style={{ fontSize: 11, color: '#0c4a6e', marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: '#e0f2fe', borderRadius: 5, fontWeight: 600 }}>
-                            🏛 {agenceInfo.agence_name} · {agenceRoleLabel}
+                        {!indented && <span style={{ fontSize: 11, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8, flexShrink: 0 }}>{b.label}</span>}
+                        <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{c.pro_created_at ? fmtDate(c.pro_created_at) : fmtDate(c.created_at)}</span>
+                        <ChevronRight size={14} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <>
+                      {/* ═══ AGENCES regroupées en haut ═══ */}
+                      {sortedAgences.map(([agenceId, agenceMembers]) => {
+                        const firstMember = agenceMembers[0];
+                        const agenceName = agenceInfoByUser.get(firstMember.id)?.agence_name || 'Agence';
+                        const isCollapsed = collapsedAgences.has(agenceId);
+                        const responsable = agenceMembers.find(m => agenceInfoByUser.get(m.id)?.role === 'responsable');
+                        return (
+                          <div key={`agence-${agenceId}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            {/* Header agence */}
+                            <div
+                              onClick={() => {
+                                setCollapsedAgences(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(agenceId)) next.delete(agenceId);
+                                  else next.add(agenceId);
+                                  return next;
+                                });
+                              }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 14,
+                                padding: '14px 18px',
+                                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                                borderLeft: '4px solid #d97706',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s',
+                              }}
+                              onMouseOver={e => (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #fef3c7, #fcd34d)'}
+                              onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #fef3c7, #fde68a)'}
+                            >
+                              <ChevronDown size={16} style={{
+                                color: '#92400e',
+                                transition: 'transform 0.2s',
+                                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                                flexShrink: 0,
+                              }} />
+                              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                                🏛
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 14.5, fontWeight: 800, color: '#78350f' }}>
+                                  Agence {agenceName}
+                                </div>
+                                <div style={{ fontSize: 11.5, color: '#92400e', marginTop: 1 }}>
+                                  {agenceMembers.length} membre{agenceMembers.length > 1 ? 's' : ''}
+                                  {responsable && ` · 👑 ${responsable.full_name}`}
+                                </div>
+                              </div>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#78350f', background: 'rgba(255,255,255,0.7)', padding: '4px 10px', borderRadius: 7 }}>
+                                {agenceMembers.length} {agenceMembers.length > 1 ? 'comptes' : 'compte'}
+                              </span>
+                            </div>
+                            {/* Membres de l'agence (si dépliée) */}
+                            {!isCollapsed && agenceMembers.map((m, idx) =>
+                              renderClientCard(m, idx, idx === agenceMembers.length - 1, true)
+                            )}
                           </div>
-                        )}
-                      </div>
-                      {/* Badges status */}
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '3px 9px', borderRadius: 100, border: '1px solid #e2e8f0' }}>Inscrit</span>
-                        {isActivated && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '3px 9px', borderRadius: 100, border: '1px solid #bfdbfe' }}>Compte activé</span>
-                        )}
-                        {isSubscribed && !isCancelScheduled && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 9px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Abonné</span>
-                        )}
-                        {isCancelScheduled && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#ca8a04', background: '#fef3c7', padding: '3px 9px', borderRadius: 100, border: '1px solid #fde68a' }}>Résiliation programmée</span>
-                        )}
-                        {isCanceled && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '3px 9px', borderRadius: 100, border: '1px solid #fecaca' }}>Résilié</span>
-                        )}
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8, flexShrink: 0 }}>{b.label}</span>
-                      <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{c.pro_created_at ? fmtDate(c.pro_created_at) : fmtDate(c.created_at)}</span>
-                      <ChevronRight size={14} style={{ color: '#cbd5e1', flexShrink: 0 }} />
-                    </div>
+                        );
+                      })}
+
+                      {/* ═══ Séparateur si les 2 sections existent ═══ */}
+                      {sortedAgences.length > 0 && solos.length > 0 && (
+                        <div style={{ padding: '14px 18px 8px', background: '#fafbfc' }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+                            Comptes individuels ({solos.length})
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ═══ SOLOS individuels ═══ */}
+                      {solos.map((c, i) => renderClientCard(c, i, i === solos.length - 1, false))}
+                    </>
                   );
-                });
+                })();
               })()}
           </div>
         </div>
