@@ -5142,8 +5142,8 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         </div>
 
         <div style={{ padding: '18px 22px 20px' }}>
-          {/* Bandeau info doux pour demande de modification (seulement si verrouillé) */}
-          {isLocked && (
+          {/* Bandeau info doux pour demande de modification (seulement si verrouillé et pas agent — les agents ont déjà leur propre bandeau d'info) */}
+          {isLocked && !isAgent && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: '#fafbfc', border: '0.5px solid #edf2f7', borderRadius: 10, marginBottom: 18, flexWrap: 'wrap' as const }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: '1 1 280px', minWidth: 0 }}>
                 <Info size={16} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 1 }} />
@@ -6017,6 +6017,25 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
       if (error) throw error;
       if (!data) { setNotFound(true); setLoading(false); return; }
 
+      // 🏛 Si le dossier est lié à une agence, charger le profil du créateur pour afficher "Créé par X"
+      let creatorName: string | null = null;
+      let creatorRole: ProFolder['creator_role'] = null;
+      if (data.agence_id && data.user_id) {
+        const { data: creatorProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', data.user_id)
+          .maybeSingle();
+        creatorName = creatorProfile?.full_name || 'Membre supprimé';
+        const { data: creatorMember } = await supabase
+          .from('agence_members')
+          .select('role')
+          .eq('agence_id', data.agence_id)
+          .eq('user_id', data.user_id)
+          .maybeSingle();
+        creatorRole = (creatorMember?.role as ProFolder['creator_role']) || null;
+      }
+
       // Charger les stats (counts directs, plus fiable que la RPC)
       try {
         const [analysesRes, sellersRes, buyersRes] = await Promise.all([
@@ -6029,9 +6048,11 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
           analyses_count: analysesRes.count || 0,
           sellers_count: sellersRes.count || 0,
           buyers_count: buyersRes.count || 0,
+          creator_name: creatorName,
+          creator_role: creatorRole,
         });
       } catch {
-        setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0 });
+        setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0, creator_name: creatorName, creator_role: creatorRole });
       }
 
       // Charger les vendeurs, acheteurs et analyses en parallèle
@@ -6245,6 +6266,13 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <MapPin size={13} style={{ flexShrink: 0 }} />
                 <span>{[folder.property_address, folder.property_postal_code, folder.property_city].filter(Boolean).join(', ')}</span>
+              </div>
+            )}
+            {/* 🏛 Créé par (vue agence) */}
+            {folder.creator_name && (
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 6, padding: '3px 9px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 7 }}>
+                <span style={{ fontSize: 13 }}>{folder.creator_role === 'responsable' ? '👑' : folder.creator_role === 'co_responsable' ? '🤝' : '👤'}</span>
+                <span>Créé par <strong style={{ color: '#fff' }}>{folder.creator_name}</strong>{folder.user_id === proProfile.id ? ' (vous)' : ''}</span>
               </div>
             )}
           </div>
