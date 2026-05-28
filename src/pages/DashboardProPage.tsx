@@ -182,32 +182,44 @@ const proNavItems = [
   { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
 ];
 
-// Navigation regroupée par sections (Option A : séparateurs fins)
-const proNavGroups: { title: string; items: typeof proNavItems }[] = [
-  {
-    title: 'Pilotage',
-    items: [
-      { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
-      { to: '/dashboard/dossiers', icon: FolderOpen, label: 'Mes dossiers' },
-      { to: '/dashboard/compare', icon: GitCompare, label: 'Comparer' },
-    ],
-  },
-  {
-    title: 'Mon espace',
-    items: [
-      { to: '/dashboard/equipe', icon: Users, label: 'Mon équipe' },
-      { to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' },
-      { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
-    ],
-  },
-  {
-    title: 'Assistance',
-    items: [
-      { to: '/dashboard/aide', icon: BookOpen, label: 'Aide & Méthode' },
-      { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
-    ],
-  },
-];
+// Navigation regroupée par sections — dynamique selon le rôle.
+// - Solo classique : tous les onglets sauf "Mon équipe"
+// - Membre d'agence "agent" : pas d'onglet "Mon abonnement" (géré par le responsable)
+// - Responsable d'agence : tous les onglets
+function getProNavGroups(agenceRole?: string | null) {
+  const isAgent = agenceRole === 'agent';
+  const isMember = !!agenceRole; // appartient à une agence
+
+  const monEspaceItems = [
+    // "Mon équipe" : visible uniquement si on est dans une agence
+    ...(isMember ? [{ to: '/dashboard/equipe', icon: Users, label: 'Mon équipe' }] : []),
+    // "Mon abonnement" : caché pour les agents (géré par le responsable)
+    ...(!isAgent ? [{ to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' }] : []),
+    { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
+  ];
+
+  return [
+    {
+      title: 'Pilotage',
+      items: [
+        { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
+        { to: '/dashboard/dossiers', icon: FolderOpen, label: 'Mes dossiers' },
+        { to: '/dashboard/compare', icon: GitCompare, label: 'Comparer' },
+      ],
+    },
+    {
+      title: 'Mon espace',
+      items: monEspaceItems,
+    },
+    {
+      title: 'Assistance',
+      items: [
+        { to: '/dashboard/aide', icon: BookOpen, label: 'Aide & Méthode' },
+        { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
+      ],
+    },
+  ];
+}
 
 // Couleurs d'icônes nav (badge + icône) — une couleur thématique par item.
 // Permet une lecture visuelle rapide tout en gardant le fond clair de la sidebar.
@@ -225,7 +237,7 @@ const ICON_COLORS: Record<string, { bgFrom: string; bgTo: string; color: string 
 /* ══════════════════════════════════════════
    SIDEBAR PRO
 ══════════════════════════════════════════ */
-function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsLoading }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number; creditsLoading?: boolean }) {
+function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsLoading, agenceRole }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number; creditsLoading?: boolean; agenceRole?: string | null }) {
   const location = useLocation();
 
   // ─── Mode clair/sombre — persistance localStorage ───
@@ -603,7 +615,7 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
 
       {/* Navigation avec séparateurs entre groupes */}
       <nav style={{ flex: 1, padding: '8px 10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-        {proNavGroups.map((group, gIdx) => (
+        {getProNavGroups(agenceRole).map((group, gIdx) => (
           <div key={group.title}>
             {gIdx > 0 && (
               <div style={{ height: 1, background: isDark ? 'rgba(255,255,255,0.10)' : 'linear-gradient(90deg, transparent, #cbd5e1 20%, #cbd5e1 80%, transparent)', margin: '8px 12px' }} />
@@ -941,8 +953,9 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
       )}
 
       {/* 🆕 BANNIÈRE DÉMO ÉPUISÉE — Affichée quand tous les crédits démo ont été utilisés
-           🏛 Version adaptée selon le profil : agence (un seul bouton "Je souhaite être rappelé") vs solo (2 boutons) */}
-      {isDemo && demoCreditsUsed && (
+           🏛 Version adaptée selon le profil : agence (un seul bouton "Je souhaite être rappelé") vs solo (2 boutons)
+           🏛 Masquée pour les agents d'agence (géré par le responsable) */}
+      {isDemo && demoCreditsUsed && proProfile.agence_role !== 'agent' && (
         <div style={{
           background: 'linear-gradient(135deg, #0a1f2d 0%, #1a4a5e 100%)',
           borderRadius: 18,
@@ -1008,7 +1021,8 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
       )}
 
       {/* Pas d'abonnement ? Bandeau personnalisé avec plan recommandé ou bandeau générique — masqué en mode démo */}
-      {!subscription && !isDemo && (
+      {/* 🏛 Masqué pour les agents d'agence (l'abonnement est géré par le responsable) */}
+      {!subscription && !isDemo && proProfile.agence_role !== 'agent' && (
         showRecommendedBanner ? (
           <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: '24px 28px', marginBottom: 24, border: '1px solid rgba(125,211,252,0.15)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -4126,7 +4140,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
              État 2 — Proposition envoyée, en attente de souscription Stripe
              État 3 — Abonnement actif (plan === 'agence')
       ═══ */}
-      {proProfile.pro_profile_type === 'agence' && (() => {
+      {proProfile.pro_profile_type === 'agence' && proProfile.agence_role !== 'agent' && (() => {
         const agenceUnlocked = !!proProfile.pro_agence_subscription_unlocked;
         const agenceActive = subscription?.plan === 'agence' && subscription?.status === 'active';
 
@@ -4866,7 +4880,9 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
    MON COMPTE PRO
 ══════════════════════════════════════════ */
 function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate: () => void }) {
-  const isLocked = proProfile.pro_onboarding_done === true;
+  // 🏛 Si agent d'agence : verrouiller tous les champs entreprise (gérés par le responsable)
+  const isAgent = proProfile.agence_role === 'agent';
+  const isLocked = proProfile.pro_onboarding_done === true || isAgent;
   const [form, setForm] = useState({
     full_name: proProfile.full_name || '',
     telephone: proProfile.telephone || '',
@@ -5000,6 +5016,17 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 2 — IDENTITÉ PROFESSIONNELLE (verrouillée)      */}
       {/* ═══════════════════════════════════════════════════════ */}
+      {isAgent && (
+        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <Info size={18} color="#1e40af" style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <p style={{ fontSize: 13.5, fontWeight: 700, color: '#1e40af', margin: '0 0 3px' }}>Informations gérées par votre agence</p>
+            <p style={{ fontSize: 12.5, color: '#1e40af', margin: 0, lineHeight: 1.5 }}>
+              La raison sociale, le SIRET, l'adresse pro et le réseau sont gérés par le responsable de votre agence. Vous pouvez toutefois modifier vos informations personnelles ci-dessus.
+            </p>
+          </div>
+        </div>
+      )}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', background: isLocked ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: `1px solid ${isLocked ? '#fde68a' : '#d0e8f0'}` }}>
           <div style={{ width: 32, height: 32, borderRadius: 9, background: isLocked ? '#d97706' : '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -7720,7 +7747,25 @@ export default function DashboardProPage() {
       }
       return <MonEquipePage userId={proProfile.id} agenceId={proProfile.agence_id} userRole={proProfile.agence_role} />;
     }
-    if (path === '/dashboard/abonnement') return <MonAbonnement subscription={subscription} hasEverSubscribed={hasEverSubscribed} proProfile={proProfile} />;
+    if (path === '/dashboard/abonnement') {
+      // Si agent d'agence (non-responsable) → bloquer l'accès et rediriger vers Mon équipe
+      if (proProfile.agence_role === 'agent') {
+        return (
+          <div style={{ padding: 40, textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
+            <Shield size={48} color="#0c4a6e" style={{ margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: '0 0 10px' }}>Abonnement géré par votre agence</h2>
+            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>
+              Votre abonnement et la facturation sont gérés par le responsable de votre agence.
+              Pour toute question, contactez-le directement.
+            </p>
+            <Link to="/dashboard/equipe" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
+              <Users size={14} /> Voir mon équipe
+            </Link>
+          </div>
+        );
+      }
+      return <MonAbonnement subscription={subscription} hasEverSubscribed={hasEverSubscribed} proProfile={proProfile} />;
+    }
     if (path === '/dashboard/compte') return <ComptePro proProfile={proProfile} onUpdate={loadData} />;
     if (path === '/dashboard/aide') return <Aide />;
     if (path === '/dashboard/support') return <Support />;
@@ -7732,7 +7777,7 @@ export default function DashboardProPage() {
       {/* Sidebar desktop */}
       <div className="desktop-sidebar" style={{ width: 260, flexShrink: 0 }}>
         <div style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50, overflowY: 'auto' }}>
-          <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} creditsLoading={loading} />
+          <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} creditsLoading={loading} agenceRole={proProfile.agence_role} />
         </div>
       </div>
 
@@ -7743,7 +7788,7 @@ export default function DashboardProPage() {
             <div onClick={() => setMobileOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.45)' }} />
             <motion.div initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 260, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} creditsLoading={loading} onClose={() => setMobileOpen(false)} />
+              <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} creditsLoading={loading} onClose={() => setMobileOpen(false)} agenceRole={proProfile.agence_role} />
             </motion.div>
           </motion.div>
         )}
