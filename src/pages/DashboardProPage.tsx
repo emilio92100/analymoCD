@@ -5206,29 +5206,29 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
           <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
             <div>
               <label style={labelStyle}>Raison sociale</label>
-              <input value={form.pro_company_name} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder="Agence Dupont SARL" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+              <input value={form.pro_company_name || (isLocked ? '—' : '')} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder={isLocked ? '' : "Agence Dupont SARL"} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
             </div>
             <div>
               <label style={labelStyle}>Réseau</label>
-              <input value={form.pro_network} onChange={e => !isLocked && setForm(f => ({ ...f, pro_network: e.target.value }))} placeholder="IAD, Safti, Indépendant..." style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+              <input value={form.pro_network || (isLocked ? '—' : '')} onChange={e => !isLocked && setForm(f => ({ ...f, pro_network: e.target.value }))} placeholder={isLocked ? '' : "IAD, Safti, Indépendant..."} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle}>SIRET</label>
-            <input value={form.pro_siret} onChange={e => !isLocked && setForm(f => ({ ...f, pro_siret: e.target.value }))} placeholder="123 456 789 00012" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+            <input value={form.pro_siret || (isLocked ? '—' : '')} onChange={e => !isLocked && setForm(f => ({ ...f, pro_siret: e.target.value }))} placeholder={isLocked ? '' : "123 456 789 00012"} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle}>Adresse postale</label>
-            <input value={form.pro_company_address} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} placeholder="12 rue de la République" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+            <input value={form.pro_company_address || (isLocked ? '—' : '')} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} placeholder={isLocked ? '' : "12 rue de la République"} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
           <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
             <div>
               <label style={labelStyle}>Code postal</label>
-              <input value={form.pro_postal_code} onChange={e => !isLocked && setForm(f => ({ ...f, pro_postal_code: e.target.value }))} placeholder="75001" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+              <input value={form.pro_postal_code || (isLocked ? '—' : '')} onChange={e => !isLocked && setForm(f => ({ ...f, pro_postal_code: e.target.value }))} placeholder={isLocked ? '' : "75001"} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
             </div>
             <div>
               <label style={labelStyle}>Ville</label>
-              <input value={form.pro_ville} onChange={e => !isLocked && setForm(f => ({ ...f, pro_ville: e.target.value }))} placeholder="Paris" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+              <input value={form.pro_ville || (isLocked ? '—' : '')} onChange={e => !isLocked && setForm(f => ({ ...f, pro_ville: e.target.value }))} placeholder={isLocked ? '' : "Paris"} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
             </div>
           </div>
         </div>
