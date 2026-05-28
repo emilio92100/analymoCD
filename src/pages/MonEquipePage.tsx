@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, UserPlus, Mail, Crown, User, Trash2, RefreshCw,
   AlertTriangle, CheckCircle, X, Send, ChevronRight, ArrowLeft,
-  Shield, FileText, Calendar, TrendingUp, Folder, Award,
+  Shield, FileText, TrendingUp, Folder, Award,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -264,7 +264,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         agenceId={agenceId}
         agence={agence}
         currentUserId={userId}
-        currentUserRole={userRole}
         isManager={isManager}
         onBack={() => setDetailMember(null)}
         onPromote={() => handlePromote(detailMember)}
@@ -435,12 +434,11 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
    FICHE DÉTAIL MEMBRE — affichée quand on clique sur un membre
    ════════════════════════════════════════════════════════════════════════ */
 
-function MemberDetailView({ member, agenceId, agence, currentUserId, currentUserRole, isManager, onBack, onPromote, onDemote, onRemove }: {
+function MemberDetailView({ member, agenceId, agence, currentUserId, isManager, onBack, onPromote, onDemote, onRemove }: {
   member: AgenceMember;
   agenceId: string;
   agence: AgenceInfo;
   currentUserId: string;
-  currentUserRole: 'responsable' | 'co_responsable' | 'agent';
   isManager: boolean;
   onBack: () => void;
   onPromote: () => void;
