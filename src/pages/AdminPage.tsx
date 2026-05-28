@@ -5543,6 +5543,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proCancelScheduled, setProCancelScheduled] = useState<Set<string>>(new Set());
   const [proCanceled, setProCanceled] = useState<Set<string>>(new Set());
   const [proActivated, setProActivated] = useState<Set<string>>(new Set());
+  // 🏛 Multi-utilisateurs agence : info d'appartenance par user
+  const [agenceInfoByUser, setAgenceInfoByUser] = useState<Map<string, { agence_id: string; agence_name: string; role: 'responsable' | 'co_responsable' | 'agent' }>>(new Map());
   const [proFilter, setProFilter] = useState<'all' | 'demo' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [filterByType, setFilterByType] = useState<string>('all'); // 🆕 Filtre par type de profil (agent/investisseur/notaire/autre)
   const [loading, setLoading] = useState(true);
@@ -5611,7 +5613,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 
   const loadClients = useCallback(async () => {
     setLoading(true);
-    const [{ data }, { data: subs }, { data: invs }] = await Promise.all([
+    const [{ data }, { data: subs }, { data: invs }, { data: agenceMembers }, { data: agences }] = await Promise.all([
       supabase.from('profiles').select('*').eq('role', 'pro').order('pro_created_at', { ascending: false }),
       // On charge active, past_due ET canceled pour pouvoir filtrer par statut résiliation
       // - active + cancel_at_period_end=true → résiliation programmée
@@ -5619,6 +5621,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       supabase.from('pro_subscriptions').select('user_id, status, cancel_at_period_end').in('status', ['active', 'past_due', 'canceled']),
       // Invitations acceptées = pro qui a cliqué sur le lien et défini son mot de passe
       supabase.from('pro_invitations').select('profile_id, accepted_at').not('accepted_at', 'is', null),
+      // 🏛 Membres d'agence
+      supabase.from('agence_members').select('user_id, role, agence_id').is('removed_at', null),
+      // 🏛 Agences (pour récupérer le nom)
+      supabase.from('agences').select('id, raison_sociale'),
     ]);
     setClients((data || []) as ProClient[]);
     const subMap = new Map<string, string>();
@@ -5639,6 +5645,21 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     const activatedSet = new Set<string>();
     (invs || []).forEach((inv: any) => activatedSet.add(inv.profile_id));
     setProActivated(activatedSet);
+
+    // 🏛 Map des infos agence par user_id
+    const agencesMap = new Map<string, string>(
+      (agences || []).map((a: any) => [a.id, a.raison_sociale])
+    );
+    const agenceMap = new Map<string, { agence_id: string; agence_name: string; role: 'responsable' | 'co_responsable' | 'agent' }>();
+    (agenceMembers || []).forEach((m: any) => {
+      agenceMap.set(m.user_id, {
+        agence_id: m.agence_id,
+        agence_name: agencesMap.get(m.agence_id) || 'Agence sans nom',
+        role: m.role,
+      });
+    });
+    setAgenceInfoByUser(agenceMap);
+
     setLoading(false);
   }, []);
 
@@ -5756,12 +5777,29 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       if (data.error) { setCreateError(data.error); setCreating(false); return; }
       await logAction('Compte pro créé', form.email);
 
-      // 🏛 Pour les comptes agence : on n'enchaîne PLUS automatiquement l'envoi de la proposition.
-      // Le pro reçoit d'abord le mail d'activation (création mdp) comme un compte solo.
-      // L'admin enverra la proposition agence manuellement depuis la fiche client quand bon lui semble.
-      showToast(form.pro_profile_type === 'agence'
-        ? `🏛 Compte agence ${form.email} créé. Mail d'activation envoyé.`
-        : `Compte pro ${form.email} créé`);
+      // 🏛 Si type=agence : enchaîner avec l'envoi automatique de la proposition agence
+      if (form.pro_profile_type === 'agence' && data.user?.id) {
+        try {
+          const resAgence = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+            body: JSON.stringify({ action: 'unlock_agence_subscription', profile_id: data.user.id }),
+          });
+          const dataAgence = await resAgence.json();
+          if (dataAgence.error) {
+            showToast(`Compte créé mais ⚠️ proposition agence non envoyée : ${dataAgence.error}`);
+          } else if (dataAgence.mail_sent === false) {
+            showToast(`Compte créé mais ⚠️ mail proposition non envoyé : ${dataAgence.mail_error || 'erreur Mailjet'}`);
+          } else {
+            showToast(`🏛 Compte agence créé et proposition envoyée à ${form.email}`);
+            await logAction('Proposition agence envoyée (auto à la création)', form.email);
+          }
+        } catch (e) {
+          showToast(`Compte créé mais ⚠️ erreur envoi proposition : ${String(e)}`);
+        }
+      } else {
+        showToast(`Compte pro ${form.email} créé`);
+      }
 
       setShowCreate(false);
       setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' });
@@ -6094,6 +6132,53 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 {selected.telephone && <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{selected.telephone}</p>}
                 {selected.pro_company_name && <p style={{ fontSize: 14, fontWeight: 600, color: '#374151', margin: '6px 0 0' }}>{selected.pro_company_name}{selected.pro_network ? ` · ${selected.pro_network}` : ''}</p>}
                 {selected.pro_ville && <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>{selected.pro_ville}</p>}
+                {/* 🏛 Bandeau d'appartenance à une agence */}
+                {(() => {
+                  const agenceInfo = agenceInfoByUser.get(selected.id);
+                  if (!agenceInfo) return null;
+                  const roleIcon = agenceInfo.role === 'responsable' ? '👑' : agenceInfo.role === 'co_responsable' ? '🤝' : '👤';
+                  const roleLabel = agenceInfo.role === 'responsable' ? 'Responsable' : agenceInfo.role === 'co_responsable' ? 'Co-responsable' : 'Agent';
+                  // Lister les autres membres de la même agence
+                  const otherMembers = clients.filter(c => {
+                    const info = agenceInfoByUser.get(c.id);
+                    return info && info.agence_id === agenceInfo.agence_id && c.id !== selected.id;
+                  });
+                  return (
+                    <div style={{ marginTop: 10, padding: '11px 13px', background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', border: '1px solid #bae6fd', borderRadius: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: otherMembers.length > 0 ? 8 : 0 }}>
+                        <span style={{ fontSize: 16 }}>🏛</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#0c4a6e' }}>
+                            {roleIcon} {roleLabel} de l'agence <strong>{agenceInfo.agence_name}</strong>
+                          </div>
+                        </div>
+                      </div>
+                      {otherMembers.length > 0 && (
+                        <div style={{ borderTop: '1px solid #bae6fd', paddingTop: 7 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#0c4a6e', letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 5 }}>
+                            Autres membres ({otherMembers.length})
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                            {otherMembers.map(m => {
+                              const mInfo = agenceInfoByUser.get(m.id)!;
+                              const mIcon = mInfo.role === 'responsable' ? '👑' : mInfo.role === 'co_responsable' ? '🤝' : '👤';
+                              return (
+                                <button key={m.id} onClick={() => loadClientDetail(m)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 9px', background: '#fff', border: '1px solid #bae6fd', borderRadius: 7, cursor: 'pointer', textAlign: 'left' as const, fontSize: 11.5, color: '#0c4a6e', transition: 'all 0.15s' }}
+                                  onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f0f9ff'; }}
+                                  onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}>
+                                  <span style={{ fontSize: 13 }}>{mIcon}</span>
+                                  <span style={{ fontWeight: 600 }}>{m.full_name}</span>
+                                  <span style={{ color: '#64748b', fontSize: 10.5 }}>· {m.email}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
                 {invitations.some(inv => inv.accepted_at) ? (
@@ -7129,7 +7214,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 ] as const).map(t => {
                   const count = t.id === 'all'
                     ? clients.length
-                    : clients.filter(c => (c.pro_profile_type || 'autre') === t.id).length;
+                    : t.id === 'agence'
+                    ? clients.filter(c => (c.pro_profile_type === 'agence') || agenceInfoByUser.has(c.id)).length
+                    : clients.filter(c => (c.pro_profile_type || 'autre') === t.id && !agenceInfoByUser.has(c.id)).length;
                   const isActive = filterByType === t.id;
                   return (
                     <button key={t.id} onClick={() => setFilterByType(t.id)}
@@ -7171,9 +7258,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   : proFilter === 'canceled' ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id))
                   : clients;
                 // 🆕 Application cumulative du filtre par type de profil
+                // Le filtre "agence" inclut tous les membres d'une agence (responsable, co-resp, agent),
+                // pas uniquement ceux dont pro_profile_type = 'agence'
                 const filtered = filterByType === 'all'
                   ? baseFiltered
-                  : baseFiltered.filter(c => (c.pro_profile_type || 'autre') === filterByType);
+                  : filterByType === 'agence'
+                  ? baseFiltered.filter(c => (c.pro_profile_type === 'agence') || agenceInfoByUser.has(c.id))
+                  : baseFiltered.filter(c => (c.pro_profile_type || 'autre') === filterByType && !agenceInfoByUser.has(c.id));
                 return filtered.length === 0 ? (
                   <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun client dans cette catégorie.</div>
                 ) : filtered.map((c, i) => {
@@ -7182,6 +7273,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   const isActivated = proActivated.has(c.id);
                   const isCancelScheduled = proCancelScheduled.has(c.id);
                   const isCanceled = proCanceled.has(c.id) && !isSubscribed;
+                  // 🏛 Info agence (si membre)
+                  const agenceInfo = agenceInfoByUser.get(c.id);
+                  const agenceRoleIcon = agenceInfo?.role === 'responsable' ? '👑' : agenceInfo?.role === 'co_responsable' ? '🤝' : '👤';
+                  const agenceRoleLabel = agenceInfo?.role === 'responsable' ? 'Responsable' : agenceInfo?.role === 'co_responsable' ? 'Co-resp.' : 'Agent';
                   return (
                     <div key={c.id} onClick={() => loadClientDetail(c)}
                       style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
@@ -7191,8 +7286,18 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                         {(c.full_name?.charAt(0) || 'P').toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{c.full_name}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {c.full_name}
+                          {agenceInfo && (
+                            <span title={`${agenceRoleLabel} de l'agence ${agenceInfo.agence_name}`} style={{ fontSize: 13 }}>{agenceRoleIcon}</span>
+                          )}
+                        </div>
                         <div style={{ fontSize: 12, color: '#94a3b8' }}>{c.email}{c.pro_company_name ? ` · ${c.pro_company_name}` : ''}</div>
+                        {agenceInfo && (
+                          <div style={{ fontSize: 11, color: '#0c4a6e', marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: '#e0f2fe', borderRadius: 5, fontWeight: 600 }}>
+                            🏛 {agenceInfo.agence_name} · {agenceRoleLabel}
+                          </div>
+                        )}
                       </div>
                       {/* Badges status */}
                       <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
