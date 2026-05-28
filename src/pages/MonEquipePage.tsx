@@ -1,13 +1,13 @@
 // ════════════════════════════════════════════════════════════════════════
-// VERIMO — Mon équipe (responsable agence)
-// Liste des membres + invitations + bouton inviter + actions
+// VERIMO — Mon équipe (multi-utilisateurs agence)
+// Liste des membres + invitations + bouton inviter + fiche détail membre
 // ════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, UserPlus, Mail, Crown, User, Trash2, RefreshCw,
-  AlertTriangle, CheckCircle, X, Send, ChevronRight,
-  Shield,
+  AlertTriangle, CheckCircle, X, Send, ChevronRight, ArrowLeft,
+  Shield, FileText, Calendar, TrendingUp, Folder, Award,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -43,6 +43,16 @@ interface AgenceInfo {
   credits_document: number;
 }
 
+interface MemberDetailStats {
+  analyses_count: number;
+  analyses_completes: number;
+  analyses_simples: number;
+  folders_count: number;
+  reports_sent: number;
+  recent_analyses: Array<{ id: string; title: string; type: string; created_at: string; status: string; score?: number }>;
+  activity_by_week: Array<{ week: string; count: number }>;
+}
+
 interface Props {
   userId: string;
   agenceId: string;
@@ -55,7 +65,8 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
   const [invitations, setInvitations] = useState<AgenceInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<AgenceMember | null>(null);
+  // 🆕 Fiche détail au lieu de simple popup actions
+  const [detailMember, setDetailMember] = useState<AgenceMember | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const isManager = userRole === 'responsable' || userRole === 'co_responsable';
@@ -66,7 +77,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Agence
       const { data: agenceData } = await supabase
         .from('agences')
         .select('id, raison_sociale, nb_users_max, status, credits_complete, credits_document')
@@ -74,7 +84,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         .single();
       if (agenceData) setAgence(agenceData as AgenceInfo);
 
-      // Membres actifs (sans jointure embarquée — on récupère les profiles séparément)
       const { data: membersData } = await supabase
         .from('agence_members')
         .select('id, user_id, role, joined_at, removed_at, last_active_at, color_hex')
@@ -83,7 +92,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         .order('joined_at', { ascending: true });
 
       if (membersData && membersData.length > 0) {
-        // Récupérer les profils en une seule requête séparée
         const userIds = membersData.map(m => m.user_id);
         const { data: profilesData } = await supabase
           .from('profiles')
@@ -94,7 +102,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
           (profilesData || []).map(p => [p.id, { email: p.email || '', full_name: p.full_name || 'Sans nom' }])
         );
 
-        // Enrichir avec compteur d'analyses
         const enriched = await Promise.all(membersData.map(async (m) => {
           const { count } = await supabase
             .from('analyses')
@@ -123,7 +130,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         setMembers([]);
       }
 
-      // Invitations (responsable uniquement)
       if (isManager) {
         const { data: invitationsData } = await supabase
           .from('agence_invitations')
@@ -142,7 +148,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Toast auto-dismiss
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3500);
@@ -181,7 +186,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
   };
 
   const handleResendInvitation = async (inv: AgenceInvitation) => {
-    // Renvoyer = créer une nouvelle invitation (annule l'ancienne automatiquement via la fonction SQL)
     const ok = await handleInvite(inv.email);
     if (ok) setToast({ msg: `Invitation renvoyée à ${inv.email}`, type: 'success' });
   };
@@ -197,7 +201,7 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
       setToast({ msg: error.message, type: 'error' });
     } else {
       setToast({ msg: `${member.full_name} a été retiré(e)`, type: 'success' });
-      setSelectedMember(null);
+      setDetailMember(null);
       await loadData();
     }
   };
@@ -212,7 +216,7 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
       setToast({ msg: error.message, type: 'error' });
     } else {
       setToast({ msg: `${member.full_name} est maintenant co-responsable`, type: 'success' });
-      setSelectedMember(null);
+      setDetailMember(prev => prev ? { ...prev, role: 'co_responsable' } : null);
       await loadData();
     }
   };
@@ -227,7 +231,7 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
       setToast({ msg: error.message, type: 'error' });
     } else {
       setToast({ msg: `${member.full_name} est maintenant agent`, type: 'success' });
-      setSelectedMember(null);
+      setDetailMember(prev => prev ? { ...prev, role: 'agent' } : null);
       await loadData();
     }
   };
@@ -249,6 +253,24 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
       <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
         Impossible de charger les informations de l'agence.
       </div>
+    );
+  }
+
+  // ─── Si un membre est sélectionné : vue détail ───
+  if (detailMember) {
+    return (
+      <MemberDetailView
+        member={detailMember}
+        agenceId={agenceId}
+        agence={agence}
+        currentUserId={userId}
+        currentUserRole={userRole}
+        isManager={isManager}
+        onBack={() => setDetailMember(null)}
+        onPromote={() => handlePromote(detailMember)}
+        onDemote={() => handleDemote(detailMember)}
+        onRemove={() => handleRemoveMember(detailMember)}
+      />
     );
   }
 
@@ -275,7 +297,7 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         </div>
       </div>
 
-      {/* ═══ Bandeau infos agence (responsable uniquement) ═══ */}
+      {/* ═══ Bandeau infos agence (responsable) ═══ */}
       {isManager && (
         <div style={{ background: 'linear-gradient(135deg, #0e3a4a 0%, #134454 50%, #1a526a 100%)', borderRadius: 16, padding: 22, marginBottom: 24, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -302,7 +324,7 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         </div>
       )}
 
-      {/* ═══ Section invitations en cours ═══ */}
+      {/* ═══ Invitations en cours ═══ */}
       {isManager && invitations.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -363,8 +385,7 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
               key={member.id}
               member={member}
               isMe={member.user_id === userId}
-              canManage={isManager && member.user_id !== userId}
-              onClick={() => isManager && member.user_id !== userId ? setSelectedMember(member) : undefined}
+              onClick={() => setDetailMember(member)}
             />
           ))}
         </div>
@@ -380,19 +401,6 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
               if (ok) setShowInviteModal(false);
             }}
             slotsAvailable={slotsAvailable - pendingCount}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ═══ Modale actions sur membre ═══ */}
-      <AnimatePresence>
-        {selectedMember && (
-          <MemberActionModal
-            member={selectedMember}
-            onClose={() => setSelectedMember(null)}
-            onRemove={() => handleRemoveMember(selectedMember)}
-            onPromote={() => handlePromote(selectedMember)}
-            onDemote={() => handleDemote(selectedMember)}
           />
         )}
       </AnimatePresence>
@@ -424,11 +432,345 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   FICHE DÉTAIL MEMBRE — affichée quand on clique sur un membre
+   ════════════════════════════════════════════════════════════════════════ */
+
+function MemberDetailView({ member, agenceId, agence, currentUserId, currentUserRole, isManager, onBack, onPromote, onDemote, onRemove }: {
+  member: AgenceMember;
+  agenceId: string;
+  agence: AgenceInfo;
+  currentUserId: string;
+  currentUserRole: 'responsable' | 'co_responsable' | 'agent';
+  isManager: boolean;
+  onBack: () => void;
+  onPromote: () => void;
+  onDemote: () => void;
+  onRemove: () => void;
+}) {
+  const [stats, setStats] = useState<MemberDetailStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const isMe = member.user_id === currentUserId;
+  const canManage = isManager && !isMe;
+  // 👑 Le responsable principal ne peut PAS se faire rétrograder par lui-même
+  const isLastResponsable = member.role === 'responsable' && currentUserId === member.user_id;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoadingStats(true);
+      try {
+        // Analyses du membre
+        const { data: analyses } = await supabase
+          .from('analyses')
+          .select('id, title, type, created_at, status, result')
+          .eq('agence_id', agenceId)
+          .eq('created_by_user_id', member.user_id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        // Dossiers du membre
+        const { count: foldersCount } = await supabase
+          .from('pro_folders')
+          .select('id', { count: 'exact', head: true })
+          .eq('agence_id', agenceId)
+          .eq('user_id', member.user_id);
+
+        // Rapports envoyés
+        const { count: reportsSent } = await supabase
+          .from('envois_rapports')
+          .select('id', { count: 'exact', head: true })
+          .eq('agence_id', agenceId)
+          .eq('sent_by', member.user_id);
+
+        const list = analyses || [];
+        const completes = list.filter(a => a.type === 'complete').length;
+        const simples = list.filter(a => a.type === 'simple' || a.type === 'document').length;
+
+        // Activité par semaine (8 dernières)
+        const now = new Date();
+        const weeks: Array<{ week: string; start: Date; end: Date }> = [];
+        for (let i = 7; i >= 0; i--) {
+          const end = new Date(now);
+          end.setDate(end.getDate() - i * 7);
+          const start = new Date(end);
+          start.setDate(start.getDate() - 6);
+          weeks.push({
+            week: `S${52 - i}`,
+            start,
+            end,
+          });
+        }
+        const activity = weeks.map(w => {
+          const count = list.filter(a => {
+            const d = new Date(a.created_at);
+            return d >= w.start && d <= w.end;
+          }).length;
+          return { week: w.week, count };
+        });
+
+        const recent = list.slice(0, 10).map(a => {
+          let score: number | undefined = undefined;
+          try {
+            if (a.result) {
+              const r = typeof a.result === 'string' ? JSON.parse(a.result) : a.result;
+              score = typeof r?.score === 'number' ? r.score : undefined;
+            }
+          } catch { /* ignore */ }
+          return {
+            id: a.id,
+            title: a.title || 'Analyse sans titre',
+            type: a.type,
+            created_at: a.created_at,
+            status: a.status,
+            score,
+          };
+        });
+
+        if (mounted) {
+          setStats({
+            analyses_count: list.length,
+            analyses_completes: completes,
+            analyses_simples: simples,
+            folders_count: foldersCount || 0,
+            reports_sent: reportsSent || 0,
+            recent_analyses: recent,
+            activity_by_week: activity,
+          });
+        }
+      } catch (e) {
+        console.error('Erreur loadStats:', e);
+      }
+      if (mounted) setLoadingStats(false);
+    })();
+    return () => { mounted = false; };
+  }, [member.user_id, agenceId]);
+
+  const initials = member.full_name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+  const roleLabel = member.role === 'responsable' ? 'Responsable'
+    : member.role === 'co_responsable' ? 'Co-responsable'
+    : 'Agent';
+  const roleIcon = member.role === 'responsable' ? '👑'
+    : member.role === 'co_responsable' ? '🤝'
+    : '👤';
+
+  const maxCount = stats ? Math.max(1, ...stats.activity_by_week.map(w => w.count)) : 1;
+
+  return (
+    <div style={{ padding: '24px 28px 60px', maxWidth: 1080, margin: '0 auto' }}>
+      {/* ═══ Bouton retour ═══ */}
+      <button onClick={onBack}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#475569', fontSize: 13.5, fontWeight: 600, marginBottom: 16 }}>
+        <ArrowLeft size={16} /> Retour à mon équipe
+      </button>
+
+      {/* ═══ Header membre ═══ */}
+      <div style={{ background: 'linear-gradient(135deg, #0e3a4a 0%, #134454 50%, #1a526a 100%)', borderRadius: 18, padding: '24px 26px', marginBottom: 22, color: '#fff', display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' as const }}>
+        <div style={{ width: 64, height: 64, borderRadius: 14, background: member.color_hex, color: '#fff', fontSize: 22, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid rgba(255,255,255,0.2)' }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0 }}>{member.full_name}</h1>
+            {isMe && (
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#7dd3fc', background: 'rgba(125,211,252,0.15)', border: '1px solid rgba(125,211,252,0.3)', padding: '3px 8px', borderRadius: 5 }}>
+                VOUS
+              </span>
+            )}
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: 6 }}>
+              {roleIcon} {roleLabel}
+            </span>
+          </div>
+          <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.75)', margin: 0 }}>{member.email}</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', margin: '4px 0 0' }}>
+            Membre de l'agence {agence.raison_sociale} depuis {fmtDate(member.joined_at)}
+            {member.last_active_at && ` · Dernière activité ${fmtDate(member.last_active_at)}`}
+          </p>
+        </div>
+      </div>
+
+      {/* ═══ KPIs ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 22 }}>
+        <KpiCard
+          icon={<FileText size={18} />}
+          label="Analyses créées"
+          value={loadingStats ? '...' : (stats?.analyses_count || 0).toString()}
+          color="#2a7d9c"
+          bg="#f0f7fb"
+        />
+        <KpiCard
+          icon={<Award size={18} />}
+          label="dont complètes"
+          value={loadingStats ? '...' : (stats?.analyses_completes || 0).toString()}
+          color="#7c3aed"
+          bg="#f5f3ff"
+        />
+        <KpiCard
+          icon={<Folder size={18} />}
+          label="Dossiers créés"
+          value={loadingStats ? '...' : (stats?.folders_count || 0).toString()}
+          color="#a16207"
+          bg="#fef3c7"
+        />
+        <KpiCard
+          icon={<Send size={18} />}
+          label="Rapports envoyés"
+          value={loadingStats ? '...' : (stats?.reports_sent || 0).toString()}
+          color="#16a34a"
+          bg="#f0fdf4"
+        />
+      </div>
+
+      {/* ═══ Graphique activité ═══ */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 20, marginBottom: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <TrendingUp size={16} color="#475569" />
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#475569', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: 0 }}>
+            Activité des 8 dernières semaines
+          </h3>
+        </div>
+        {loadingStats ? (
+          <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+            Chargement…
+          </div>
+        ) : stats && stats.analyses_count === 0 ? (
+          <div style={{ padding: '20px 0', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>
+            Aucune analyse créée pour le moment.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 110 }}>
+            {stats?.activity_by_week.map((w, i) => {
+              const heightPct = (w.count / maxCount) * 100;
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 5 }}>
+                  <div style={{ position: 'relative' as const, width: '100%', height: 80, display: 'flex', alignItems: 'flex-end' }}>
+                    <div style={{
+                      width: '100%',
+                      height: `${heightPct}%`,
+                      minHeight: w.count > 0 ? 4 : 0,
+                      background: w.count > 0 ? 'linear-gradient(180deg, #2a7d9c, #0e3a4a)' : '#f1f5f9',
+                      borderRadius: '6px 6px 0 0',
+                      transition: 'all 0.3s',
+                    }} title={`${w.count} analyse${w.count > 1 ? 's' : ''}`} />
+                    {w.count > 0 && (
+                      <div style={{ position: 'absolute' as const, top: -16, left: 0, right: 0, textAlign: 'center' as const, fontSize: 10.5, fontWeight: 700, color: '#2a7d9c' }}>
+                        {w.count}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>{w.week}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Liste des analyses récentes ═══ */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' as const, marginBottom: 22 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', background: '#fafbfc' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#475569', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: 0 }}>
+            📋 Analyses récentes {stats && stats.recent_analyses.length > 0 ? `(${stats.recent_analyses.length})` : ''}
+          </h3>
+        </div>
+        {loadingStats ? (
+          <div style={{ padding: '24px 20px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>
+            Chargement…
+          </div>
+        ) : !stats || stats.recent_analyses.length === 0 ? (
+          <div style={{ padding: '24px 20px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>
+            Aucune analyse pour le moment.
+          </div>
+        ) : (
+          <div>
+            {stats.recent_analyses.map((a, i) => (
+              <a key={a.id} href={`/rapport?id=${a.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: i < stats.recent_analyses.length - 1 ? '1px solid #f1f5f9' : 'none', textDecoration: 'none' as const, color: 'inherit', transition: 'background 0.12s' }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fafbfc'; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: a.type === 'complete' ? '#f5f3ff' : '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FileText size={14} color={a.type === 'complete' ? '#7c3aed' : '#2a7d9c'} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', overflow: 'hidden' as const, textOverflow: 'ellipsis' as const, whiteSpace: 'nowrap' as const }}>
+                    {a.title}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                    {a.type === 'complete' ? 'Analyse complète' : 'Analyse simple'} · {fmtDate(a.created_at)}
+                  </div>
+                </div>
+                {typeof a.score === 'number' && (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#ca8a04' : '#dc2626', flexShrink: 0 }}>
+                    {a.score}/20
+                  </div>
+                )}
+                <ChevronRight size={14} color="#cbd5e1" style={{ flexShrink: 0 }} />
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Actions admin (responsable uniquement, pas sur soi-même) ═══ */}
+      {canManage && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 20 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#475569', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 12px' }}>
+            Actions
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+            {member.role === 'agent' && (
+              <button onClick={onPromote}
+                style={{ padding: '13px 16px', borderRadius: 11, background: '#fff', border: '1.5px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#0f172a', textAlign: 'left' as const }}>
+                <Crown size={18} color="#a16207" />
+                <div>
+                  <div>Promouvoir en co-responsable</div>
+                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400, marginTop: 2 }}>Pourra inviter/retirer et gérer la facturation</div>
+                </div>
+              </button>
+            )}
+            {member.role === 'co_responsable' && !isLastResponsable && (
+              <button onClick={onDemote}
+                style={{ padding: '13px 16px', borderRadius: 11, background: '#fff', border: '1.5px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#0f172a', textAlign: 'left' as const }}>
+                <User size={18} color="#64748b" />
+                <div>
+                  <div>Rétrograder en agent</div>
+                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400, marginTop: 2 }}>Perdra les droits de gestion</div>
+                </div>
+              </button>
+            )}
+            <button onClick={onRemove}
+              style={{ padding: '13px 16px', borderRadius: 11, background: '#fff', border: '1.5px solid #fecaca', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#dc2626', textAlign: 'left' as const }}>
+              <Trash2 size={18} />
+              <div>
+                <div>Retirer de l'agence</div>
+                <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginTop: 2 }}>Ses dossiers restent dans l'agence avec "ancien membre"</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    SOUS-COMPOSANTS
    ════════════════════════════════════════════════════════════════════════ */
 
-function MemberCard({ member, isMe, canManage, onClick }: {
-  member: AgenceMember; isMe: boolean; canManage: boolean; onClick?: () => void;
+function KpiCard({ icon, label, value, color, bg }: { icon: React.ReactNode; label: string; value: string; color: string; bg: string }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+        {icon}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 5, lineHeight: 1.3 }}>{label}</div>
+    </div>
+  );
+}
+
+function MemberCard({ member, isMe, onClick }: {
+  member: AgenceMember; isMe: boolean; onClick: () => void;
 }) {
   const roleLabel = member.role === 'responsable' ? '👑 Responsable'
     : member.role === 'co_responsable' ? '🤝 Co-responsable'
@@ -449,13 +791,12 @@ function MemberCard({ member, isMe, canManage, onClick }: {
         background: '#fff', borderRadius: 12, padding: 16,
         border: isMe ? '2px solid #2a7d9c' : '1px solid #e2e8f0',
         display: 'flex', alignItems: 'center', gap: 14,
-        cursor: canManage ? 'pointer' : 'default',
+        cursor: 'pointer',
         transition: 'all 0.15s',
       }}
-      onMouseOver={e => { if (canManage) e.currentTarget.style.borderColor = '#2a7d9c'; }}
-      onMouseOut={e => { if (canManage) e.currentTarget.style.borderColor = isMe ? '#2a7d9c' : '#e2e8f0'; }}
+      onMouseOver={e => { e.currentTarget.style.borderColor = '#2a7d9c'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(42,125,156,0.08)'; }}
+      onMouseOut={e => { e.currentTarget.style.borderColor = isMe ? '#2a7d9c' : '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      {/* Avatar initiales */}
       <div style={{
         width: 44, height: 44, borderRadius: 11,
         background: member.color_hex,
@@ -466,7 +807,6 @@ function MemberCard({ member, isMe, canManage, onClick }: {
         {initials}
       </div>
 
-      {/* Infos */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
           <p style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -482,11 +822,10 @@ function MemberCard({ member, isMe, canManage, onClick }: {
           {member.email}
         </p>
         <p style={{ fontSize: 11.5, color: '#94a3b8', margin: '4px 0 0' }}>
-          {member.analyses_count || 0} analyse{(member.analyses_count || 0) > 1 ? 's' : ''} créée{(member.analyses_count || 0) > 1 ? 's' : ''} · membre depuis {formatDate(member.joined_at)}
+          {member.analyses_count || 0} analyse{(member.analyses_count || 0) > 1 ? 's' : ''} · depuis {fmtDate(member.joined_at)}
         </p>
       </div>
 
-      {/* Badge rôle */}
       <div style={{
         padding: '6px 12px', borderRadius: 8,
         background: roleBg, color: roleColor,
@@ -496,10 +835,7 @@ function MemberCard({ member, isMe, canManage, onClick }: {
         {roleLabel}
       </div>
 
-      {/* Chevron si cliquable */}
-      {canManage && (
-        <ChevronRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
-      )}
+      <ChevronRight size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
     </div>
   );
 }
@@ -640,84 +976,8 @@ function InviteModal({ onClose, onInvite, slotsAvailable }: {
   );
 }
 
-function MemberActionModal({ member, onClose, onRemove, onPromote, onDemote }: {
-  member: AgenceMember;
-  onClose: () => void;
-  onRemove: () => void;
-  onPromote: () => void;
-  onDemote: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-        onClick={e => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 18, padding: 28, maxWidth: 460, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 11, background: member.color_hex, color: '#fff', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {member.full_name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()}
-            </div>
-            <div>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>{member.full_name}</h3>
-              <p style={{ fontSize: 12.5, color: '#64748b', margin: '2px 0 0' }}>{member.email}</p>
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {member.role === 'agent' && (
-            <button
-              onClick={onPromote}
-              style={{ padding: '13px 16px', borderRadius: 11, background: '#fff', border: '1.5px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#0f172a', textAlign: 'left' }}
-            >
-              <Crown size={18} color="#a16207" />
-              <div>
-                <div>Promouvoir en co-responsable</div>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400, marginTop: 2 }}>Pourra inviter/retirer et gérer la facturation</div>
-              </div>
-            </button>
-          )}
-
-          {member.role === 'co_responsable' && (
-            <button
-              onClick={onDemote}
-              style={{ padding: '13px 16px', borderRadius: 11, background: '#fff', border: '1.5px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#0f172a', textAlign: 'left' }}
-            >
-              <User size={18} color="#64748b" />
-              <div>
-                <div>Rétrograder en agent</div>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400, marginTop: 2 }}>Perdra les droits de gestion</div>
-              </div>
-            </button>
-          )}
-
-          <button
-            onClick={onRemove}
-            style={{ padding: '13px 16px', borderRadius: 11, background: '#fff', border: '1.5px solid #fecaca', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#dc2626', textAlign: 'left' }}
-          >
-            <Trash2 size={18} />
-            <div>
-              <div>Retirer de l'agence</div>
-              <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginTop: 2 }}>Ses dossiers restent dans l'agence avec "ancien membre"</div>
-            </div>
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 /* ──────────────────────────────────────────────────────────── */
-function formatDate(iso: string): string {
+function fmtDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
