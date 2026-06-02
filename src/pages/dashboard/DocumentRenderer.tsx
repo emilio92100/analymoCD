@@ -2189,11 +2189,6 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
     return { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', emoji: '📄' };
   };
 
-  // Alerte top (clauses critiques actives + DPE F/G)
-  const clausesActives = clausesCrit.filter((c: any) => c.actif_dans_compromis !== false);
-  const dpeAnnexe = diagAnnexes.find((d: any) => String(d.type || '').toUpperCase() === 'DPE');
-  const dpeAlerte = dpeAnnexe && /^[FG]/i.test(String(dpeAnnexe.resultat_synthese || ''));
-
   // Notaires unique vs multiples
   const notairesAvecRole = notaires.filter((n: any) => n.role && n.role !== 'non_precise' && n.role !== 'redacteur' && n.role !== 'participant');
   const tousRolesPrecises = notaires.length >= 2 && notairesAvecRole.length === notaires.length;
@@ -2231,24 +2226,6 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
         {fraisNotaire != null && <Kpi label="Frais notaire estimés" value={`~${fmt(fraisNotaire)} €`} sub="Indicatif — calculé par votre notaire" tooltip="Estimation Verimo à titre indicatif. Les frais réels sont calculés par votre notaire le jour de l'acte : droits d'enregistrement (5,09% à 5,80% selon le département) + émoluments du notaire (barème dégressif) + débours (état hypothécaire, copie d'acte, etc.). Pour un calcul précis, utilisez le simulateur officiel des notaires." />}
         {coutTotal != null && <Kpi label="Coût total acheteur" value={`~${fmt(coutTotal)} €`} sub="Estimation indicative" color="#0c447c" tooltip="Prix total acte + frais de notaire estimés. À affiner avec votre notaire pour votre plan de financement définitif." />}
       </div>
-
-      {/* ALERTES CRITIQUES EN HAUT */}
-      {(clausesActives.length > 0 || dpeAlerte) && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 14px', marginBottom: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>⚠️</span>
-          <div style={{ flex: 1, fontSize: 12.5, color: '#991b1b', lineHeight: 1.55 }}>
-            <strong>Points d'attention détectés</strong>
-            <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
-              {clausesActives.map((c: any, i: number) => (
-                <li key={i}>{c.label || c.type}{c.detail ? ` — ${c.detail}` : ''}</li>
-              ))}
-              {dpeAlerte && (
-                <li>DPE classe {String(dpeAnnexe.resultat_synthese).charAt(0).toUpperCase()} — interdiction de location {/^G/i.test(String(dpeAnnexe.resultat_synthese)) ? 'depuis le 1er janvier 2025' : 'au 1er janvier 2028'} (loi Climat)</li>
-              )}
-            </ul>
-          </div>
-        </div>
-      )}
 
       {/* SECTION : LE BIEN */}
       {bien && (bien.adresse_complete || bien.type_bien_global || lotsCedes.length > 0) && (
