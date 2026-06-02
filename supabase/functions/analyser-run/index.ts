@@ -1,5 +1,10 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser-run (v7 — complement + typeBienDeclare)
+// EDGE FUNCTION — analyser-run (v16 — MAP-REDUCE complet : MAP + A+B+C)
+// 🆕 Mode complet : extraction doc par doc (paquets de 3) → REDUCE
+//    A (finances cascade, diagnostics, docs, scoring) + B (vie_copro,
+//    compromis, pré-état daté, DPE reco) + C (resume + avis_verimo via IA).
+//    Modes 'document' et 'complement' INCHANGÉS.
+// (v7 — complement + typeBienDeclare)
 // Étape 2 : Appel Claude avec file_ids → rapport → suppression RGPD
 // Mode complement : fusionne rapport existant + nouveaux docs
 // Session 4 : reçoit type_bien_declare (appart/maison/maison_copro/indetermine)
@@ -1663,6 +1668,799 @@ async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiK
 }
 
 // Version directe avec fileIds passés en paramètre (pas de lecture Supabase)
+// ══════════════════════════════════════════════════════════════
+// 🆕 MAP-REDUCE V2 — Analyse complète fiabilisée (chantier 02 juin 2026)
+// ──────────────────────────────────────────────────────────────
+// ÉTAPE 1 (MAP) : un appel "analyse simple" par document, lancés par
+// paquets de 3 en parallèle. Réutilise le prompt de l'analyse simple
+// (buildSystemPrompt('document') = buildDocumentPrompt), déjà éprouvé.
+// callAI gère déjà les relances 429/503/529.
+//
+// ⚠️ Le REDUCE (consolidation des N JSON → grand JSON affichable) sera
+//    ajouté à l'étape SUIVANTE. Pour l'instant on stocke la sortie brute
+//    du MAP pour pouvoir la vérifier.
+// ══════════════════════════════════════════════════════════════
+interface MapDocResult {
+  index: number;
+  name: string;
+  document_type: string;
+  ok: boolean;
+  error?: string;
+  json: Record<string, unknown> | null;
+}
+
+async function mapDocuments(
+  files: Array<{ id: string; name: string }>,
+  profil: string,
+  apiKey: string,
+  supabaseAdmin: SupabaseClient,
+  analyseId: string,
+): Promise<MapDocResult[]> {
+  // Même prompt que l'analyse simple (un JSON dédié par type de doc)
+  const systemPrompt = buildSystemPrompt('document', profil);
+  const BATCH_SIZE = 3; // ni 1 par 1 (trop lent), ni tous d'un coup (rate-limit)
+  const results: MapDocResult[] = new Array(files.length);
+
+  for (let start = 0; start < files.length; start += BATCH_SIZE) {
+    const batch = files.slice(start, start + BATCH_SIZE);
+    const from = start + 1;
+    const to = Math.min(start + BATCH_SIZE, files.length);
+    await supabaseAdmin.from('analyses').update({
+      progress_message: files.length > 1
+        ? `Lecture document ${from}\u2013${to} sur ${files.length}...`
+        : 'Lecture du document...',
+    }).eq('id', analyseId);
+
+    const batchResults = await Promise.all(batch.map(async (file, i) => {
+      const index = start + i;
+      const userContent: unknown[] = [
+        { type: 'document', source: { type: 'file', file_id: file.id } },
+        { type: 'text', text: 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.' },
+      ];
+      let r = await callAI({ system: systemPrompt, userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+      let json = r.error ? null : parseJson<Record<string, unknown>>(r.text);
+      // 1 retry uniquement si JSON invalide (pas une erreur réseau/API déjà gérée par callAI)
+      if (!r.error && !json) {
+        await sleep(3000);
+        r = await callAI({ system: systemPrompt, userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+        json = r.error ? null : parseJson<Record<string, unknown>>(r.text);
+      }
+      const document_type = (json?.document_type as string) || 'AUTRE';
+      const ok = !r.error && !!json;
+      console.log(`[MAP] doc ${index + 1}/${files.length} "${file.name}" -> ${ok ? document_type : 'ECHEC (' + (r.error || 'json_invalide') + ')'}`);
+      return { index, name: file.name, document_type, ok, error: r.error, json } as MapDocResult;
+    }));
+
+    for (const res of batchResults) results[res.index] = res;
+  }
+  return results;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🆕 REDUCE — Passe A : consolidation des JSON-docs → grand JSON
+// ──────────────────────────────────────────────────────────────
+// Construit un SQUELETTE COMPLET (toutes les zones, vides) pour que
+// RapportPage n'ait jamais de champ absent, puis remplit les zones
+// "Passe A" (impact visuel + inputs du scoring). Les zones riches
+// (vie_copropriete détaillée, compromis, pré-état daté détaillé,
+//  dpe_recommandations, resume, avis_verimo) restent vides → Passe B/C.
+// ══════════════════════════════════════════════════════════════
+
+// ── Helpers d'extraction défensive ──
+function rNum(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(String(v).replace(/[^0-9.,-]/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+function rYear(v: unknown): string | null {
+  if (!v) return null;
+  const m = String(v).match(/\d{4}/);
+  return m ? m[0] : null;
+}
+function rArr<T = Record<string, unknown>>(v: unknown): T[] {
+  return Array.isArray(v) ? v as T[] : [];
+}
+function rStr(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  return s.length ? s : null;
+}
+// presence DDT (conforme|anomalie|non_detecte|non_applicable|informatif) → grand JSON (detectee|absence|non_realise)
+function mapPresence(p: unknown): string {
+  const x = String(p || '').toLowerCase();
+  if (x === 'non_detecte') return 'absence';
+  if (x === 'non_applicable') return 'non_realise';
+  return 'detectee';
+}
+function buildDpeResultat(dpe: Record<string, unknown>): string {
+  let s = '';
+  if (dpe.classe) s += `Classe ${dpe.classe}`;
+  if (dpe.kwh_m2) s += ` - ${dpe.kwh_m2} kWh/m2/an`;
+  s += '.';
+  if (dpe.ges_classe || dpe.ges_kg_m2) {
+    s += ' GES:';
+    if (dpe.ges_classe) s += ` Classe ${dpe.ges_classe}`;
+    if (dpe.ges_kg_m2) s += ` - ${dpe.ges_kg_m2} kg CO2/m2/an`;
+    s += '.';
+  }
+  return s.trim();
+}
+function fondsTravauxStatut(fonds: number | null, budget: number | null): string {
+  if (fonds === 0) return 'absent';
+  if (fonds === null || !budget) return 'non_mentionne';
+  const pct = fonds / budget;
+  if (pct >= 0.10) return 'excellent';
+  if (pct >= 0.06) return 'bien';
+  if (pct >= 0.0495) return 'conforme';
+  return 'insuffisant';
+}
+// document_type (MAP) → type pour documents_analyses (liste autorisée du grand JSON)
+const DOC_TYPE_MAP: Record<string, string> = {
+  DDT: 'DDT', PV_AG: 'PV_AG', APPEL_CHARGES: 'APPEL_CHARGES', RCP: 'REGLEMENT_COPRO',
+  DTG_PPT: 'AUTRE', CARNET_ENTRETIEN: 'CARNET_ENTRETIEN', PRE_ETAT_DATE: 'PRE_ETAT_DATE',
+  ETAT_DATE: 'ETAT_DATE', TAXE_FONCIERE: 'TAXE_FONCIERE', COMPROMIS: 'COMPROMIS',
+  DIAGNOSTIC_PARTIES_COMMUNES: 'DIAGNOSTIC_PARTIES_COMMUNES', MODIFICATIF_RCP: 'MODIFICATIF_RCP',
+  FICHE_SYNTHETIQUE: 'FICHE_SYNTHETIQUE', AUTRE: 'AUTRE',
+};
+function docYear(type: string, j: Record<string, unknown>): string | null {
+  switch (type) {
+    case 'PV_AG': return rYear(j.date_ag) || rYear((j.budget_vote as Record<string, unknown>)?.annee);
+    case 'APPEL_CHARGES': return rYear(j.periode);
+    case 'TAXE_FONCIERE': return rYear(j.annee);
+    case 'PRE_ETAT_DATE': case 'ETAT_DATE': return rYear(j.date);
+    case 'DDT': return rYear((j.diagnostiqueur as Record<string, unknown>)?.date);
+    case 'CARNET_ENTRETIEN': return rYear(j.date_maj);
+    case 'COMPROMIS': return rYear(j.date_signature);
+    case 'FICHE_SYNTHETIQUE': return rYear(j.date);
+    case 'MODIFICATIF_RCP': return rYear(j.date_acte);
+    case 'RCP': return rYear(j.date_reglement);
+    case 'DTG_PPT': return rYear(j.date);
+    default: return null;
+  }
+}
+
+// ── Squelette complet du grand JSON (toutes les zones, vides) ──
+function buildEmptyReport(typeBien: string): Record<string, unknown> {
+  return {
+    titre: 'Analyse immobilière',
+    type_bien: typeBien,
+    annee_construction: null,
+    score: null,
+    score_niveau: '',
+    resume: { le_bien: null, la_copropriete: null, performance_energetique: null, diagnostics_privatifs: null, gouvernance_finances: null },
+    points_forts: [],
+    points_vigilance: [],
+    travaux: { realises: [], votes: [], evoques: [], estimation_totale: null },
+    finances: {
+      budget_total_copro: null, budget_total_copro_annee: null, charges_annuelles_lot: null, charges_annuelles_lot_source: null,
+      fonds_travaux: null, fonds_travaux_annee: null, fonds_travaux_statut: 'non_mentionne', impayes: null,
+      type_chauffage: null, chauffage_individuel: null, eau_chaude_individuelle: null,
+      taxe_fonciere_annuelle: null, taxe_fonciere_annee: null, budgets_historique: null,
+    },
+    procedures: [],
+    diagnostics_resume: null,
+    diagnostics: [],
+    documents_analyses: [],
+    documents_manquants: [],
+    negociation: { applicable: false, elements: [] },
+    vie_copropriete: {
+      syndic: { nom: null, type: null, gestionnaire: null, fin_mandat: null, tensions_detectees: false, tensions_detail: null, statut: null, sortant: null, entrant: null, annee_changement: null, nb_ags_analysees: null, historique_changements: [] },
+      nb_lots_total: null, nb_lots_detail: { logements: null, parkings: null, caves: null, commerces: null }, nb_batiments: null,
+      participation_ag: [], tendance_participation: 'Non determinable', analyse_participation: null,
+      travaux_votes_non_realises: [], appels_fonds_exceptionnels: [], questions_diverses_notables: [],
+      dtg: { present: false, etat_general: null, budget_urgent_3ans: null, budget_total_10ans: null, travaux_prioritaires: [] },
+      regles_copro: [],
+      carnet_entretien: { present: false, date_maj: null, immatriculation_registre: null, equipements_copro: { chauffage_collectif: null, type_chauffage: null, eau_chaude_collective: null, eau_froide_collective: null, fibre_optique: null, ascenseur: null }, contrats_entretien: [], travaux_realises_carnet: [], travaux_en_cours_votes_carnet: [], diagnostics_parties_communes_carnet: [], conseil_syndical_carnet: { date_nomination: null, nb_membres: null } },
+      modificatifs_rcp: [],
+      fiche_synthetique: { present: false, date: null, fiche_recente: null, immatriculation_registre: null, dtg_realise: null, dtg_date: null, equipements_collectifs_detail: [] },
+    },
+    lot_achete: {
+      quote_part_tantiemes: null, parties_privatives: [], impayes_detectes: null, fonds_travaux_alur: null,
+      travaux_votes_charge_vendeur: [], restrictions_usage: [], points_specifiques: [],
+      compromis: { present: false },
+    },
+    pre_etat_date: {
+      present: false, date: null, syndic: null, impayes_vendeur: 0, fonds_travaux_alur: null, fonds_travaux_ancien: null,
+      fonds_roulement_acheteur: null, fonds_roulement_modalite: null, honoraires_syndic: null,
+      charges_futures: { montant_trimestriel: null, fonds_travaux_trimestriel: null, montant_annuel: null },
+      travaux_charge_vendeur: [], procedures_contre_vendeur: [], procedures_copro: 'neant',
+      impayes_copro_global: null, dette_fournisseurs: null, fonds_travaux_copro_global: null, historique_charges: [],
+    },
+    dpe_recommandations: { present: false, format: 'aucune', version_methode: 'inconnue', evolution_etiquette: { actuelle: {}, apres_pack_1: {}, apres_pack_1_et_2: {} }, pack_1: { cout_min: null, cout_max: null, travaux: [] }, pack_2: { cout_min: null, cout_max: null, travaux: [] } },
+    categories: { travaux: { note: 0, note_max: 5 }, procedures: { note: 0, note_max: 4 }, finances: { note: 0, note_max: 4 }, diags_privatifs: { note: 0, note_max: 4 }, diags_communs: { note: 0, note_max: 3 } },
+    avis_verimo: { verdict: null, verdict_highlight: null, contexte: null, demarches: [] },
+  };
+}
+
+// ── Déduplication simple de chaînes (points_forts / points_vigilance) ──
+function dedupeStrings(items: unknown[]): unknown[] {
+  const seen = new Set<string>();
+  const out: unknown[] = [];
+  for (const it of items) {
+    const s = typeof it === 'string' ? it : ((it as Record<string, unknown>)?.message || (it as Record<string, unknown>)?.label || JSON.stringify(it));
+    const key = String(s).toLowerCase().trim().slice(0, 60);
+    if (key && !seen.has(key)) { seen.add(key); out.push(it); }
+  }
+  return out;
+}
+
+function reducePasseA(
+  mapResults: MapDocResult[],
+  profil: string,
+  typeBienDeclare?: string | null,
+): Record<string, unknown> {
+  // JSON-docs valides, par type
+  const docs = mapResults.filter(r => r.ok && r.json).map(r => ({ type: r.document_type, name: r.name, j: r.json as Record<string, unknown> }));
+  const byType = (t: string) => docs.filter(d => d.type === t).map(d => d.j);
+  const firstOf = (t: string) => byType(t)[0] || null;
+
+  const pvList = byType('PV_AG');
+  const acList = byType('APPEL_CHARGES');
+  const ddtList = byType('DDT');
+  const carnet = firstOf('CARNET_ENTRETIEN');
+  const fiche = firstOf('FICHE_SYNTHETIQUE');
+  const dtgDoc = firstOf('DTG_PPT');
+  const taxe = firstOf('TAXE_FONCIERE');
+  const ped = firstOf('PRE_ETAT_DATE') || firstOf('ETAT_DATE');
+  const pedIsEtatDate = !firstOf('PRE_ETAT_DATE') && !!firstOf('ETAT_DATE');
+  const compromis = firstOf('COMPROMIS');
+  const diagPcDocs = byType('DIAGNOSTIC_PARTIES_COMMUNES');
+
+  // type_bien : déclaré > compromis > défaut appartement
+  let typeBien = (typeBienDeclare && typeBienDeclare !== 'indetermine') ? typeBienDeclare : null;
+  if (!typeBien && compromis) typeBien = rStr((compromis.bien as Record<string, unknown>)?.type_bien_global);
+  if (!typeBien) typeBien = 'appartement';
+
+  const report = buildEmptyReport(typeBien);
+  const fin = report.finances as Record<string, unknown>;
+  const vc = report.vie_copropriete as Record<string, unknown>;
+
+  // ── titre (cascade #2 : compromis > DDT > PV > RCP) ──
+  report.titre = rStr((compromis?.bien as Record<string, unknown>)?.adresse_complete)
+    || rStr(ddtList[0]?.titre) || rStr(pvList[0]?.titre) || rStr(firstOf('RCP')?.titre) || 'Analyse immobilière';
+
+  // ── annee_construction (carnet > fiche > DDT) ──
+  report.annee_construction = rStr(carnet?.annee_construction)
+    || rStr((fiche?.caracteristiques_techniques as Record<string, unknown>)?.annee_construction)
+    || rYear(ddtList[0]?.titre);
+
+  // ── PV triés par année décroissante (le plus récent prime) ──
+  const pvSorted = [...pvList].sort((a, b) => {
+    const ya = Number(rYear(a.date_ag) || rYear((a.budget_vote as Record<string, unknown>)?.annee) || 0);
+    const yb = Number(rYear(b.date_ag) || rYear((b.budget_vote as Record<string, unknown>)?.annee) || 0);
+    return yb - ya;
+  });
+  const pvRecent = pvSorted[0] || null;
+
+  // ── FINANCES ──
+  if (pvRecent) {
+    const bv = (pvRecent.budget_vote as Record<string, unknown>) || {};
+    fin.budget_total_copro = rNum(bv.montant);
+    fin.budget_total_copro_annee = rYear(bv.annee) || rYear(pvRecent.date_ag);
+    fin.fonds_travaux = rNum(bv.fonds_travaux); // cotisation annuelle copro (#4 : JAMAIS le capital lot du pré-état daté)
+    fin.fonds_travaux_annee = fin.budget_total_copro_annee;
+  } else if (fiche) {
+    const df = (fiche.donnees_financieres as Record<string, unknown>) || {};
+    fin.budget_total_copro = rNum(df.budget_previsionnel_n);
+    fin.budget_total_copro_annee = rYear(df.annee_n);
+  }
+  fin.fonds_travaux_statut = fondsTravauxStatut(fin.fonds_travaux as number | null, fin.budget_total_copro as number | null);
+
+  // charges_annuelles_lot — CASCADE #1 (pré-état daté > appel charges > PV×tantièmes > null)
+  if (ped) {
+    const cf = (ped.charges_futures as Record<string, unknown>) || {};
+    let annuel = rNum(cf.montant_annuel);
+    if (annuel === null && rNum(cf.montant_trimestriel) !== null) annuel = (rNum(cf.montant_trimestriel) as number) * 4;
+    if (annuel !== null) { fin.charges_annuelles_lot = annuel; fin.charges_annuelles_lot_source = pedIsEtatDate ? 'État daté' : 'Pré-état daté'; }
+  }
+  if (fin.charges_annuelles_lot === null && acList.length) {
+    const acRecent = [...acList].sort((a, b) => Number(rYear(b.periode) || 0) - Number(rYear(a.periode) || 0))[0];
+    let annuel = rNum(acRecent.montant_annuel);
+    if (annuel === null && rNum(acRecent.montant_trimestre) !== null) annuel = (rNum(acRecent.montant_trimestre) as number) * 4;
+    if (annuel !== null) { fin.charges_annuelles_lot = annuel; fin.charges_annuelles_lot_source = 'Appel de charges'; }
+  }
+
+  // impayés copro + taxe foncière + chauffage
+  if (ped) fin.impayes = rNum(ped.impayes_copro_global);
+  if (taxe) { fin.taxe_fonciere_annuelle = rNum(taxe.montant_total); fin.taxe_fonciere_annee = rYear(taxe.annee); }
+  fin.type_chauffage = rStr(carnet?.type_chauffage) || rStr((fiche?.caracteristiques_techniques as Record<string, unknown>)?.type_chauffage);
+  // chauffage individuel = déduction (collectif=false → individuel)
+  const chCollectif = (carnet?.chauffage_collectif ?? (fiche?.caracteristiques_techniques as Record<string, unknown>)?.chauffage_collectif);
+  if (chCollectif === true) fin.chauffage_individuel = false;
+  else if (chCollectif === false) fin.chauffage_individuel = true;
+
+  // budgets_historique (1 entrée par PV)
+  const histo = pvSorted.map(pv => {
+    const bv = (pv.budget_vote as Record<string, unknown>) || {};
+    return { annee: rYear(bv.annee) || rYear(pv.date_ag), budget_total: rNum(bv.montant), fonds_travaux: rNum(bv.fonds_travaux), charges_lot: null };
+  }).filter(b => b.annee || b.budget_total);
+  fin.budgets_historique = histo.length ? histo : null;
+
+  // ── DIAGNOSTICS (privatifs depuis DDT, communs depuis carnet + diag PC) ──
+  const diags: Array<Record<string, unknown>> = [];
+  const seenPriv = new Set<string>();
+  for (const ddt of ddtList) {
+    for (const d of rArr<Record<string, unknown>>(ddt.diagnostics)) {
+      const t = String(d.type || '').toUpperCase();
+      const isDpe = t === 'DPE';
+      const resultat = isDpe && ddt.dpe ? buildDpeResultat(ddt.dpe as Record<string, unknown>) : (rStr(d.detail) || rStr(d.label) || '');
+      diags.push({ type: t, label: rStr(d.label) || t, perimetre: 'lot_privatif', localisation: null, resultat, presence: mapPresence(d.presence), alerte: rStr(d.alerte), pieces_detail: null });
+      seenPriv.add(t);
+    }
+    // DPE depuis ddt.dpe si absent de diagnostics[]
+    const dpe = ddt.dpe as Record<string, unknown> | undefined;
+    if (dpe?.classe && !seenPriv.has('DPE')) {
+      diags.push({ type: 'DPE', label: 'Diagnostic de performance énergétique', perimetre: 'lot_privatif', localisation: null, resultat: buildDpeResultat(dpe), presence: 'detectee', alerte: null, pieces_detail: null });
+      seenPriv.add('DPE');
+    }
+    // CARREZ depuis ddt.carrez si absent
+    const carrez = ddt.carrez as Record<string, unknown> | undefined;
+    if (carrez?.surface_totale && !seenPriv.has('CARREZ')) {
+      const pieces = rArr<Record<string, unknown>>(carrez.pieces).map(p => ({ piece: rStr(p.piece), surface: rNum(p.surface) }));
+      diags.push({ type: 'CARREZ', label: 'Mesurage loi Carrez', perimetre: 'lot_privatif', localisation: null, resultat: `${carrez.surface_totale} m2`, presence: 'detectee', alerte: null, pieces_detail: pieces.length ? pieces : null });
+      seenPriv.add('CARREZ');
+    }
+  }
+  // Diags parties communes — depuis le carnet
+  for (const d of rArr<Record<string, unknown>>(carnet?.diagnostics_parties_communes)) {
+    const t = String(d.type || '').toUpperCase();
+    const resultat = String(d.resultat || '').toLowerCase();
+    diags.push({ type: t, label: rStr(d.label) || `${t} parties communes`, perimetre: 'parties_communes', localisation: null, resultat: rStr(d.commentaire) || rStr(d.resultat), presence: resultat === 'non_effectue' ? 'absence' : 'detectee', alerte: null, pieces_detail: null });
+  }
+  // Diags parties communes — doc DIAGNOSTIC_PARTIES_COMMUNES (structure riche → détail en Passe B, ici présence minimale pour le score)
+  for (const dpc of diagPcDocs) {
+    diags.push({ type: 'AMIANTE', label: rStr(dpc.titre) || 'Diagnostic amiante parties communes', perimetre: 'parties_communes', localisation: null, resultat: rStr(dpc.resume) || 'Diagnostic des parties communes analysé', presence: 'detectee', alerte: null, pieces_detail: null });
+  }
+  report.diagnostics = diags;
+
+  // ── TRAVAUX ──
+  const votes: Array<Record<string, unknown>> = [];
+  const evoques: Array<Record<string, unknown>> = [];
+  for (const pv of pvSorted) {
+    for (const t of rArr<Record<string, unknown>>(pv.travaux_votes)) {
+      votes.push({ label: rStr(t.label), annee: rYear(t.echeance) || rYear(pv.date_ag), montant_estime: rNum(t.montant), charge_vendeur: false });
+    }
+    for (const t of rArr<Record<string, unknown>>(pv.travaux_evoques)) {
+      evoques.push({ label: rStr(t.label), annee: null, montant_estime: null, precision: rStr(t.precision) });
+    }
+  }
+  const realises = rArr<Record<string, unknown>>(carnet?.travaux_realises).map(t => ({ label: rStr(t.label), annee: rYear(t.annee), montant_estime: rNum(t.montant), justificatif: true }));
+  const estimationTotale = votes.reduce((s, v) => s + (v.montant_estime as number || 0), 0) || null;
+  report.travaux = { realises, votes, evoques, estimation_totale: estimationTotale };
+
+  // ── PROCEDURES (matière brute ; gravité fine = Passe C) ──
+  const procedures: Array<Record<string, unknown>> = [];
+  for (const pv of pvSorted) {
+    for (const p of rArr<unknown>(pv.procedures)) {
+      if (typeof p === 'string') procedures.push({ label: p, type: 'autre', gravite: null, message: p });
+      else { const po = p as Record<string, unknown>; procedures.push({ label: rStr(po.label) || rStr(po.type) || 'Procédure', type: rStr(po.type) || 'autre', gravite: rStr(po.gravite), message: rStr(po.message) || rStr(po.label) }); }
+    }
+  }
+  if (ped) {
+    for (const p of rArr<unknown>(ped.procedures_contre_vendeur)) {
+      const s = typeof p === 'string' ? p : ((p as Record<string, unknown>)?.label as string);
+      if (s) procedures.push({ label: s, type: 'autre', gravite: null, message: s });
+    }
+  }
+  report.procedures = procedures;
+
+  // ── INPUTS SCORING dans vie_copropriete + pre_etat_date ──
+  // DTG (diags communs)
+  if (dtgDoc) {
+    vc.dtg = { present: true, etat_general: rStr(dtgDoc.etat_general), budget_urgent_3ans: rNum(dtgDoc.budget_urgent_3ans), budget_total_10ans: rNum(dtgDoc.budget_total_10ans), travaux_prioritaires: [] };
+  }
+  // participation_ag (quorum) — quitus non présent dans le JSON PV simple → soumis:false (pas de pénalité auto)
+  vc.participation_ag = pvSorted.map(pv => {
+    const q = (pv.quorum as Record<string, unknown>) || {};
+    return { annee: rYear(pv.date_ag), copropietaires_presents_representes: (q.presents && q.total) ? `${q.presents}/${q.total}` : null, taux_tantiemes_pct: rStr(q.tantiemes_pct), quorum_note: null, quitus: { soumis: false, approuve: null, detail: null } };
+  });
+  // pré-état daté (present + chiffres inputs ; détail complet = Passe B)
+  if (ped) {
+    const pe = report.pre_etat_date as Record<string, unknown>;
+    pe.present = true;
+    pe.date = rStr(ped.date);
+    pe.impayes_vendeur = rNum(ped.impayes_vendeur) ?? 0;
+    pe.impayes_copro_global = rNum(ped.impayes_copro_global);
+    pe.fonds_travaux_copro_global = rNum(ped.fonds_travaux_copro_global);
+  }
+
+  // ── DOCUMENTS_ANALYSES ──
+  report.documents_analyses = docs.map(d => ({ type: DOC_TYPE_MAP[d.type] || 'AUTRE', annee: docYear(d.type, d.j), nom: d.name }));
+
+  // ── POINTS FORTS / VIGILANCE (agrégation brute ; tri fin = Passe C) ──
+  const allForts: unknown[] = [];
+  const allVig: unknown[] = [];
+  for (const d of docs) {
+    for (const pf of rArr<unknown>(d.j.points_forts)) allForts.push(pf);
+    for (const pv of rArr<unknown>(d.j.points_vigilance)) allVig.push(pv);
+  }
+  report.points_forts = dedupeStrings(allForts);
+  report.points_vigilance = dedupeStrings(allVig);
+
+  return report;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🆕 REDUCE — Passe B : zones riches (recopie quasi 1:1 des JSON-docs)
+// vie_copropriete détaillée, lot_achete + compromis, pré-état daté
+// détaillé, dpe_recommandations. Tout en DIRECT (faible risque).
+// ══════════════════════════════════════════════════════════════
+function reducePasseB(report: Record<string, unknown>, mapResults: MapDocResult[]): Record<string, unknown> {
+  const docs = mapResults.filter(r => r.ok && r.json).map(r => ({ type: r.document_type, name: r.name, j: r.json as Record<string, unknown> }));
+  const byType = (t: string) => docs.filter(d => d.type === t).map(d => d.j);
+  const firstOf = (t: string) => byType(t)[0] || null;
+
+  const pvList = byType('PV_AG');
+  const ddtList = byType('DDT');
+  const carnet = firstOf('CARNET_ENTRETIEN');
+  const fiche = firstOf('FICHE_SYNTHETIQUE');
+  const dtgDoc = firstOf('DTG_PPT');
+  const rcp = firstOf('RCP');
+  const ped = firstOf('PRE_ETAT_DATE') || firstOf('ETAT_DATE');
+  const compromis = firstOf('COMPROMIS');
+  const acList = byType('APPEL_CHARGES');
+  const modificatifs = byType('MODIFICATIF_RCP');
+
+  const pvSorted = [...pvList].sort((a, b) => Number(rYear(b.date_ag) || 0) - Number(rYear(a.date_ag) || 0));
+  const pvRecent = pvSorted[0] || null;
+
+  const vc = report.vie_copropriete as Record<string, unknown>;
+  const lot = report.lot_achete as Record<string, unknown>;
+
+  // ── SYNDIC ──
+  if (pvRecent || carnet) {
+    const syndicNom = rStr(pvRecent?.syndic) || rStr(carnet?.syndic);
+    vc.syndic = {
+      nom: syndicNom,
+      type: syndicNom ? 'professionnel' : null,
+      gestionnaire: rStr(carnet?.syndic_gestionnaire) || rStr(pvRecent?.president_seance) === null ? rStr(carnet?.syndic_gestionnaire) : null,
+      fin_mandat: rStr(pvRecent?.syndic_fin_mandat) || rStr(carnet?.syndic_date_designation),
+      tensions_detectees: false,
+      tensions_detail: null,
+      statut: rStr(pvRecent?.syndic_statut),
+      sortant: rStr(pvRecent?.syndic_sortant),
+      entrant: rStr(pvRecent?.syndic_entrant),
+      annee_changement: null,
+      nb_ags_analysees: pvList.length || null,
+      historique_changements: [],
+    };
+  }
+
+  // ── NB LOTS / BATIMENTS ──
+  vc.nb_lots_total = rNum(rcp?.total_lots) ?? rNum(carnet?.nb_lots_total) ?? rNum((fiche?.caracteristiques_techniques as Record<string, unknown>)?.nb_lots_total);
+  vc.nb_lots_detail = {
+    logements: rNum((carnet?.nb_lots_detail as Record<string, unknown>)?.logements) ?? rNum((fiche?.caracteristiques_techniques as Record<string, unknown>)?.nb_lots_principaux),
+    parkings: rNum(rcp?.lots_parkings) ?? rNum((carnet?.nb_lots_detail as Record<string, unknown>)?.parkings),
+    caves: rNum(rcp?.lots_caves) ?? rNum((carnet?.nb_lots_detail as Record<string, unknown>)?.caves),
+    commerces: rNum(rcp?.lots_commerces) ?? rNum((carnet?.nb_lots_detail as Record<string, unknown>)?.commerces),
+  };
+  vc.nb_batiments = rNum(carnet?.nb_batiments) ?? rNum((fiche?.caracteristiques_techniques as Record<string, unknown>)?.nb_batiments);
+
+  // ── TENDANCE PARTICIPATION (calcul sur participation_ag déjà rempli en A) ──
+  const partAg = rArr<Record<string, unknown>>(vc.participation_ag);
+  if (partAg.length >= 2) {
+    const taux = partAg.map(p => rNum(String(p.taux_tantiemes_pct || '').replace('%', ''))).filter(x => x !== null) as number[];
+    if (taux.length >= 2) {
+      // participation_ag est trié récent→ancien ; tendance = récent vs ancien
+      const recent = taux[0]; const ancien = taux[taux.length - 1];
+      vc.tendance_participation = recent > ancien + 5 ? 'En hausse' : recent < ancien - 5 ? 'En baisse' : 'Stable';
+    }
+  }
+
+  // ── TRAVAUX VOTÉS NON RÉALISÉS + QUESTIONS DIVERSES ──
+  const tvnr: Array<Record<string, unknown>> = [];
+  const qd: Array<Record<string, unknown>> = [];
+  for (const pv of pvSorted) {
+    for (const t of rArr<Record<string, unknown>>(pv.travaux_votes)) {
+      tvnr.push({ label: rStr(t.label), date_ag: rYear(pv.date_ag), montant: rNum(t.montant), echeance: rStr(t.echeance) });
+    }
+    for (const q of rArr<unknown>(pv.questions_diverses)) {
+      const s = typeof q === 'string' ? q : ((q as Record<string, unknown>)?.label as string);
+      if (s) qd.push({ label: s });
+    }
+  }
+  for (const t of rArr<Record<string, unknown>>(carnet?.travaux_en_cours)) {
+    tvnr.push({ label: rStr(t.label), date_ag: rYear(t.date_ag), montant: rNum(t.montant), echeance: null });
+  }
+  vc.travaux_votes_non_realises = tvnr;
+  vc.questions_diverses_notables = qd;
+
+  // ── DTG : compléter travaux_prioritaires depuis le planning ──
+  if (dtgDoc) {
+    const prioritaires = rArr<Record<string, unknown>>(dtgDoc.planning)
+      .filter(p => p.priorite === 'urgent' || p.priorite === 'prioritaire')
+      .map(p => ({ label: rStr(p.label), horizon: rStr(p.horizon), montant: rNum(p.montant), priorite: rStr(p.priorite) }));
+    (vc.dtg as Record<string, unknown>).travaux_prioritaires = prioritaires;
+  }
+
+  // ── REGLES COPRO (format identique au JSON RCP) ──
+  vc.regles_copro = rArr<Record<string, unknown>>(rcp?.regles_usage).map(r => ({
+    label: rStr(r.label), statut: rStr(r.statut), impact_rp: r.impact_rp === true, impact_invest: r.impact_invest === true,
+  }));
+
+  // ── CARNET D'ENTRETIEN (recopie quasi 1:1) ──
+  if (carnet) {
+    vc.carnet_entretien = {
+      present: true,
+      date_maj: rStr(carnet.date_maj),
+      immatriculation_registre: rStr(carnet.immatriculation_registre),
+      equipements_copro: {
+        chauffage_collectif: carnet.chauffage_collectif ?? null,
+        type_chauffage: rStr(carnet.type_chauffage),
+        eau_chaude_collective: carnet.eau_chaude_collective ?? null,
+        eau_froide_collective: carnet.eau_froide_collective ?? null,
+        fibre_optique: carnet.fibre_optique ?? null,
+        ascenseur: carnet.ascenseur ?? null,
+      },
+      contrats_entretien: rArr<Record<string, unknown>>(carnet.contrats).map(c => ({ equipement: rStr(c.equipement), prestataire: rStr(c.prestataire), periodicite: rStr(c.periodicite), date_reconduction: rStr(c.date_effet) })),
+      travaux_realises_carnet: rArr<Record<string, unknown>>(carnet.travaux_realises).map(t => ({ annee: rYear(t.annee), label: rStr(t.label), entreprise: rStr(t.entreprise), montant: rNum(t.montant) })),
+      travaux_en_cours_votes_carnet: rArr<Record<string, unknown>>(carnet.travaux_en_cours).map(t => ({ label: rStr(t.label), date_ag: rStr(t.date_ag), montant: rNum(t.montant) })),
+      diagnostics_parties_communes_carnet: rArr<Record<string, unknown>>(carnet.diagnostics_parties_communes),
+      conseil_syndical_carnet: { date_nomination: rStr((carnet.conseil_syndical as Record<string, unknown>)?.date_nomination), nb_membres: rArr((carnet.conseil_syndical as Record<string, unknown>)?.membres).length || null },
+    };
+  }
+
+  // ── MODIFICATIFS RCP ──
+  vc.modificatifs_rcp = modificatifs.map(m => ({
+    date_acte: rStr(m.date_acte), notaire: rStr((m.notaire as Record<string, unknown>)?.nom) || rStr(m.notaire),
+    type_modification: rStr(m.type_modification), sur_quoi_porte: rArr(m.sur_quoi_porte),
+    impact_acheteur: rStr((m.impact_copropriete as Record<string, unknown>)?.impact_acheteur),
+    points_attention: rArr(m.points_attention),
+  }));
+
+  // ── FICHE SYNTHETIQUE ──
+  if (fiche) {
+    vc.fiche_synthetique = {
+      present: true, date: rStr(fiche.date), fiche_recente: fiche.fiche_recente ?? null,
+      immatriculation_registre: rStr(fiche.immatriculation_registre), dtg_realise: fiche.dtg_realise ?? null, dtg_date: rStr(fiche.dtg_date),
+      equipements_collectifs_detail: rArr((fiche.caracteristiques_techniques as Record<string, unknown>)?.equipements_collectifs_detail),
+    };
+  }
+
+  // ── LOT ACHETÉ ──
+  // parties_privatives : compromis lots_cedes > DDT lots_identifies > appel charges lots
+  let parties: Array<Record<string, unknown>> = [];
+  if (compromis) parties = rArr<Record<string, unknown>>((compromis.bien as Record<string, unknown>)?.lots_cedes).map(l => ({ type: rStr(l.type), numero: rStr(l.numero), etage: rStr(l.etage), tantiemes: rStr(l.tantiemes), surface: rNum(l.surface), description: rStr(l.description) }));
+  if (!parties.length && ddtList.length) parties = rArr<Record<string, unknown>>(ddtList[0].lots_identifies).map(l => ({ type: rStr(l.type), numero: rStr(l.numero), etage: rStr(l.etage), description: rStr(l.description) }));
+  if (!parties.length && acList.length) parties = rArr<Record<string, unknown>>(acList[0].lots).map(l => ({ type: rStr(l.type), numero: rStr(l.numero), etage: rStr(l.etage) }));
+  lot.parties_privatives = parties;
+  lot.quote_part_tantiemes = parties.length === 1 ? rStr(parties[0].tantiemes) : (lot.quote_part_tantiemes || null);
+  if (ped) {
+    lot.impayes_detectes = rNum(ped.impayes_vendeur);
+    lot.fonds_travaux_alur = rNum(ped.fonds_travaux_alur);
+    lot.travaux_votes_charge_vendeur = rArr<Record<string, unknown>>(ped.travaux_charge_vendeur).map(t => ({ label: rStr(t.label), montant: rNum(t.montant) }));
+  }
+  lot.restrictions_usage = rArr<Record<string, unknown>>(rcp?.restrictions_importantes).map(r => ({ label: rStr(r.label), detail: rStr(r.detail), bloquant: r.bloquant === true }));
+
+  // ── COMPROMIS (recopie quasi 1:1 vers lot_achete.compromis) ──
+  if (compromis) {
+    const c = { ...compromis } as Record<string, unknown>;
+    delete c.document_type; delete c.points_forts; delete c.points_vigilance; delete c.avis_verimo;
+    lot.compromis = { present: true, ...c };
+  }
+
+  // ── PRÉ-ÉTAT DATÉ (détaillé) ──
+  if (ped) {
+    report.pre_etat_date = {
+      present: true,
+      date: rStr(ped.date),
+      syndic: rStr(ped.syndic),
+      impayes_vendeur: rNum(ped.impayes_vendeur) ?? 0,
+      fonds_travaux_alur: rNum(ped.fonds_travaux_alur),
+      fonds_travaux_ancien: rNum(ped.fonds_travaux_ancien),
+      fonds_roulement_acheteur: rNum(ped.fonds_roulement_acheteur),
+      fonds_roulement_modalite: rStr(ped.fonds_roulement_modalite),
+      honoraires_syndic: rNum(ped.honoraires_syndic),
+      charges_futures: {
+        montant_trimestriel: rNum((ped.charges_futures as Record<string, unknown>)?.montant_trimestriel),
+        fonds_travaux_trimestriel: rNum((ped.charges_futures as Record<string, unknown>)?.fonds_travaux_trimestriel),
+        montant_annuel: rNum((ped.charges_futures as Record<string, unknown>)?.montant_annuel),
+      },
+      travaux_charge_vendeur: rArr(ped.travaux_charge_vendeur),
+      procedures_contre_vendeur: rArr(ped.procedures_contre_vendeur),
+      procedures_copro: rStr(ped.procedures_copro) || 'neant',
+      impayes_copro_global: rNum(ped.impayes_copro_global),
+      dette_fournisseurs: rNum(ped.dette_fournisseurs),
+      fonds_travaux_copro_global: rNum(ped.fonds_travaux_copro_global),
+      historique_charges: rArr(ped.historique_charges),
+    };
+  }
+
+  // ── DPE RECOMMANDATIONS (depuis le DDT) ──
+  const ddtAvecReco = ddtList.find(d => (d.dpe as Record<string, unknown>)?.recommandations);
+  if (ddtAvecReco) {
+    const dpe = ddtAvecReco.dpe as Record<string, unknown>;
+    const reco = dpe.recommandations as Record<string, unknown>;
+    const format = rStr(reco.format) || 'aucune';
+    report.dpe_recommandations = {
+      present: format !== 'aucune',
+      format,
+      version_methode: rStr(dpe.version_methode) || 'inconnue',
+      evolution_etiquette: reco.evolution_etiquette || { actuelle: {}, apres_pack_1: {}, apres_pack_1_et_2: {} },
+      pack_1: reco.pack_1 || { cout_min: null, cout_max: null, travaux: [] },
+      pack_2: reco.pack_2 || { cout_min: null, cout_max: null, travaux: [] },
+    };
+  }
+
+  return report;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🆕 REDUCE — Passe C : synthèse rédigée (UN appel IA)
+// Produit resume (5 sections) + avis_verimo (4 clés) + negociation
+// + tri final des points_forts/points_vigilance, à partir des données
+// DÉJÀ consolidées (A+B) et du score. Aucune extraction de doc ici.
+// ══════════════════════════════════════════════════════════════
+function buildSynthesePrompt(profil: string, score: number): string {
+  const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
+  const tonVerdict =
+    score <= 6 ? 'formulation tranchee autorisee (ex: "Dossier presentant des risques majeurs.")' :
+    score <= 13 ? 'ton neutre factuel (ex: "Dossier comportant plusieurs points d attention.")' :
+    score <= 16 ? 'ton neutre positif (ex: "Dossier globalement sain avec quelques points a clarifier.")' :
+    'ton positif (ex: "Dossier particulierement solide.")';
+  return `Tu es le moteur d analyse Verimo. Profil acheteur : ${p}. Score global du bien : ${score}/20.
+Tu n utilises jamais les mots Claude, Anthropic ou IA. Tu informes, tu n orientes jamais la decision. Jamais d imperatif ("il faut", "prevoir", "nous recommandons").
+
+On te fournit un RAPPORT DEJA CONSOLIDE (JSON) issu de l analyse de plusieurs documents. Tu NE fais AUCUNE extraction nouvelle. Tu produis UNIQUEMENT une synthese redigee a partir des donnees fournies.
+
+Reponds STRICTEMENT en JSON, sans texte autour, avec EXACTEMENT cette forme :
+{"resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"avis_verimo":{"verdict":"...","verdict_highlight":"...","contexte":"...","demarches":[{"titre":"...","description":"..."}]},"negociation":{"applicable":false,"elements":[]},"points_forts":[],"points_vigilance":[]}
+
+REGLES resume (objet 5 cles, chaque cle = texte court 1-3 phrases, 50 mots MAX, ou null si pas de donnee) :
+- TON STRICTEMENT FACTUEL, zero adjectif evaluatif, zero conseil. Le resume DECRIT.
+- ANTI-REDONDANCE KPI : ne PAS redonner surface Carrez, classe DPE, annee construction, charges annuelles, nombre de lots, nombre de travaux votes (deja en KPI), sauf si tu ajoutes un contexte qui apporte du sens.
+- le_bien : composition du lot. la_copropriete : nb batiments, chauffage, equipements marquants. performance_energetique : type de chauffage, menuiseries si anomalie. diagnostics_privatifs : synthese ultra-courte (ex "Amiante, electricite : aucune anomalie"). gouvernance_finances : syndic + stabilite, fonds ALUR si notable, impayes si notable.
+
+REGLES avis_verimo (objet 4 cles) :
+- verdict (1 phrase, lecture globale) : ${tonVerdict}
+- verdict_highlight : sous-ensemble EXACT du verdict (2-4 mots) pour surlignage.
+- contexte (2-3 phrases) : cadrage que le resume n apporte PAS (type de copro, trajectoire reglementaire loi Climat si DPE faible...). NE PAS reconstater les faits du resume ni relister les points.
+- demarches (2 a 4) : "points a approfondir avant de signer", formulation neutre. titre + description (1-2 phrases). Ordres de grandeur chiffres autorises ("represente generalement X a Y euros"), jamais d imperatif. Dossier simple -> 2, complexe -> 4.
+
+REGLES negociation : applicable=true UNIQUEMENT si score < 17. Leviers VALIDES : travaux evoques non votes a risque acheteur, DPE E/F/G, equipements vetustes, anomalies techniques majeures, procedures en cours, impayes copro > 15% du budget, gouvernance defaillante. EXCLURE : travaux charge vendeur, fonds ALUR a rembourser, honoraires syndic pre-etat date, DPE A/B/C/D, constats sans impact financier. Si aucun levier : applicable=false, elements=[].
+
+REGLES points_forts / points_vigilance (SELECTION pour la synthese) :
+- On te donne des points BRUTS agreges de tous les documents. Tu les TRIES et DEDUPLIQUES pour la synthese finale.
+- points_vigilance : ne GARDER que les vrais risques pour l acheteur. Seuil financier : si budget copro > 80 000 EUR garder uniquement impact > 5 000 EUR OU risque structurel/juridique/sanitaire/reglementaire ; sinon seuil 3 000 EUR. EXCLURE : travaux mineurs/entretien courant, travaux deja realises, constats neutres, frais normaux de transaction (fonds ALUR, honoraires syndic pre-etat date, fonds de roulement).
+- Reformule proprement, supprime les doublons. Garde le sens, pas le verbatim.
+- DPE (profil ${p}) : si F ou G et profil residence principale, ne PAS mettre l interdiction de location en vigilance (mentionner seulement dans avis_verimo). Si profil locatif, mentionner l interdiction avec sa date.`;
+}
+
+async function reducePasseC(report: Record<string, unknown>, profil: string, apiKey: string): Promise<Record<string, unknown>> {
+  const score = (report.score as number) ?? 0;
+  // On envoie le rapport consolidé SANS les champs à (re)générer, pour ne pas biaiser
+  const payload = { ...report };
+  delete payload.resume; delete payload.avis_verimo; delete payload.negociation;
+  payload.points_forts_bruts = report.points_forts;
+  payload.points_vigilance_bruts = report.points_vigilance;
+
+  const userContent = [{ type: 'text', text: `RAPPORT CONSOLIDE (JSON) :\n${JSON.stringify(payload)}` }];
+  const result = await callAI({ system: buildSynthesePrompt(profil, score), userContent, maxTokens: 4000, apiKey });
+  if (result.error) { console.error('[analyser-run/v2] Passe C IA erreur (non bloquant):', result.error); return report; }
+
+  const synth = parseJson<Record<string, unknown>>(result.text);
+  if (!synth) { console.warn('[analyser-run/v2] Passe C JSON invalide (non bloquant)'); return report; }
+
+  if (synth.resume && typeof synth.resume === 'object') report.resume = synth.resume;
+  if (synth.avis_verimo && typeof synth.avis_verimo === 'object') report.avis_verimo = synth.avis_verimo;
+  if (synth.negociation && typeof synth.negociation === 'object') report.negociation = synth.negociation;
+  if (Array.isArray(synth.points_forts) && synth.points_forts.length) report.points_forts = synth.points_forts;
+  if (Array.isArray(synth.points_vigilance)) report.points_vigilance = synth.points_vigilance;
+
+  console.log('[analyser-run/v2] Passe C OK — synthèse rédigée générée.');
+  return report;
+}
+
+async function runMapReduceComplete(
+  analyseId: string,
+  files: Array<{ id: string; name: string }>,
+  profil: string,
+  supabaseAdmin: SupabaseClient,
+  apiKey: string,
+  typeBienDeclare?: string | null,
+): Promise<void> {
+  const fileIds = files.map(f => f.id);
+  try {
+    console.log(`[analyser-run/v2] MAP-REDUCE — ${files.length} docs | profil:${profil} | typeDeclare:${typeBienDeclare || 'null'}`);
+
+    // ── MAP : extraction document par document (paquets de 3) ──
+    const mapResults = await mapDocuments(files, profil, apiKey, supabaseAdmin, analyseId);
+
+    // Suppression RGPD des fichiers (tout est extrait, on n'en a plus besoin)
+    console.log(`[analyser-run/v2] Suppression RGPD de ${fileIds.length} fichier(s)`);
+    await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
+
+    const okCount = mapResults.filter(r => r.ok).length;
+    const failCount = mapResults.length - okCount;
+    console.log(`[analyser-run/v2] MAP terminé — ${okCount} OK / ${failCount} échec(s)`);
+
+    // Échec propre : si AUCUN document n'a pu être lu
+    if (okCount === 0) {
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la lecture des documents. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec MAP — aucun document lu');
+      return;
+    }
+
+    // ════════════════════════════════════════════════════════
+    // REDUCE — Passe A : consolidation → grand JSON affichable
+    // ════════════════════════════════════════════════════════
+    await supabaseAdmin.from('analyses').update({ progress_message: 'Consolidation du rapport...' }).eq('id', analyseId);
+
+    let report = reducePasseA(mapResults, profil, typeBienDeclare);
+
+    // Passe B — zones riches (vie_copro détaillée, lot/compromis, pré-état daté, DPE reco)
+    try {
+      report = reducePasseB(report, mapResults);
+    } catch (e) {
+      console.error('[analyser-run/v2] Erreur Passe B (non bloquant):', e);
+    }
+
+    // Réutilisation des briques déterministes existantes (INCHANGÉES)
+    try {
+      report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
+    } catch (e) {
+      console.error('[analyser-run/v2] Erreur recalcul categories (non bloquant):', e);
+    }
+    try {
+      report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
+    } catch (e) {
+      console.error('[analyser-run/v2] validateDiagsManquants erreur (non bloquant):', e);
+    }
+
+    // Score = somme des 5 catégories recalculées (plafonné à 20)
+    const cats = (report.categories as Record<string, { note: number; note_max: number }>) || {};
+    const scoreTotal = Object.values(cats).reduce((s, c) => s + (c?.note || 0), 0);
+    const scoreArrondi = Math.round(scoreTotal * 2) / 2;
+    report.score = scoreArrondi;
+    report.score_niveau =
+      scoreArrondi >= 17 ? 'Bien irréprochable' :
+      scoreArrondi >= 14 ? 'Bien sain' :
+      scoreArrondi >= 10 ? 'Bien correct avec réserves' :
+      scoreArrondi >= 7 ? 'Bien risqué' : 'Bien à éviter';
+
+    // Passe C — synthèse rédigée (resume + avis_verimo + negociation + tri points) via 1 appel IA
+    await supabaseAdmin.from('analyses').update({ progress_message: 'Rédaction de la synthèse...' }).eq('id', analyseId);
+    try {
+      report = await reducePasseC(report, profil, apiKey);
+    } catch (e) {
+      console.error('[analyser-run/v2] Erreur Passe C (non bloquant):', e);
+    }
+
+    // avis_verimo pour la colonne DB (string) = verdict de l'objet avis_verimo
+    let avisVerimoForDb: string | null = null;
+    const av = report.avis_verimo as Record<string, unknown> | string | null;
+    if (typeof av === 'string') avisVerimoForDb = av || null;
+    else if (av && typeof av === 'object') avisVerimoForDb = typeof av.verdict === 'string' ? av.verdict : null;
+
+    console.log(`[analyser-run/v2] REDUCE A+B+C — score ${scoreArrondi}/20 | ${(report.documents_analyses as unknown[]).length} docs | ${(report.diagnostics as unknown[]).length} diags`);
+
+    const { error: updateError } = await supabaseAdmin.from('analyses').update({
+      status: 'completed',
+      progress_current: files.length,
+      progress_total: files.length,
+      progress_message: 'Rapport prêt !',
+      file_ids: [],
+      title: (report.titre as string) || 'Analyse immobilière',
+      score: scoreArrondi,
+      avis_verimo: avisVerimoForDb,
+      result: report,
+      paid: true,
+      regeneration_deadline: (() => { const dl = new Date(); dl.setDate(dl.getDate() + 7); return dl.toISOString(); })(),
+    }).eq('id', analyseId);
+
+    if (updateError) {
+      console.error('[analyser-run/v2] ERREUR UPDATE:', updateError.message);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde REDUCE');
+    } else {
+      console.log(`[analyser-run/v2] ${analyseId} — REDUCE Passe A stocké avec succès.`);
+      await notifyAnalysisReady(supabaseAdmin, analyseId);
+    }
+  } catch (err) {
+    console.error('[analyser-run/v2] Erreur:', err);
+    if (fileIds.length > 0) await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
+    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Erreur inattendue. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur inattendue MAP');
+  }
+}
+
 async function runAnalyseWithData(
   analyseId: string,
   files: Array<{ id: string; name: string }>,
@@ -1678,6 +2476,16 @@ async function runAnalyseWithData(
   const fileIds = files.map(f => f.id);
   try {
     console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode} | typeDeclare:${typeBienDeclare || 'null'}`);
+
+    // ══════════════════════════════════════════════════════════
+    // 🆕 MAP-REDUCE V2 — UNIQUEMENT le mode complet.
+    // Les modes 'document' (analyse simple) et 'complement' restent
+    // sur le chemin historique ci-dessous, STRICTEMENT INCHANGÉS.
+    // ══════════════════════════════════════════════════════════
+    if (mode !== 'document' && mode !== 'complement') {
+      await runMapReduceComplete(analyseId, files, profil, supabaseAdmin, apiKey, typeBienDeclare);
+      return;
+    }
 
     const userContent: unknown[] = [];
 
