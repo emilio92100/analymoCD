@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { DiagDetailParserExport } from './DiagnosticCard';
 
@@ -146,18 +146,29 @@ function SectionKpi({ icon, label, children }: { icon: string; label: string; ch
 
 function TooltipIcon({ text }: { text: string }) {
   const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const open = () => {
+    const el = ref.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setPos({ top: r.top, left: r.left + r.width / 2 });
+    }
+    setVisible(true);
+  };
+  const close = () => setVisible(false);
   return (
-    <span style={{ position: 'relative', display: 'inline-flex' }}>
-      <span
-        onMouseEnter={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
-        onClick={() => setVisible(v => !v)}
-        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#334155', fontSize: 10, fontWeight: 700, color: '#fff', cursor: 'help', flexShrink: 0, userSelect: 'none' as const }}
-      >ℹ</span>
+    <span
+      ref={ref}
+      onMouseEnter={open}
+      onMouseLeave={close}
+      onClick={(e) => { e.stopPropagation(); visible ? close() : open(); }}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#334155', fontSize: 10, fontWeight: 700, color: '#fff', cursor: 'pointer', flexShrink: 0, userSelect: 'none' as const }}
+    >
+      ℹ
       {visible && (
-        <span style={{ position: 'absolute', bottom: '120%', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: '#f1f5f9', fontSize: 14, lineHeight: 1.7, padding: '10px 14px', borderRadius: 10, width: 260, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.25)', whiteSpace: 'normal' as const, pointerEvents: 'none' as const }}>
+        <span style={{ position: 'fixed', top: pos.top - 10, left: pos.left, transform: 'translate(-50%, -100%)', background: '#0f172a', color: '#f1f5f9', fontSize: 13, lineHeight: 1.6, padding: '11px 14px', borderRadius: 10, width: 280, maxWidth: '85vw', zIndex: 9999, boxShadow: '0 8px 28px rgba(0,0,0,0.3)', whiteSpace: 'normal' as const, pointerEvents: 'none' as const, fontWeight: 400, textAlign: 'left' as const }}>
           {text}
-          <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderWidth: 6, borderStyle: 'solid', borderColor: '#0f172a transparent transparent transparent' }} />
         </span>
       )}
     </span>
@@ -2227,6 +2238,73 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
         {coutTotal != null && <Kpi label="Coût total acheteur" value={`~${fmt(coutTotal)} €`} sub="Estimation indicative" color="#0c447c" tooltip="Prix total acte + frais de notaire estimés. À affiner avec votre notaire pour votre plan de financement définitif." />}
       </div>
 
+      {/* SECTION : LES PARTIES */}
+      {(vendeurs.length > 0 || acheteurs.length > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>👥</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#6b21a8' }}>Les parties</span>
+          </div>
+          <div style={{ padding: '14px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ padding: '12px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10 }}>
+              <div style={{ fontSize: 11.5, color: '#a855f7', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 8 }}>VENDEUR{vendeurs.length > 1 ? 'S' : ''}</div>
+              {vendeurs.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#a855f7', fontStyle: 'italic' }}>Non précisé</div>
+              ) : vendeurs.map((v: any, i: number) => (
+                <div key={i} style={{ marginBottom: i < vendeurs.length - 1 ? 10 : 0, paddingBottom: i < vendeurs.length - 1 ? 10 : 0, borderBottom: i < vendeurs.length - 1 ? '0.5px solid #e9d5ff' : 'none' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#6b21a8', marginBottom: 3 }}>{v.nom_complet || '—'}</div>
+                  <div style={{ fontSize: 12.5, color: '#7e22ce', lineHeight: 1.55 }}>
+                    {v.situation_matrimoniale_citation && <div>{v.situation_matrimoniale_citation}</div>}
+                    {v.regime_matrimonial && !v.situation_matrimoniale_citation && <div>Régime : {v.regime_matrimonial}</div>}
+                    {v.nationalite && <div>Nationalité : {v.nationalite}</div>}
+                    {v.part_indivision && <div>Part : {v.part_indivision}</div>}
+                  </div>
+                </div>
+              ))}
+              {notaireVendeur && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #e9d5ff', fontSize: 12.5, color: '#7e22ce' }}>
+                  <span style={{ fontWeight: 600 }}>Notaire :</span> Me {notaireVendeur.nom}{notaireVendeur.ville ? ` (${notaireVendeur.ville})` : ''}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '12px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10 }}>
+              <div style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 8 }}>ACHETEUR{acheteurs.length > 1 ? 'S' : ''}</div>
+              {acheteurs.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#16a34a', fontStyle: 'italic' }}>Non précisé</div>
+              ) : acheteurs.map((a: any, i: number) => (
+                <div key={i} style={{ marginBottom: i < acheteurs.length - 1 ? 10 : 0, paddingBottom: i < acheteurs.length - 1 ? 10 : 0, borderBottom: i < acheteurs.length - 1 ? '0.5px solid #bbf7d0' : 'none' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#15803d', marginBottom: 3 }}>{a.nom_complet || '—'}</div>
+                  <div style={{ fontSize: 12.5, color: '#16a34a', lineHeight: 1.55 }}>
+                    {a.situation_matrimoniale_citation && <div>{a.situation_matrimoniale_citation}</div>}
+                    {a.mode_acquisition && <div>Mode d'acquisition : {a.mode_acquisition}</div>}
+                    {a.nationalite && <div>Nationalité : {a.nationalite}</div>}
+                  </div>
+                </div>
+              ))}
+              {notaireAcheteur && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #bbf7d0', fontSize: 12.5, color: '#16a34a' }}>
+                  <span style={{ fontWeight: 600 }}>Notaire :</span> Me {notaireAcheteur.nom}{notaireAcheteur.ville ? ` (${notaireAcheteur.ville})` : ''}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Notaires affichés en bandeau si pas dans les cartes */}
+          {notaires.length > 0 && !tousRolesPrecises && (
+            <div style={{ borderTop: '0.5px solid #edf2f7', padding: '11px 18px', background: '#fafbfc', fontSize: 12.5, color: '#475569' }}>
+              <span style={{ fontWeight: 700, color: '#334155' }}>
+                {notaires.length === 1 ? 'Notaire de la vente :' : 'Notaires de l\'acte (rôles non précisés dans le compromis) :'}
+              </span>
+              {' '}
+              {notaires.map((n: any, i: number) => (
+                <span key={i}>
+                  {i > 0 && ' · '}Me {n.nom}{n.etude ? `, ${n.etude}` : ''}{n.ville ? ` (${n.ville})` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* SECTION : LE BIEN */}
       {bien && (bien.adresse_complete || bien.type_bien_global || lotsCedes.length > 0) && (
         <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
@@ -2254,96 +2332,35 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
           {/* Lots cédés détaillés */}
           {lotsCedes.length > 0 && (
             <div style={{ borderTop: '0.5px solid #edf2f7' }}>
-              <div style={{ padding: '10px 18px', background: '#fafbfc', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Lots cédés ({lotsCedes.length})</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <th style={{ padding: '9px 18px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'left', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Type</th>
-                    <th style={{ padding: '9px 12px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'center', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Lot n°</th>
-                    <th style={{ padding: '9px 12px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'center', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Étage</th>
-                    <th style={{ padding: '9px 12px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'center', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Tantièmes</th>
-                    <th style={{ padding: '9px 18px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'right', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Surface</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lotsCedes.map((lot: any, i: number) => (
-                    <tr key={i} style={{ borderTop: '0.5px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                      <td style={{ padding: '10px 18px', fontSize: 13, color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>{lot.type || '—'}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 13, color: '#0f172a', textAlign: 'center' }}>{lot.numero || '—'}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>{lot.etage != null ? (formatEtage(String(lot.etage)) || lot.etage) : '—'}</td>
-                      <td style={{ padding: '10px 12px', fontSize: 12.5, color: '#0f172a', textAlign: 'center', fontFamily: 'monospace' }}>{lot.tantiemes || '—'}</td>
-                      <td style={{ padding: '10px 18px', fontSize: 12.5, color: '#0f172a', textAlign: 'right' }}>{lot.surface ? `${lot.surface} m²` : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* SECTION : LES PARTIES */}
-      {(vendeurs.length > 0 || acheteurs.length > 0) && (
-        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)' }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>👥</div>
-            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#6b21a8' }}>Les parties</span>
-          </div>
-          <div style={{ padding: '14px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{ padding: '12px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10 }}>
-              <div style={{ fontSize: 10, color: '#a855f7', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 8 }}>VENDEUR{vendeurs.length > 1 ? 'S' : ''}</div>
-              {vendeurs.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#a855f7', fontStyle: 'italic' }}>Non précisé</div>
-              ) : vendeurs.map((v: any, i: number) => (
-                <div key={i} style={{ marginBottom: i < vendeurs.length - 1 ? 10 : 0, paddingBottom: i < vendeurs.length - 1 ? 10 : 0, borderBottom: i < vendeurs.length - 1 ? '0.5px solid #e9d5ff' : 'none' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#6b21a8', marginBottom: 3 }}>{v.nom_complet || '—'}</div>
-                  <div style={{ fontSize: 11, color: '#7e22ce', lineHeight: 1.55 }}>
-                    {v.situation_matrimoniale_citation && <div>{v.situation_matrimoniale_citation}</div>}
-                    {v.regime_matrimonial && !v.situation_matrimoniale_citation && <div>Régime : {v.regime_matrimonial}</div>}
-                    {v.nationalite && <div>Nationalité : {v.nationalite}</div>}
-                    {v.part_indivision && <div>Part : {v.part_indivision}</div>}
+              <div style={{ padding: '10px 18px', background: '#fafbfc', fontSize: 11.5, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Lots cédés ({lotsCedes.length})</div>
+              <div style={{ padding: '14px 18px', display: 'grid', gridTemplateColumns: lotsCedes.length > 1 ? 'repeat(auto-fit, minmax(240px, 1fr))' : '1fr', gap: 12 }}>
+                {lotsCedes.map((lot: any, i: number) => (
+                  <div key={i} style={{ border: '1px solid #e2eaf2', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #e2eaf2' }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 700, color: '#0c447c', textTransform: 'capitalize' as const }}>{lot.type || 'Lot'}</span>
+                      {lot.numero && <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: '#fff', border: '1px solid #cfe6ef', borderRadius: 100, padding: '2px 11px', whiteSpace: 'nowrap' as const }}>Lot n°{lot.numero}</span>}
+                    </div>
+                    <div style={{ padding: '11px 14px' }}>
+                      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' as const, marginBottom: lot.tantiemes ? 10 : 0 }}>
+                        <div>
+                          <div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em', marginBottom: 2 }}>Étage</div>
+                          <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 600 }}>{lot.etage != null ? (formatEtage(String(lot.etage)) || lot.etage) : '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em', marginBottom: 2 }}>Surface</div>
+                          <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 600 }}>{lot.surface ? `${lot.surface} m²` : '—'}</div>
+                        </div>
+                      </div>
+                      {lot.tantiemes && (
+                        <div style={{ paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
+                          <div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em', marginBottom: 3 }}>Tantièmes</div>
+                          <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.5 }}>{lot.tantiemes}</div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {notaireVendeur && (
-                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #e9d5ff', fontSize: 11, color: '#7e22ce' }}>
-                  <span style={{ fontWeight: 600 }}>Notaire :</span> Me {notaireVendeur.nom}{notaireVendeur.ville ? ` (${notaireVendeur.ville})` : ''}
-                </div>
-              )}
-            </div>
-            <div style={{ padding: '12px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10 }}>
-              <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 8 }}>ACHETEUR{acheteurs.length > 1 ? 'S' : ''}</div>
-              {acheteurs.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#16a34a', fontStyle: 'italic' }}>Non précisé</div>
-              ) : acheteurs.map((a: any, i: number) => (
-                <div key={i} style={{ marginBottom: i < acheteurs.length - 1 ? 10 : 0, paddingBottom: i < acheteurs.length - 1 ? 10 : 0, borderBottom: i < acheteurs.length - 1 ? '0.5px solid #bbf7d0' : 'none' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d', marginBottom: 3 }}>{a.nom_complet || '—'}</div>
-                  <div style={{ fontSize: 11, color: '#16a34a', lineHeight: 1.55 }}>
-                    {a.situation_matrimoniale_citation && <div>{a.situation_matrimoniale_citation}</div>}
-                    {a.mode_acquisition && <div>Mode d'acquisition : {a.mode_acquisition}</div>}
-                    {a.nationalite && <div>Nationalité : {a.nationalite}</div>}
-                  </div>
-                </div>
-              ))}
-              {notaireAcheteur && (
-                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #bbf7d0', fontSize: 11, color: '#16a34a' }}>
-                  <span style={{ fontWeight: 600 }}>Notaire :</span> Me {notaireAcheteur.nom}{notaireAcheteur.ville ? ` (${notaireAcheteur.ville})` : ''}
-                </div>
-              )}
-            </div>
-          </div>
-          {/* Notaires affichés en bandeau si pas dans les cartes */}
-          {notaires.length > 0 && !tousRolesPrecises && (
-            <div style={{ borderTop: '0.5px solid #edf2f7', padding: '11px 18px', background: '#fafbfc', fontSize: 11.5, color: '#475569' }}>
-              <span style={{ fontWeight: 700, color: '#334155' }}>
-                {notaires.length === 1 ? 'Notaire de la vente :' : 'Notaires de l\'acte (rôles non précisés dans le compromis) :'}
-              </span>
-              {' '}
-              {notaires.map((n: any, i: number) => (
-                <span key={i}>
-                  {i > 0 && ' · '}Me {n.nom}{n.etude ? `, ${n.etude}` : ''}{n.ville ? ` (${n.ville})` : ''}
-                </span>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -2414,13 +2431,13 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
                   const sc = statutStyle(c.statut);
                   return (
                     <tr key={i} style={{ borderBottom: '0.5px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                      <td style={{ padding: '11px 18px', fontSize: 12.5, color: '#0f172a', fontWeight: 500 }}>
+                      <td style={{ padding: '13px 18px', fontSize: 14, color: '#0f172a', fontWeight: 600 }}>
                         {c.label || c.type || 'Condition'}
-                        {c.detail && <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400, marginTop: 2 }}>{c.detail}</div>}
+                        {c.detail && <div style={{ fontSize: 12.5, color: '#64748b', fontWeight: 400, marginTop: 3, lineHeight: 1.5 }}>{c.detail}</div>}
                       </td>
-                      <td style={{ padding: '11px 18px', fontSize: 11.5, color: '#dc2626', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatDate(c.date_limite) || '—'}</td>
-                      <td style={{ padding: '11px 18px', textAlign: 'right' }}>
-                        <span style={{ fontSize: 10.5, padding: '3px 9px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}`, fontWeight: 600 }}>{sc.label}</span>
+                      <td style={{ padding: '13px 14px', fontSize: 13, color: '#dc2626', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatDate(c.date_limite) || '—'}</td>
+                      <td style={{ padding: '13px 18px', textAlign: 'right', whiteSpace: 'nowrap', width: 1 }}>
+                        <span style={{ display: 'inline-block', fontSize: 12, padding: '4px 12px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}`, fontWeight: 600, whiteSpace: 'nowrap' as const }}>{sc.label}</span>
                       </td>
                     </tr>
                   );
