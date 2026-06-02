@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 28 mai 2026
+# VERIMO — Contexte projet — 02 juin 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -387,6 +387,65 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ---
 
+## 🎯 CHANTIER MAJEUR — Fiabiliser l'analyse complète via MAP-REDUCE (cadré le 02 juin 2026, à lancer en session dédiée) ⭐⭐⭐
+
+> **Déclencheur** : Alex démarre le démarchage des agences. Il veut un rapport d'analyse complète irréprochable, sans objection possible (sinon perte de crédibilité). Préoccupation centrale : la fiabilité quand il y a beaucoup de documents (6 à 8 docs de ~30 pages chacun).
+
+### État actuel du moteur (vérifié dans le code, pas supposé)
+- Flow : `analyser` (accueil rapide : auth + crédits, upload des fichiers sur l'API Files Anthropic avec relances 503/429, file d'attente `queued` + cron `analyser-retry` si surcharge, répond 202 immédiatement) → passe la main à `analyser-run` (worker qui tourne **en arrière-plan** via `EdgeRuntime.waitUntil`).
+- Analyse complète = **UN SEUL appel** à `claude-sonnet-4-6` avec **TOUS les docs d'un coup** (`max_tokens` 64000) → un seul gros JSON agrégé (schéma `vie_copropriete` / `lot_achete` / `diagnostics` / `documents_analyses` / `categories` ...).
+- **Score /20 calculé EN CODE** (fonction `recalculerCategories`, appelée après l'IA, écrase le score du modèle). Critères = ceux de la page /methode : Travaux /5, Procédures /4, Finances /4, Diags privatifs /4, Diags communs /3.
+- **Détection des diags obligatoires manquants EN CODE** (fonction `validateDiagsManquants` → remplit `documents_manquants` + `points_vigilance`, ex : « Le mesurage loi Carrez n'a pas été détecté… Demandez-le au vendeur »). Couvre DPE, ERP, Carrez, électrique, amiante (<1997), plomb (<1949), audit énergétique, assainissement, termites.
+- NB : le plafond **5 docs concerne UNIQUEMENT le mode « compléter dossier »** (ajout de docs à un rapport existant), PAS l'analyse complète initiale.
+
+### Limite identifiée (= la raison du chantier)
+Tout lire d'un coup provoque l'effet « noyé dans la masse » (lost in the middle) : avec beaucoup de docs, le modèle peut louper un chiffre précis enfoui ; plafond de contexte ~200K tokens ; passe unique fragile. → **Fiable pour 1-4 docs, moins fiable à 6-8 docs.** (Indice : la relance ciblée DPE/Carrez déjà présente prouve que la passe unique loupe parfois.)
+
+### Solution décidée = MAP-REDUCE
+- **MAP** : 1 appel par document, en **réutilisant les prompts + JSON par type de l'analyse SIMPLE déjà en place** (DDT, PV_AG, COMPROMIS, etc.). Lancés **par petits paquets (~3 en parallèle)**, pas tous d'un coup (risque rate-limit), pas un par un (trop lent). Relances 429/529 conservées.
+- **REDUCE** : consolider les N JSON par doc dans la forme du **grand JSON agrégé existant**. **Hybride** : CODE pour assembler les chiffres / regrouper les diagnostics / compter les PV / le score ; **UN petit appel IA** pour la partie rédigée (`avis_verimo` / verdict) à partir des données déjà consolidées.
+- Le **score reste en code** (inchangé, respecte /methode à l'identique). L'**affichage de l'analyse complète (RapportPage) est réutilisé tel quel** À CONDITION que le reduce sorte la **même forme de JSON**.
+- **2 bouts du reduce existent déjà** et sont réutilisables : `validateDiagsManquants` (docs manquants) + `recalculerCategories` (score).
+- Le flow `analyser` → `analyser-run` **ne change pas** ; on ne modifie que **l'INTÉRIEUR** d'`analyser-run`.
+- Gain bonus : appels plus petits (1 doc) → **moins de risque de saturation/contexte** qu'aujourd'hui, et parallélisable = souvent plus rapide. Point à surveiller = le temps total d'exécution (mitigation : enregistrer chaque doc dès qu'il est lu + reprise par cron si besoin).
+
+### Principes « anti-objection » (= ce qui donne la crédibilité aux agences)
+- ⚠️ **NE JAMAIS promettre « 100 % fiable »** (ça n'existe pas avec une IA, et ça se retourne contre toi). La crédibilité vient de : **chaque chiffre SOURCÉ** + **échec PROPRE** (doc illisible signalé) plutôt qu'une fausse info en silence.
+- **Traçabilité** : aujourd'hui RIEN par chiffre (juste la liste des docs analysés). À ajouter : la **source par chiffre clé** (prix, surface, charges, fonds travaux, procédures, dépôt de garantie). ⚠️ **Préférer afficher la PHRASE EXACTE du document plutôt qu'un n° de page** (le modèle se trompe de page → ça décrédibilise). À faire sur les chiffres clés seulement, pas tout.
+- **Échec propre** : un doc illisible → afficher « Document X illisible, à refournir » au lieu d'une analyse fausse silencieuse.
+- **Généraliser les relances ciblées** (comme déjà fait pour DPE/Carrez) sur les autres champs critiques manquants.
+- Réglages : **température 0** sur l'extraction (réponses stables), garder le **cache de prompt** (coût), **valider chaque JSON en code** avant de l'accepter.
+
+### État des renderers (= la base toute prête du MAP)
+- **14 types détectés** par le prompt ; **12 fiches dédiées** dans `DocumentRenderer.tsx` (DDT, PV_AG, APPEL_CHARGES, RCP, DTG_PPT, CARNET_ENTRETIEN, PRE_ETAT_DATE, ETAT_DATE, TAXE_FONCIERE, COMPROMIS, DIAGNOSTIC_PARTIES_COMMUNES, MODIFICATIF_RCP) + 1 générique (AUTRE).
+- ⚠️ **GAP : FICHE_SYNTHETIQUE** est détectée + a son JSON mais **n'a PAS de fiche dédiée** (tombe sur RendererAutre) → fiche à créer.
+- **Carrez** : bien rendu (composant `CarrezAccordeon` dans la fiche DDT : surface totale, pièce par pièce, hors Carrez, annexes ; gère le piège loi Boutin).
+- Décision : on **PART de l'existant** (JSON + renderers par doc), on **ne refait pas** tout.
+- Option « bonus » **écartée pour l'instant** : afficher les fiches détaillées par doc DANS le rapport complet (pas essentiel, risque de rallonger/dupliquer la synthèse).
+
+### 🧪 STRATÉGIE BAC À SABLE (OBLIGATOIRE — ne jamais toucher la prod tant que pas validé)
+- **Frontend** : créer une **branche Git** (ex `analyse-v2`) → preview Vercel dédiée. `main` n'est pas touché. Si OK → merge ; si non → supprimer la branche.
+- **Edge function** : créer une **2e fonction SÉPARÉE `analyser-run-v2`** (copie). L'ancien `analyser-run` reste **intact et sert les vrais clients**. On route **uniquement les analyses de TEST** vers v2 (toggle admin ou flag dans l'appel).
+- **Sauvegarde** : télécharger le code actuel d'`analyser-run` (bouton Download dans Supabase) AVANT toute modif. GitHub garde l'historique de toute façon.
+- **CLÉ pour rollback facile** : v2 doit sortir la **MÊME forme de JSON** que l'ancien → pas de changement BDD, même affichage, bascule réversible dans les deux sens en 2 min.
+- Option : route admin cachée (ex `/admin/test-analyse`) pour comparer **v2 vs prod côte à côte** sans qu'aucun client ne le voie.
+
+### ✅ TO-DO MAP-REDUCE (ordre proposé, à valider avant de coder — méthode : une étape à la fois, fichiers complets, tester sur compte test)
+0. **[Bac à sable]** Créer branche `analyse-v2` + fonction `analyser-run-v2` (copie) + sauvegarde du code actuel. **AVANT tout code.**
+1. **[MAP]** Extraction doc par doc en réutilisant les prompts/JSON de l'analyse simple, lancés par paquets (~3 en parallèle), relances 429/529.
+2. **[REDUCE]** Écrire la consolidation N JSON → grand JSON agrégé (CODE pour chiffres/diags/PV ; petit appel IA pour `avis_verimo`). Réutiliser `validateDiagsManquants` + `recalculerCategories`.
+3. **[Affichage]** Vérifier que RapportPage rend bien le JSON produit par v2 (forme identique).
+4. **[Traçabilité]** Ajouter la source (phrase exacte du doc) sur les chiffres clés.
+5. **[Échec propre]** Gérer « document illisible » proprement (au lieu d'une analyse fausse).
+6. **[Robustesse]** Si temps d'exécution long : enregistrer chaque doc dès qu'il est lu + reprise par cron.
+7. **[Tests]** Comparer v2 vs prod sur les MÊMES dossiers (1 doc / 3 docs / 7-8 docs) avant toute bascule.
+8. **[Bascule]** Quand validé : basculer v2 → prod (recopier dans `analyser-run`).
+9. **[À part / indépendant]** Créer la fiche dédiée **FICHE_SYNTHETIQUE** (gap renderer identifié).
+
+---
+
+
+
 ## ⏳ Backlog — En attente
 
 ### 🔥 Priorité haute (avant lancement public Pro)
@@ -455,8 +514,13 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 📜 Historique condensé des sessions
 
-### Sessions récentes (mai 2026)
+### Sessions récentes (mai-juin 2026)
 
+- **Session 02 juin 2026 ⭐ : Polish rapport COMPROMIS + fix lien partage + cadrage chantier MAP-REDUCE**
+  - `DocumentRenderer.tsx` (frontend, livré) : suppression du bloc rouge « Points d'attention détectés » en haut du compromis (c'était un **doublon** avec la section « Clauses & particularités » plus bas). Fix bulle d'aide « i » (le `overflow:hidden` de la carte la coupait → passée en `position:fixed`, premier plan). Badge « En cours » des conditions suspensives forcé sur **une seule ligne**. Textes **agrandis** (parties vendeur/acheteur + conditions suspensives). **Lots cédés** refaits en **cartes lisibles** (au lieu d'un tableau serré). Bloc **Vendeur/Acheteur remonté** au-dessus de « Le bien ».
+  - `analyser-run` prompt COMPROMIS (livré, ⚠️ **à redéployer manuellement dans Supabase**) : ajout règle **« point de vue ACHETEUR »** → ne jamais mentionner la fiscalité du vendeur (plus-value/moins-value), ne jamais ranger un élément favorable à l'acheteur (ex exonération droits d'enregistrement) en alerte/clause critique ; fourre-tout `"autre"` des `clauses_critiques` resserré (uniquement vrai risque/obligation acheteur).
+  - **Fix bug lien de partage particulier** (livré) : « Rapport introuvable » au 1er affichage (marchait après refresh). Cause = `RapportPartagePage` bricolait l'URL avec `history.replaceState` → React Router ne voyait pas le token au 1er rendu. Fix = passer le token en **prop `shareTokenOverride`** à `RapportPage` (fichiers `RapportPartagePage.tsx` + `RapportPage.tsx`). **Frontend only, AUCUN impact** sur dashboard pro/particulier (la prop est optionnelle, repli sur l'ancien comportement). Confirmé OK par Alex.
+  - **Cadrage complet du chantier MAP-REDUCE** pour fiabiliser l'analyse complète (voir la section dédiée « 🎯 CHANTIER MAJEUR » plus haut). À lancer en session dédiée.
 - **Session 28 mai 2026 ⭐ : Plan Agence V2 multi-utilisateurs LIVRÉ**
   - 5 tables BDD créées : agences, agence_members, agence_invitations, envois_rapports, dossier_notes
   - Colonnes ajoutées : analyses (agence_id, created_by_user_id, deleted_at), profiles (agence_id, agence_role), pro_folders (agence_id avec trigger auto-fill)
@@ -502,6 +566,14 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 ---
 
 ## 🎯 Prochaine session — Actions prioritaires
+
+### ⭐⭐⭐ CHANTIER À LANCER : MAP-REDUCE analyse complète
+Voir la section dédiée « 🎯 CHANTIER MAJEUR — Fiabiliser l'analyse complète via MAP-REDUCE » plus haut (état actuel vérifié, solution, principes anti-objection, stratégie bac à sable, et TO-DO numérotée 0→9). **Commencer par l'étape 0 (bac à sable) avant tout code.** Objectif : rapport irréprochable pour le démarchage des agences.
+
+### Rappels rapides issus de la session 02 juin
+- ⚠️ **Redéployer `analyser-run` à la main** dans Supabase pour activer la règle « point de vue acheteur » (push GitHub ne déploie pas les edge functions).
+- Vérifier que les fichiers frontend livrés (`DocumentRenderer.tsx`, `RapportPage.tsx`, `RapportPartagePage.tsx`) sont bien poussés sur GitHub.
+- Gap renderer à traiter quand l'occasion se présente : créer la fiche dédiée **FICHE_SYNTHETIQUE**.
 
 ### 🔥 BUGS BLOQUANTS à fixer en priorité absolue
 
