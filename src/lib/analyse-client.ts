@@ -263,13 +263,16 @@ export async function pollAnalyseStatus(params: {
 
       let percent: number;
       if (data.progress_current && data.progress_current > 0) {
-        // Cas normal : progress_current remonte (fin d'analyse)
-        percent = Math.min(90, 40 + Math.floor((data.progress_current / data.progress_total) * 50));
+        // 🔧 PATCH PROGRESSION : l'edge function MAP-REDUCE remonte désormais progress_current
+        // en temps réel (1 par doc lu, +1 consolidation, +1 synthèse, sur progress_total = nbDocs+2).
+        // On mappe ça sur 40→98% pour une barre HONNÊTE qui va jusqu'au bout
+        // (avant : progress_current restait à 0 → on plafonnait à 90% via la simulation temporelle).
+        percent = Math.min(98, 40 + Math.floor((data.progress_current / data.progress_total) * 58));
       } else if (analysingStart) {
-        // Cas analyse IA en cours : progression temporelle 60 → 90% étalée sur ~180s
+        // Filet (docs uploadés mais compteur pas encore posé) : progression temporelle douce 60 → 88%.
         const elapsed = Date.now() - analysingStart;
         const ramp = Math.min(1, elapsed / 180_000); // 0 à 1 sur 3 minutes
-        percent = Math.min(90, 60 + Math.floor(ramp * 30));
+        percent = Math.min(88, 60 + Math.floor(ramp * 28));
       } else {
         percent = 55;
       }
