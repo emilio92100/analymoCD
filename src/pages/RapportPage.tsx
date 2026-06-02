@@ -4484,10 +4484,10 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
   );
 }
 
-export default function RapportPage() {
+export default function RapportPage({ shareTokenOverride }: { shareTokenOverride?: string } = {}) {
   const [searchParams] = useSearchParams();
   const id = searchParams.get('id') || '';
-  const shareToken = searchParams.get('token') || '';
+  const shareToken = shareTokenOverride || searchParams.get('token') || '';
   const action = searchParams.get('action') || '';
   const isShared = !!shareToken;
 
