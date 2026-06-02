@@ -1,22 +1,10 @@
 import { useParams } from 'react-router-dom';
 import RapportPage from './RapportPage';
-import { useEffect } from 'react';
 
 export default function RapportPartagePage() {
   const { token } = useParams<{ token: string }>();
 
-  useEffect(() => {
-    // Pas de vérification auth pour les rapports partagés
-  }, []);
-
-  // On passe le token via searchParams pour réutiliser RapportPage
-  useEffect(() => {
-    if (token) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('token', token);
-      window.history.replaceState(null, '', url.toString());
-    }
-  }, [token]);
-
-  return <RapportPage />;
+  // On passe le token directement à RapportPage (pas de bricolage d'URL).
+  // Évite la "course" au chargement qui affichait "Rapport introuvable" au 1er affichage.
+  return <RapportPage shareTokenOverride={token} />;
 }
