@@ -171,12 +171,16 @@ async function cleanupAnalyse(
   console.log(`[watchdog] 🧹 Nettoyage analyse ${analyse.id} — status=${analyse.status}, âge=${ageMinutes}min`);
 
   // 1. Marquer en failed
-  const errorMessage = `Analyse bloquée détectée par watchdog (${reason}). Crédit remboursé automatiquement.`;
+  // 🔧 FIX : on écrit dans progress_message (colonne réellement présente et lue par le front),
+  // PAS dans error_message qui n'existe pas dans la table → l'UPDATE plantait et l'analyse
+  // restait bloquée à vie malgré le passage du watchdog. (reason loggé pour le debug interne)
+  const errorMessage = `L'analyse n'a pas pu être finalisée (incident technique). Votre crédit a été remboursé automatiquement — vous pouvez relancer l'analyse.`;
+  console.log(`[watchdog] Raison interne du nettoyage ${analyse.id}: ${reason}`);
   const { error: updateErr } = await supabaseAdmin
     .from('analyses')
     .update({
       status: 'failed',
-      error_message: errorMessage,
+      progress_message: errorMessage,
     })
     .eq('id', analyse.id)
     .in('status', ['processing', 'files_ready', 'queued']); // idempotent : ne touche QUE si pas déjà nettoyé
