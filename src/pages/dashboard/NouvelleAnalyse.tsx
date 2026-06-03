@@ -1027,6 +1027,28 @@ export default function NouvelleAnalyse() {
               </div>
             </div>
 
+            {/* 🆕 Bandeau rassurant — apparaît tout seul après 2 min d'analyse */}
+            <AnimatePresence>
+              {elapsedSec >= 120 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.4 }}
+                  style={{ background: 'linear-gradient(135deg, #ecfdf5, #f0fdfa)', borderRadius: 16, border: '1px solid #a7f3d0', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>🔔</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#065f46', marginBottom: 4 }}>
+                      Pas besoin de rester sur cette page
+                    </div>
+                    <div style={{ fontSize: 13, color: '#047857', lineHeight: 1.55 }}>
+                      Votre analyse continue toute seule en arrière-plan. Vous pouvez fermer cette page en toute tranquillité — nous vous prévenons dans votre cloche 🔔 et par e-mail dès que votre rapport est prêt.
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Bandeau message rotatif + compteur de documents */}
             <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {docInfo && (
