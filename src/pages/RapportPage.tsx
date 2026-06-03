@@ -2885,32 +2885,6 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
               );
             })()}
 
-            {/* Situation vendeur (pré-état daté) */}
-            {hasPed && (
-              <>
-                <SectionTitle emoji="👤" text="Situation du vendeur" tooltip="Informations issues du pré-état daté établi par le syndic avant la vente." />
-                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-                    <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés de charges</span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: Number(ped!.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>{Number(ped!.impayes_vendeur) === 0 ? '✓ Vendeur à jour' : `${Number(ped!.impayes_vendeur).toLocaleString('fr-FR')} € impayés`}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped!.honoraires_syndic ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-secondary)' }}>
-                    <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Procédures contre le vendeur</span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: (ped!.procedures_contre_vendeur ?? []).length === 0 ? '#16a34a' : '#dc2626' }}>{(ped!.procedures_contre_vendeur ?? []).length === 0 ? '✓ Aucune' : 'En cours'}</span>
-                  </div>
-                  {ped!.honoraires_syndic && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Frais d'établissement du document</div>
-                        <div style={{ fontSize: 13, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur uniquement — rien à payer pour vous</div>
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{Number(ped!.honoraires_syndic).toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
             {/* Historique charges N-1/N-2 */}
             {/* Restrictions RCP */}
             {restrictions.length > 0 && (
@@ -3294,6 +3268,12 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         const totalAnnuel = hasPed ? (ped!.charges_futures?.montant_annuel || ((Number(ped!.charges_futures?.montant_trimestriel || 0) + Number(ped!.charges_futures?.fonds_travaux_trimestriel || 0)) * 4)) : 0;
         const hasAnyContent = chargesLotNum > 0 || taxeAnnuelle || lot?.impayes_detectes || hasPed;
 
+        // Drapeaux de groupes — pour organiser l'affichage en sections (cartes regroupées)
+        const grpCharges = (chargesLotNum > 0 && !taxeAnnuelle) || (hasPed && !!(ped!.charges_futures?.montant_trimestriel || ped!.charges_futures?.fonds_travaux_trimestriel)) || !!taxeAnnuelle;
+        const grpSignature = hasPed && !!(ped!.fonds_travaux_alur || ped!.fonds_travaux_ancien || ped!.fonds_roulement_acheteur);
+        const grpVendeurCopro = hasPed || !!lot?.impayes_detectes;
+        const grpHistorique = hasPed && (ped!.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles || h.provisions_hors_budget).length > 0;
+
         return (
       <AccordionSection
         title="Finances de votre lot" sub={hasPed ? 'Charges · fonds travaux · historique N-1/N-2' : 'Charges · impayés · historique'} icon="💶"
@@ -3308,6 +3288,13 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             <span>
               <strong>Source</strong> : pré-état daté{ped!.date ? ` du ${safeStr(ped!.date)}` : ''}. Données financières extraites de ce document officiel établi avant la vente.
             </span>
+          </div>
+        )}
+
+        {grpCharges && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-text-secondary)', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const }}>Vos charges</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--color-border-tertiary)' }} />
           </div>
         )}
 
@@ -3383,6 +3370,13 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           </>
         )}
 
+        {grpSignature && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-text-secondary)', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const }}>À régler à la signature</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--color-border-tertiary)' }} />
+          </div>
+        )}
+
         {/* Fonds à verser au vendeur (issu du pré-état daté) */}
         {hasPed && (ped!.fonds_travaux_alur || ped!.fonds_travaux_ancien || ped!.fonds_roulement_acheteur) && (() => {
           const alur = Number(ped!.fonds_travaux_alur || 0);
@@ -3431,6 +3425,13 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           </>
           );
         })()}
+
+        {grpVendeurCopro && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-text-secondary)', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const }}>Vendeur &amp; copropriété</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--color-border-tertiary)' }} />
+          </div>
+        )}
 
         {/* Situation vendeur (issu du pré-état daté) */}
         {hasPed && (
@@ -3516,6 +3517,13 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
               </div>
             </div>
           </>
+        )}
+
+        {grpHistorique && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-text-secondary)', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const }}>Historique</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--color-border-tertiary)' }} />
+          </div>
         )}
 
         {/* Historique charges N-1 / N-2 (issu du pré-état daté) */}
