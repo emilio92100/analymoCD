@@ -2774,42 +2774,50 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <SectionTitle emoji="🏠" text="Identité du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté, de l'état daté ou des appels de charges." />
                 <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
                   {partiesRaw.length > 0 && (
-                    <div className="lot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: (lot?.quote_part_tantiemes || showDetail) ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
-                      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>Lots concernés</span>
-                      <div className="lot-row-value" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ padding: '14px 16px', borderBottom: (lot?.quote_part_tantiemes || showDetail) ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Lots concernés</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {partiesRaw.map((p, i) => {
                           let obj: Record<string, unknown> | null = null;
                           if (typeof p === 'object' && p !== null) obj = p as Record<string, unknown>;
                           else if (typeof p === 'string' && p.startsWith('{')) { try { obj = JSON.parse(p); } catch { /* garde null */ } }
 
                           if (obj) {
-                            const numero = obj.numero_lot ?? obj.numero ?? null;
-                            const tantiemes = obj.tantiemes ?? null;
-                            const designation = (obj.designation ?? obj.description ?? obj.label ?? obj.type ?? '') as string;
-                            const desc = String(designation).toLowerCase();
-                            let icon = '🏠';
-                            if (/cave/.test(desc)) icon = '🗝️';
-                            else if (/parking|box|garage/.test(desc)) icon = '🚗';
-                            else if (/grenier|combles/.test(desc)) icon = '🪜';
-                            else if (/appartement|logement/.test(desc)) icon = '🏠';
-                            else if (/commerce|local/.test(desc)) icon = '🏪';
-                            else if (/terrasse|jardin/.test(desc)) icon = '🌿';
+                            const numeroRaw = obj.numero_lot ?? obj.numero ?? null;
+                            const numero = numeroRaw != null ? String(numeroRaw).replace(/^lot\s+/i, '').trim() : null;
+                            const tantiemes = obj.tantiemes != null ? String(obj.tantiemes) : null;
+                            const designation = String(obj.designation ?? obj.description ?? obj.label ?? obj.type ?? '');
+                            const desc = designation.toLowerCase();
+                            let icon = '🏠'; let typeLabel = 'Lot';
+                            if (/cave/.test(desc)) { icon = '🗝️'; typeLabel = 'Cave'; }
+                            else if (/parking|box|garage|emplacement|stationnement/.test(desc)) { icon = '🚗'; typeLabel = 'Stationnement'; }
+                            else if (/grenier|combles/.test(desc)) { icon = '🪜'; typeLabel = 'Grenier'; }
+                            else if (/appartement|logement|studio/.test(desc)) { icon = '🏠'; typeLabel = 'Appartement'; }
+                            else if (/commerce|local/.test(desc)) { icon = '🏪'; typeLabel = 'Commerce'; }
+                            else if (/terrasse|jardin/.test(desc)) { icon = '🌿'; typeLabel = 'Extérieur'; }
+                            const tantPills = tantiemes ? tantiemes.split(/\s*;\s*/).map(s => s.trim()).filter(Boolean) : [];
                             return (
-                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                                <span style={{ fontSize: 14 }}>{icon}</span>
-                                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                                  {numero ? <>Lot {String(numero)}{designation ? ` · ${designation}` : ''}</> : (designation || '—')}
-                                </span>
-                                {tantiemes && (
-                                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', color: '#2a7d9c', whiteSpace: 'nowrap' }}>
-                                    {String(tantiemes)}
-                                  </span>
+                              <div key={i} style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, padding: '10px 12px', background: 'var(--color-background-secondary)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: 16, lineHeight: 1 }}>{icon}</span>
+                                  {numero && <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-text-primary)' }}>Lot {numero}</span>}
+                                  <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'rgba(42,125,156,0.1)', color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{typeLabel}</span>
+                                </div>
+                                {designation && (
+                                  <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.55, marginTop: 7 }}>{designation}</div>
+                                )}
+                                {tantPills.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 9 }}>
+                                    {tantPills.map((t, j) => (
+                                      <span key={j} style={{ fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 7, background: 'rgba(42,125,156,0.07)', border: '1px solid rgba(42,125,156,0.18)', color: '#2a7d9c' }}>{t}</span>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             );
                           }
                           const label = safeStr(p);
-                          return <div key={i} style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{label}</div>;
+                          return <div key={i} style={{ fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>{label}</div>;
                         })}
                       </div>
                     </div>
