@@ -32,8 +32,9 @@ export async function lancerAnalyseEdge(params: {
   profil: 'rp' | 'invest';
   typeBienDeclare?: TypeBienDeclare | null;
   onProgress?: (p: AnalyseProgress) => void;
+  isPro?: boolean;
 }): Promise<AnalyseClientResult> {
-  const { files, mode, analyseId, profil, typeBienDeclare, onProgress } = params;
+  const { files, mode, analyseId, profil, typeBienDeclare, onProgress, isPro } = params;
 
   try {
     // Tenter getSession, puis getUser en fallback (mobile Safari peut perdre la session localStorage)
@@ -128,7 +129,7 @@ export async function lancerAnalyseEdge(params: {
             return {
               success: false,
               queued: true,
-              queuedMessage: data.userMessage || '⏳ Votre dossier a bien été reçu. Notre service connaît un pic d\'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons par email dès que c\'est terminé.',
+              queuedMessage: data.userMessage || `⏳ Votre dossier a bien été reçu. Notre service connaît un pic d'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons ${isPro ? 'dans votre cloche 🔔' : 'par email'} dès que c'est terminé.`,
               analyseId,
             };
           }
@@ -164,6 +165,7 @@ export async function lancerAnalyseEdge(params: {
       analyseId,
       onProgress: (p) => onProgress?.(p),
       timeoutMs: 1_200_000, // 20 minutes max (MAP-REDUCE découpé peut être long sur gros dossiers)
+      isPro,
     });
 
     if (pollResult.status === 'completed') {
@@ -177,7 +179,7 @@ export async function lancerAnalyseEdge(params: {
       return {
         success: false,
         queued: true,
-        queuedMessage: pollResult.errorMessage || '⏳ Votre dossier a bien été reçu. Notre service connaît un pic d\'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons par email dès que c\'est terminé.',
+        queuedMessage: pollResult.errorMessage || `⏳ Votre dossier a bien été reçu. Notre service connaît un pic d'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons ${isPro ? 'dans votre cloche 🔔' : 'par email'} dès que c'est terminé.`,
         analyseId,
       };
     }
@@ -211,8 +213,9 @@ export async function pollAnalyseStatus(params: {
   analyseId: string;
   onProgress?: (p: AnalyseProgress) => void;
   timeoutMs?: number;
+  isPro?: boolean;
 }): Promise<{ status: 'completed' | 'failed' | 'timeout' | 'queued'; errorMessage?: string }> {
-  const { analyseId, onProgress, timeoutMs = 1_200_000 } = params;
+  const { analyseId, onProgress, timeoutMs = 1_200_000, isPro } = params;
   const start = Date.now();
   let lastMessage = '';
   let lastMessageTime = Date.now();
@@ -291,7 +294,7 @@ export async function pollAnalyseStatus(params: {
         // 🆕 Au-delà de 3 min sur la page de progression, on rassure le user :
         // l'analyse continue en arrière-plan, il peut fermer la page si besoin.
         message: (Date.now() - start > 180_000)
-          ? 'Votre analyse prend un peu plus de temps que d\'habitude. Tout est en ordre — vous pouvez fermer cette page si vous voulez, nous vous prévenons dans votre cloche 🔔 et par e-mail dès qu\'elle est prête.'
+          ? `Votre analyse prend un peu plus de temps que d'habitude. Tout est en ordre — vous pouvez fermer cette page si vous voulez, nous vous prévenons dans votre cloche 🔔${isPro ? '' : ' et par e-mail'} dès qu'elle est prête.`
           : (data.progress_message || 'Analyse en cours…'),
       });
     }
