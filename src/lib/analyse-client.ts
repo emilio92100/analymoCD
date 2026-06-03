@@ -163,7 +163,7 @@ export async function lancerAnalyseEdge(params: {
     const pollResult = await pollAnalyseStatus({
       analyseId,
       onProgress: (p) => onProgress?.(p),
-      timeoutMs: 600_000, // 10 minutes max
+      timeoutMs: 1_200_000, // 20 minutes max (MAP-REDUCE découpé peut être long sur gros dossiers)
     });
 
     if (pollResult.status === 'completed') {
@@ -212,7 +212,7 @@ export async function pollAnalyseStatus(params: {
   onProgress?: (p: AnalyseProgress) => void;
   timeoutMs?: number;
 }): Promise<{ status: 'completed' | 'failed' | 'timeout' | 'queued'; errorMessage?: string }> {
-  const { analyseId, onProgress, timeoutMs = 600_000 } = params;
+  const { analyseId, onProgress, timeoutMs = 1_200_000 } = params;
   const start = Date.now();
   let lastMessage = '';
   let lastMessageTime = Date.now();
@@ -234,19 +234,28 @@ export async function pollAnalyseStatus(params: {
 
     console.log('[VERIMO-DEBUG] Polling tick — status reçu:', data.status, '— message:', data.progress_message);
 
-    // Détecter stagnation : même message depuis >3min = Edge Function morte
+    // ── Le statut en base est la SEULE source de vérité ──
+    // Si le backend (edge function ou watchdog) a marqué l'analyse failed, on le
+    // reflète. Le frontend ne DÉCIDE JAMAIS d'un échec lui-même : avec le MAP-REDUCE
+    // découpé, une analyse peut rester longtemps en 'processing' tout en étant vivante
+    // côté serveur. Marquer un faux 'failed' depuis le navigateur créait l'incohérence
+    // "Non généré" alors que le rapport finissait par arriver.
+    if (data.status === 'failed') {
+      return { status: 'failed', errorMessage: data.progress_message || undefined };
+    }
+
+    // Suivi de la fraîcheur du message (UX uniquement, ne force plus aucun échec).
     if (data.progress_message && data.progress_message !== lastMessage) {
       lastMessage = data.progress_message;
       lastMessageTime = Date.now();
     }
     const stagnationMs = Date.now() - lastMessageTime;
-    // Ne jamais forcer failed si Claude est en train de répondre
-    // Laisser 15 minutes pour les gros dossiers (analyser-run tourne en background)
+    // Stagnation prolongée : on NE force PAS failed (le backend/watchdog s'en charge).
+    // On bascule en mode "queued" rassurant : l'analyse continue en arrière-plan,
+    // le client sera prévenu par la cloche + email.
     const stagnationLimit = 900_000; // 15 minutes
     if (stagnationMs > stagnationLimit && data.status !== 'completed') {
-      const msg = 'L\'analyse a pris trop de temps. Votre crédit a été remboursé. Réessayez si le problème persiste.';
-      await supabase.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
-      return { status: 'failed', errorMessage: msg };
+      return { status: 'queued' };
     }
 
     // ── Calcul du % de progression ──────────────────────────────
@@ -263,16 +272,13 @@ export async function pollAnalyseStatus(params: {
 
       let percent: number;
       if (data.progress_current && data.progress_current > 0) {
-        // 🔧 PATCH PROGRESSION : l'edge function MAP-REDUCE remonte désormais progress_current
-        // en temps réel (1 par doc lu, +1 consolidation, +1 synthèse, sur progress_total = nbDocs+2).
-        // On mappe ça sur 40→98% pour une barre HONNÊTE qui va jusqu'au bout
-        // (avant : progress_current restait à 0 → on plafonnait à 90% via la simulation temporelle).
-        percent = Math.min(98, 40 + Math.floor((data.progress_current / data.progress_total) * 58));
+        // Cas normal : progress_current remonte (fin d'analyse)
+        percent = Math.min(90, 40 + Math.floor((data.progress_current / data.progress_total) * 50));
       } else if (analysingStart) {
-        // Filet (docs uploadés mais compteur pas encore posé) : progression temporelle douce 60 → 88%.
+        // Cas analyse IA en cours : progression temporelle 60 → 90% étalée sur ~180s
         const elapsed = Date.now() - analysingStart;
         const ramp = Math.min(1, elapsed / 180_000); // 0 à 1 sur 3 minutes
-        percent = Math.min(88, 60 + Math.floor(ramp * 28));
+        percent = Math.min(90, 60 + Math.floor(ramp * 30));
       } else {
         percent = 55;
       }
@@ -282,10 +288,10 @@ export async function pollAnalyseStatus(params: {
         current: data.progress_current || 0,
         total: data.progress_total || 1,
         percent,
-        // 🆕 Au-delà de 4 min sur la page de progression, on rassure le user :
+        // 🆕 Au-delà de 3 min sur la page de progression, on rassure le user :
         // l'analyse continue en arrière-plan, il peut fermer la page si besoin.
-        message: (Date.now() - start > 240_000)
-          ? 'Votre analyse prend un peu plus de temps que d\'habitude. Tout est en ordre — vous pouvez fermer cette page si vous voulez, nous vous prévenons dans votre cloche 🔔 dès qu\'elle est prête.'
+        message: (Date.now() - start > 180_000)
+          ? 'Votre analyse prend un peu plus de temps que d\'habitude. Tout est en ordre — vous pouvez fermer cette page si vous voulez, nous vous prévenons dans votre cloche 🔔 et par e-mail dès qu\'elle est prête.'
           : (data.progress_message || 'Analyse en cours…'),
       });
     }
