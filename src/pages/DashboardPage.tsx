@@ -324,6 +324,7 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
                 notifications.slice(0, 10).map(n => {
                   const isAnalysis = !!n.analysisId;
                   const rawMsg = (n as unknown as Record<string, string>).message || '';
+                  const isUpdate = isAnalysis && (/mis à jour/i.test(n.title || '') || /mis à jour/i.test(rawMsg));
                   const bienLabel = rawMsg.replace(/\s*—\s*(consulter le rapport|voir le rapport mis à jour)\s*$/i, '').trim();
                   return (
                   <button key={n.id}
@@ -340,7 +341,7 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, color: '#0f172a' }}>
-                        {isAnalysis ? 'Rapport prêt' : n.title}
+                        {isAnalysis ? (isUpdate ? 'Rapport mis à jour' : 'Rapport prêt') : n.title}
                       </div>
                       <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{isAnalysis ? (bienLabel || n.title) : rawMsg}</div>
                     </div>
