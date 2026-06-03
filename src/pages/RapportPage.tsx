@@ -3874,6 +3874,33 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
   );
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Diagnostics essentiels manquants — SOURCE UNIQUE (anti-dérive).
+   1) Liste PRÉCISE déjà calculée par le moteur (rapport.documents_manquants :
+      DPE, ERP, mesurage Carrez, électrique, amiante, plomb/CREP, audit, assainissement).
+   2) Repli (anciens rapports sans documents_manquants) : si AUCUN diagnostic du lot
+      (perimetre lot_privatif) n'est présent, on affiche un item générique.
+   Renvoie la liste des diagnostics MANQUANTS (vide = rien à réclamer). */
+function getDiagsEssentielsManquants(rapport: Record<string, unknown>): { label: string; tooltip: string | null }[] {
+  const docsManquants = Array.isArray(rapport.documents_manquants) ? (rapport.documents_manquants as string[]) : [];
+  const diagItems = docsManquants
+    .filter(s => typeof s === 'string' && /DPE|ERP|risques|carrez|électr|electr|amiante|plomb|crep|audit|assainiss/i.test(s))
+    .map(s => ({ label: s, tooltip: null as string | null }));
+  if (diagItems.length > 0) return diagItems;
+
+  const diags = Array.isArray(rapport.diagnostics) ? (rapport.diagnostics as Array<Record<string, unknown>>) : [];
+  const aucunDiagLot = !diags.some(d => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise');
+  if (!aucunDiagLot) return [];
+  const typeBien = String(rapport.type_bien || '');
+  const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
+  return [{
+    label: isCopro ? 'Diagnostics privatifs (DDT)' : 'DDT complet (Dossier Diagnostic Technique)',
+    tooltip: isCopro
+      ? "Diagnostics propres à votre lot (DPE du lot, électricité, gaz, amiante, Carrez…). Un DPE d'immeuble ou un diagnostic de parties communes ne suffit pas."
+      : 'DPE, électricité, gaz, amiante, plomb, termites…',
+  }];
+}
+
 /* ══════════════════════════════════
    ONGLET DOCUMENTS
 ══════════════════════════════════ */
@@ -3899,14 +3926,10 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
   const docsAnalysesTypes = docsAnalyses.map(d => safeStr(d.type));
   const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
   const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
-  const anneeNum = rapport.annee_construction ? parseInt(rapport.annee_construction) : null;
-
-  // Présence RÉELLE des diagnostics du lot (perimetre lot_privatif), alignée sur la notation /4.
-  // On ne se fie PLUS à la simple existence d'un fichier DPE/diagnostic : un DPE d'immeuble ou
-  // un diagnostic de parties communes ne couvre pas les diagnostics privatifs du lot.
-  const diagsPrivProvided = (rapport.diagnostics || []).some(
-    (d: Record<string, unknown>) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
-  );
+  // Diagnostics essentiels manquants : liste précise du moteur (DPE, ERP, électrique, amiante…),
+  // avec repli générique. Source unique : getDiagsEssentielsManquants (pas de duplication de règles).
+  const diagsManquantsEssentiels = getDiagsEssentielsManquants(rapport as Record<string, unknown>)
+    .map(d => ({ label: d.label, present: false, tooltip: d.tooltip }));
 
   // Deadline 7 jours
   const deadlineStr = rapport.regeneration_deadline;
@@ -3923,10 +3946,10 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
     { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null },
     { label: 'Règlement de copropriété', present: hasDoc(['REGLEMENT_COPRO']), tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' },
     { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' },
-    { label: 'Diagnostics privatifs (DDT)', present: diagsPrivProvided, tooltip: `Diagnostics propres à votre lot (DPE du lot, électricité, gaz, amiante, Carrez…). Un DPE d'immeuble ou un diagnostic de parties communes ne couvre pas ces diagnostics. Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains peuvent ne pas être obligatoires.` },
+    ...diagsManquantsEssentiels,
     { label: 'Appel de charges / Appel de fonds', present: hasDoc(['APPEL_CHARGES']), tooltip: null },
   ] : [
-    { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' },
+    ...diagsManquantsEssentiels,
     { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), tooltip: null },
   ];
 
@@ -4171,20 +4194,17 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backU
 
   const typeBien = safeStr(rapport.type_bien);
   const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
-  const anneeNum = rapport.annee_construction ? parseInt(safeStr(rapport.annee_construction)) : null;
-  const diagsPrivProvidedModal = ((rapport.diagnostics as Array<Record<string, unknown>>) || []).some(
-    (d) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
-  );
+  const diagsManquantsModal = getDiagsEssentielsManquants(rapport).map(d => ({ emoji: '🗂', label: d.label, tooltip: d.tooltip }));
 
-  // Identiques à TabDocuments
+  // Identiques à TabDocuments (diagnostics = liste précise du moteur via getDiagsEssentielsManquants)
   const docsEssentielsManquants = isCopro ? [
     !hasDoc(['PV_AG']) ? { emoji: '📋', label: '3 derniers PV d\'Assemblée Générale', tooltip: null } : null,
     !hasDoc(['REGLEMENT_COPRO']) ? { emoji: '📜', label: 'Règlement de copropriété', tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' } : null,
     !hasDoc(['CARNET_ENTRETIEN']) ? { emoji: '📓', label: 'Carnet d\'entretien de l\'immeuble', tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' } : null,
-    !diagsPrivProvidedModal ? { emoji: '🗂', label: `Diagnostics privatifs (DDT)`, tooltip: `Diagnostics propres à votre lot (DPE du lot, électricité, gaz, amiante, Carrez…). Un DPE d'immeuble ou un diagnostic de parties communes ne couvre pas ces diagnostics. Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains peuvent ne pas être obligatoires.` } : null,
+    ...diagsManquantsModal,
     !hasDoc(['APPEL_CHARGES']) ? { emoji: '💶', label: 'Appel de charges / Appel de fonds', tooltip: null } : null,
   ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [
-    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: 'DDT complet (Dossier Diagnostic Technique)', tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' } : null,
+    ...diagsManquantsModal,
     !hasDoc(['TAXE_FONCIERE']) ? { emoji: '🏛', label: 'Taxe foncière', tooltip: null } : null,
   ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[];
 
@@ -4816,19 +4836,10 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   const hasDocType = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
   const typeBien = safeStr(rapport.type_bien);
   const isCoproForMissing = typeBien === 'appartement' || typeBien === 'maison_copro';
-  const diagsPrivProvidedTop = (rapport.diagnostics || []).some(
-    (d: Record<string, unknown>) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
-  );
-  const missingEssentielsCount = isCoproForMissing ? [
-    !hasDocType(['PV_AG']),
-    !hasDocType(['REGLEMENT_COPRO']),
-    !hasDocType(['CARNET_ENTRETIEN']),
-    !diagsPrivProvidedTop,
-    !hasDocType(['APPEL_CHARGES']),
-  ].filter(Boolean).length : [
-    !diagsPrivProvidedTop,
-    !hasDocType(['TAXE_FONCIERE']),
-  ].filter(Boolean).length;
+  const baseEssentielsManquants = isCoproForMissing
+    ? [!hasDocType(['PV_AG']), !hasDocType(['REGLEMENT_COPRO']), !hasDocType(['CARNET_ENTRETIEN']), !hasDocType(['APPEL_CHARGES'])].filter(Boolean).length
+    : [!hasDocType(['TAXE_FONCIERE'])].filter(Boolean).length;
+  const missingEssentielsCount = baseEssentielsManquants + getDiagsEssentielsManquants(rapport as Record<string, unknown>).length;
 
   // Détection présence d'un compromis dans l'analyse complète
   const lotAcheteObj = (rapport as Record<string, unknown>).lot_achete as Record<string, unknown> | undefined;
