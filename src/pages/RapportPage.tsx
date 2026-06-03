@@ -2183,7 +2183,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         {(vie?.appels_fonds_exceptionnels?.length ?? 0) > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 6 }}>
-              <Tooltip text="Somme demandée aux copropriétaires en dehors des charges habituelles, souvent pour financer des travaux imprévus.">⚠ Appels de fonds exceptionnels votés en AG</Tooltip>
+              <Tooltip text="Issus des PV d'AG : sommes votées en assemblée et appelées aux copropriétaires en plus du budget annuel, pour financer des travaux ou opérations décidés (réglées ou à venir selon l'échéance).">⚠ Appels de fonds exceptionnels votés en AG</Tooltip>
             </div>
             {vie!.appels_fonds_exceptionnels!.map((a, i) => {
               const obj = typeof a === 'string' ? { motif: a } : a as Record<string, unknown>;
@@ -4528,6 +4528,7 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
     diagnostics: (r.diagnostics as Array<Record<string, unknown>>) || [],
     documents_analyses: (r.documents_analyses as Array<Record<string, unknown>>) || [],
     dpe_recommandations: (r.dpe_recommandations as Record<string, unknown>) ?? null,
+    pre_etat_date: (r.pre_etat_date as Record<string, unknown>) ?? null,
   };
 }
 
