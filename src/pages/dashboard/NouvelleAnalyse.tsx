@@ -249,8 +249,14 @@ export default function NouvelleAnalyse() {
       setError(blocked.map(b => `"${b.name}" : ${b.reason}`).join('\n\n'));
     }
     if (valid.length > 0) {
-      const allFiles = [...files, ...valid].slice(0, plan?.max || 1);
-      setFiles(allFiles);
+      const limit = plan?.max || 1;
+      const combined = [...files, ...valid];
+      setFiles(combined.slice(0, limit));
+      if (combined.length > limit) {
+        const ignored = combined.length - limit;
+        const msgLimite = `Limite de ${limit} documents atteinte pour cette analyse. ${ignored} fichier${ignored > 1 ? 's' : ''} en trop n'${ignored > 1 ? 'ont' : 'a'} pas été ajouté${ignored > 1 ? 's' : ''}.`;
+        setError(prev => prev ? `${prev}\n\n${msgLimite}` : msgLimite);
+      }
     }
   };
 
