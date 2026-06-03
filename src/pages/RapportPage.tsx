@@ -3068,10 +3068,12 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             const renderEtiquette = (e?: EtiquetteProj, label?: string) => {
               if (!e?.classe) return null;
               const c = String(e.classe).toUpperCase();
+              const col = DPE_COLORS[c] || '#94a3b8';
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: DPE_COLORS[c] || '#94a3b8', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700 }}>{c}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'center', lineHeight: 1.3 }}>{label}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 64 }}>
+                  <div style={{ width: 54, height: 54, borderRadius: '50%', background: col, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, boxShadow: `0 4px 12px ${col}55`, border: '3px solid #fff' }}>{c}</div>
+                  {(e.kwh_m2 != null) && <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{e.kwh_m2} kWh/m²</div>}
+                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'center', lineHeight: 1.3, fontWeight: 500 }}>{label}</div>
                 </div>
               );
             };
@@ -3109,20 +3111,28 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                       if (!evo) return null;
                       const hasEvo = evo.actuelle?.classe || evo.apres_pack_1?.classe || evo.apres_pack_1_et_2?.classe;
                       if (!hasEvo) return null;
+                      const flecheStyle = {
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 30, height: 30, borderRadius: '50%', background: '#fff',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.10)', flexShrink: 0,
+                        fontSize: 16, color: '#0d9488', fontWeight: 700,
+                      } as const;
                       return (
-                        <div style={{ background: 'var(--color-background-secondary)', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
-                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600, marginBottom: 12 }}>Évolution projetée de l'étiquette</div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ background: 'linear-gradient(135deg, #f0fdfa, #ecfeff)', borderRadius: 16, padding: '20px 18px', marginBottom: 16, border: '0.5px solid #cffafe' }}>
+                          <div style={{ fontSize: 12.5, color: '#0f766e', fontWeight: 700, marginBottom: 16, textTransform: 'uppercase' as const, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{ fontSize: 15 }}>📈</span> Évolution projetée de l'étiquette
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 10, flexWrap: 'wrap' as const }}>
                             {renderEtiquette(evo.actuelle, 'Aujourd\'hui')}
                             {evo.apres_pack_1?.classe && (
                               <>
-                                <span style={{ fontSize: 18, color: '#cbd5e1' }}>→</span>
+                                <div style={{ ...flecheStyle, marginTop: 12 }}>→</div>
                                 {renderEtiquette(evo.apres_pack_1, 'Après pack 1')}
                               </>
                             )}
                             {evo.apres_pack_1_et_2?.classe && (
                               <>
-                                <span style={{ fontSize: 18, color: '#cbd5e1' }}>→</span>
+                                <div style={{ ...flecheStyle, marginTop: 12 }}>→</div>
                                 {renderEtiquette(evo.apres_pack_1_et_2, 'Après pack 1 + 2')}
                               </>
                             )}
@@ -3148,29 +3158,29 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                           : 'Pour atteindre une performance optimale';
 
                       return [
-                        { key: 'pack_1' as const, pack: recos!.pack_1, label: 'Pack 1 — Travaux essentiels', accent: '#2a7d9c', badgeBg: '#e0f2fe', badgeColor: '#0369a1', sub: subPack1 },
-                        { key: 'pack_2' as const, pack: recos!.pack_2, label: 'Pack 2 — Travaux à envisager', accent: '#64748b', badgeBg: '#f1f5f9', badgeColor: '#475569', sub: subPack2 },
-                      ].map(({ key, pack, label, accent, badgeBg, badgeColor, sub }) => {
+                        { key: 'pack_1' as const, pack: recos!.pack_1, label: 'Pack 1 — Travaux essentiels', accent: '#0d9488', badgeBg: '#ccfbf1', badgeColor: '#0f766e', headerBg: '#f0fdfa', sub: subPack1 },
+                        { key: 'pack_2' as const, pack: recos!.pack_2, label: 'Pack 2 — Travaux à envisager', accent: '#64748b', badgeBg: '#f1f5f9', badgeColor: '#475569', headerBg: '#f8fafc', sub: subPack2 },
+                      ].map(({ key, pack, label, accent, badgeBg, badgeColor, headerBg, sub }) => {
                         if (!pack || !pack.travaux || pack.travaux.length === 0) return null;
                         const cout = fmtEuros(pack.cout_min, pack.cout_max);
                         return (
-                          <div key={key} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
+                          <div key={key} style={{ background: '#fff', border: '1px solid #edf2f7', borderLeft: `4px solid ${accent}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                             {/* En-tête du pack */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '14px 16px', background: headerBg, borderBottom: '1px solid #f1f5f9' }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ display: 'inline-block', background: badgeBg, color: badgeColor, padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 5 }}>{label}</span>
-                                <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.5, fontWeight: 600 }}>{sub}</div>
+                                <span style={{ display: 'inline-block', background: badgeBg, color: badgeColor, padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 6 }}>{label}</span>
+                                <div style={{ fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5, fontWeight: 600 }}>{sub}</div>
                               </div>
                               {cout && (
-                                <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
-                                  <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 2 }}>Montant estimé</div>
-                                  <div style={{ fontSize: 17, fontWeight: 800, color: accent }}>{cout}</div>
+                                <div style={{ textAlign: 'right' as const, flexShrink: 0, background: '#fff', borderRadius: 10, padding: '8px 12px', border: `1px solid ${accent}33` }}>
+                                  <div style={{ fontSize: 9.5, color: 'var(--color-text-secondary)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 2 }}>Montant estimé</div>
+                                  <div style={{ fontSize: 17, fontWeight: 800, color: accent, whiteSpace: 'nowrap' as const }}>{cout}</div>
                                 </div>
                               )}
                             </div>
 
                             {/* Liste des travaux */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px' }}>
                               {pack.travaux.map((t, i) => (
                                 <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                                   <div style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{POSTE_ICONS[t.poste ?? 'autre'] ?? '🔧'}</div>
