@@ -3774,26 +3774,29 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
           </span>
           <span style={{ display: 'inline-block', transform: showGraviteInfo ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', fontSize: 11, color: 'var(--color-text-secondary)' }}>▶</span>
         </button>
-        <div style={{ display: 'grid', gridTemplateRows: showGraviteInfo ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
+          <div style={{ display: 'grid', gridTemplateRows: showGraviteInfo ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
           <div style={{ overflow: 'hidden', minHeight: 0 }}>
-            <div style={{ padding: '4px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <p style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>
-                Les procédures sont classées selon leur <strong>impact concret sur vous, l'acheteur</strong> — coût potentiel, risque juridique ou blocage — y compris sur le long terme. Ce n'est pas la gravité « en soi » du litige, mais ce qu'il peut vous coûter ou impliquer.
+            <div style={{ padding: '4px 16px 18px', display: 'flex', flexDirection: 'column', gap: 11 }}>
+              <p style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: '0 2px 4px' }}>
+                Les procédures sont classées selon leur <strong>impact concret sur vous, l'acheteur</strong> — coût potentiel, risque juridique ou blocage, y compris sur le long terme. Plus la gravité est élevée, plus elle <strong>pèse sur la note /20</strong> du bien.
               </p>
               {[
-                { emoji: '⚖️', dot: '#dc2626', titre: 'Gravité élevée', desc: "Impact financier ou juridique direct et potentiellement lourd : appel de fonds important à venir, contentieux bloquant un gros chantier, litige portant sur le lot vendu, ou procédure pesant durablement sur les finances de la copropriété." },
-                { emoji: '📋', dot: '#d97706', titre: 'Gravité modérée', desc: "Procédure réelle mais à l'impact incertain ou indirect : contentieux en cours sans montant connu, procédure sans chiffrage clair, tension sans coût établi pour vous." },
-                { emoji: '📄', dot: '#16a34a', titre: 'Gravité faible', desc: "Pas d'impact financier ou juridique identifié pour vous : procédure déjà résolue, ou litige n'impliquant pas significativement la copropriété." },
+                { emoji: '⚖️', dot: '#dc2626', bg: '#fef2f2', border: '#fecaca', titre: 'Gravité élevée', points: '−2 pts', desc: "Impact financier ou juridique direct et potentiellement lourd : appel de fonds important à venir, contentieux bloquant un gros chantier, litige portant sur le lot vendu, ou procédure pesant durablement sur les finances de la copropriété." },
+                { emoji: '📋', dot: '#d97706', bg: '#fffbeb', border: '#fed7aa', titre: 'Gravité modérée', points: '−1 pt', desc: "Procédure réelle mais à l'impact incertain ou indirect : contentieux en cours sans montant connu, procédure sans chiffrage clair, tension sans coût établi pour vous." },
+                { emoji: '📄', dot: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', titre: 'Gravité faible', points: '−0,5 pt', desc: "Pas d'impact financier ou juridique identifié pour vous : procédure déjà résolue, ou litige n'impliquant pas significativement la copropriété." },
               ].map((niv, i) => (
-                <div key={i} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{niv.emoji}</span>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: niv.dot, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>{niv.titre}</span>
-                    </div>
-                    <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.55, margin: 0 }}>{niv.desc}</p>
+                <div key={i} style={{ background: niv.bg, border: `1px solid ${niv.border}`, borderRadius: 12, padding: '13px 15px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                      <span style={{ fontSize: 17 }}>{niv.emoji}</span>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: niv.dot, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-text-primary)' }}>{niv.titre}</span>
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: niv.dot, background: '#fff', border: `1px solid ${niv.border}`, borderRadius: 20, padding: '3px 11px', whiteSpace: 'nowrap' as const }}>
+                      {niv.points} sur la note
+                    </span>
                   </div>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.55, margin: 0, paddingLeft: 26 }}>{niv.desc}</p>
                 </div>
               ))}
             </div>
