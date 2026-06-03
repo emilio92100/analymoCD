@@ -790,6 +790,18 @@ function TabCompromis({ rapport, isShared, hideVerimoBranding }: { rapport: Rapp
   );
 }
 
+/* Filtre les "travaux évoqués" pour ne garder que ceux de la copropriété
+   (retire les items de diagnostic / rénovation privatifs : DPE, isolation, fenêtres, packs...). */
+const MOTS_DIAGS_PRIVATIFS = ['dpe', 'diagnostic', 'isolation mur', 'isolation plafond', 'double vitrage', 'fenêtre', 'electricit', 'gaz intérieur', 'amiante lot', 'plomb lot', 'pack 1', 'pack 2', 'rénovation énergétique'];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function filterTravauxEvoquesCopro(arr: any[] | null | undefined): any[] {
+  return (arr ?? []).filter(t => {
+    const label = ((t.label as string) || '').toLowerCase();
+    const precision = ((t.precision as string) || '').toLowerCase();
+    return !MOTS_DIAGS_PRIVATIFS.some(m => label.includes(m) || precision.includes(m));
+  });
+}
+
 /* ══════════════════════════════════
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
@@ -807,7 +819,7 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
   const dpeClasse = dpe ? safeStr(dpe.resultat)?.match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
   const dpeColors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
   const totalTravauxVotes = rapport.travaux_votes.reduce((acc: number, t: Record<string, unknown>) => acc + (typeof t.montant_estime === 'number' ? t.montant_estime : 0), 0);
-  const nbTravauxEvoques = rapport.travaux_a_prevoir.length;
+  const nbTravauxEvoques = filterTravauxEvoquesCopro(rapport.travaux_a_prevoir).length;
   const nbProcedures = rapport.procedures.length;
   const nbLots = (finances?.nombre_lots as number | null) || ((rapport as Record<string, unknown>).nombre_lots as number | null);
   const categories = rapport.categories as Record<string, { note: number; note_max: number }>;
@@ -1629,12 +1641,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const travaux_realises = rapport.travaux_realises;
   const travaux_votes = rapport.travaux_votes;
   const travaux_evoques_raw = rapport.travaux_a_prevoir;
-  const MOTS_DIAGS_PRIVATIFS = ['dpe', 'diagnostic', 'isolation mur', 'isolation plafond', 'double vitrage', 'fenêtre', 'electricit', 'gaz intérieur', 'amiante lot', 'plomb lot', 'pack 1', 'pack 2', 'rénovation énergétique'];
-  const travaux_evoques = travaux_evoques_raw.filter(t => {
-    const label = ((t.label as string) || '').toLowerCase();
-    const precision = ((t.precision as string) || '').toLowerCase();
-    return !MOTS_DIAGS_PRIVATIFS.some(m => label.includes(m) || precision.includes(m));
-  });
+  const travaux_evoques = filterTravauxEvoquesCopro(travaux_evoques_raw);
 
   const diagsCommuns = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'parties_communes' || d.perimetre === 'immeuble');
   const hasDiagAlert = diagsCommuns.some((d: Record<string, unknown>) => d.alerte);
@@ -2620,7 +2627,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
   const fondsAlurNum = fondsAlurRaw ? (isNaN(Number(String(fondsAlurRaw).replace(/[^0-9.]/g, ''))) ? null : Number(String(fondsAlurRaw).replace(/[^0-9.]/g, ''))) : null;
 
   // Travaux évoqués (pour rappel)
-  const travauxEvoques = rapport.travaux_a_prevoir ?? [];
+  const travauxEvoques = filterTravauxEvoquesCopro(rapport.travaux_a_prevoir ?? []);
 
   // Restrictions usage
   const restrictions = ((lot?.restrictions_usage as string[]) ?? []).filter(
