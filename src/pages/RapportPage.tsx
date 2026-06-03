@@ -3171,7 +3171,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
       )}
 
       {/* ── DIAGNOSTICS PRIVATIFS ── */}
-      {(autresDiags.length > 0 || hasDiagAlert) && (
+      {(autresDiags.length > 0 || hasDiagAlert || diagsPriv.some((d: Record<string, unknown>) => d.type === 'CARREZ')) && (
         <AccordionSection
           title="Diagnostics privatifs" sub="Électricité · gaz · amiante · plomb · termites · Carrez" icon="🔍"
           status={hasDiagAlert ? 'alert' : 'ok'}
@@ -3201,7 +3201,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
           {/* Surface Carrez */}
           {(() => {
-            const carrez = autresDiags.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
+            // Le CARREZ est exclu de `autresDiags` (il a son bloc dédié ci-dessous),
+            // donc on le récupère dans la liste complète des diagnostics privatifs.
+            const carrez = diagsPriv.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
             if (!carrez) return null;
             const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
             const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
