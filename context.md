@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 02 juin 2026
+# VERIMO — Contexte projet — 03 juin 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -128,7 +128,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 | Nom | Rôle | Version |
 |-----|------|---------|
 | `analyser` | Lance une analyse — gère la queue Anthropic 503 | v8 |
-| `analyser-run` | Worker qui traite l'analyse en background | **v13** (26 mai — règle fiscale frais notaire corrigée) |
+| `analyser-run` | Worker qui traite l'analyse en background. **Mode complet refondu en MAP-REDUCE multi-invocations (03 juin)** — voir section dédiée. Modes `document` (simple) et `complement` inchangés (single appel). | **v18** (03 juin — MAP-REDUCE découpé) |
 | `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) | — |
 | `comparer` | Compare 2 ou 3 rapports | — |
 | `admin-user-management` | Actions admin (create, invite, delete, reset password, create_pro_demo enrichi, activate_pro_demo, unlock_agence_subscription) — **modifié 28 mai pour création auto entité agence** | **v3** |
@@ -387,60 +387,64 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ---
 
-## 🎯 CHANTIER MAJEUR — Fiabiliser l'analyse complète via MAP-REDUCE (cadré le 02 juin 2026, à lancer en session dédiée) ⭐⭐⭐
+## 🎯 MAP-REDUCE analyse complète — ✅ RÉALISÉ ET DÉPLOYÉ (03 juin 2026) ⭐⭐⭐
 
-> **Déclencheur** : Alex démarre le démarchage des agences. Il veut un rapport d'analyse complète irréprochable, sans objection possible (sinon perte de crédibilité). Préoccupation centrale : la fiabilité quand il y a beaucoup de documents (6 à 8 docs de ~30 pages chacun).
+> Le chantier cadré le 02 juin a été réalisé le 03 juin, **mais avec une architecture différente de celle initialement prévue** (raison ci-dessous). Le mode complet fonctionne désormais en MAP-REDUCE découpé en plusieurs invocations. Modes `document` (analyse simple 1 doc) et `complement` (compléter dossier) **strictement inchangés** (toujours single appel).
 
-### État actuel du moteur (vérifié dans le code, pas supposé)
-- Flow : `analyser` (accueil rapide : auth + crédits, upload des fichiers sur l'API Files Anthropic avec relances 503/429, file d'attente `queued` + cron `analyser-retry` si surcharge, répond 202 immédiatement) → passe la main à `analyser-run` (worker qui tourne **en arrière-plan** via `EdgeRuntime.waitUntil`).
-- Analyse complète = **UN SEUL appel** à `claude-sonnet-4-6` avec **TOUS les docs d'un coup** (`max_tokens` 64000) → un seul gros JSON agrégé (schéma `vie_copropriete` / `lot_achete` / `diagnostics` / `documents_analyses` / `categories` ...).
-- **Score /20 calculé EN CODE** (fonction `recalculerCategories`, appelée après l'IA, écrase le score du modèle). Critères = ceux de la page /methode : Travaux /5, Procédures /4, Finances /4, Diags privatifs /4, Diags communs /3.
-- **Détection des diags obligatoires manquants EN CODE** (fonction `validateDiagsManquants` → remplit `documents_manquants` + `points_vigilance`, ex : « Le mesurage loi Carrez n'a pas été détecté… Demandez-le au vendeur »). Couvre DPE, ERP, Carrez, électrique, amiante (<1997), plomb (<1949), audit énergétique, assainissement, termites.
-- NB : le plafond **5 docs concerne UNIQUEMENT le mode « compléter dossier »** (ajout de docs à un rapport existant), PAS l'analyse complète initiale.
+### Pourquoi l'architecture finale diffère du plan initial
+- **Le plan prévoyait** : MAP = JSON par type (réutiliser les prompts de l'analyse simple) + REDUCE hybride code/IA, le tout dans une seule fonction.
+- **Le vrai bloquant rencontré** : la limite **WallClockTime de Supabase** (~6-7 min par invocation). Faire MAP + REDUCE de 6-12 docs dans UNE invocation dépassait cette limite (CPU quasi nul, c'est l'attente des appels IA qui consomme le temps). Découper le code en sous-fonctions n'y change RIEN : seule une **nouvelle invocation** remet le chrono à zéro.
+- **Décision** : MAP-REDUCE découpé en **plusieurs invocations** qui se ré-invoquent via `fetch` self-invoke (sur la propre URL de la fonction, avec service-role key).
+- **MAP = résumé TEXTE LIBRE cadré** (et non JSON par type) : chaque doc lu seul → compte rendu textuel exhaustif. Validé en prod : le texte libre capte parfaitement le structuré (détail Carrez 7 pièces + packs DPE D→B présents dans le JSON final).
+- **REDUCE = prompt complet original** (`buildSystemPrompt('complete')`) qui consolide les résumés texte + post-traitement déterministe (`recalculerCategories` + `validateDiagsManquants`).
 
-### Limite identifiée (= la raison du chantier)
-Tout lire d'un coup provoque l'effet « noyé dans la masse » (lost in the middle) : avec beaucoup de docs, le modèle peut louper un chiffre précis enfoui ; plafond de contexte ~200K tokens ; passe unique fragile. → **Fiable pour 1-4 docs, moins fiable à 6-8 docs.** (Indice : la relance ciblée DPE/Carrez déjà présente prouve que la passe unique loupe parfois.)
+### Flux v18 effectivement déployé
+- Handler route selon `body.phase` : pas de phase → chemin normal (mode complet branche vers `runPhaseMap`) ; `phase:'map'` + `mapOffset` → relance MAP à l'offset ; `phase:'reduce'` → `runPhaseReduce`. **Frontend inchangé** (appelle sans phase).
+- **MAP découpé en TRANCHES de 3 docs/invocation** (`MAP_TRANCHE = 3`). Chaque invocation lit 3 docs (en parallèle), supprime chaque PDF de l'API au fil de l'eau (RGPD), accumule les résumés dans la colonne `map_resultats` (jsonb), met à jour la progression, puis : s'il reste des docs → self-invoke `{phase:'map', mapOffset:+3}` ; sinon → self-invoke `{phase:'reduce'}`. Borne le temps quel que soit le nb de docs (testé OK à 12 docs : 4 invocations MAP 1-3/4-6/7-9/10-12 puis REDUCE).
+- **REDUCE** : relit `map_resultats`, empile les résumés, 1 appel `callAI` avec le prompt complet, post-traitement déterministe, écrit le rapport final dans `result`, puis **efface `map_resultats`** (nettoyage), notifie (cloche + email).
+- **Pourquoi 3 docs et pas 1** : 3 = meilleur compromis (moins de self-invoke = maillon le moins éprouvé, plus rapide, 99 % de la sécurité du 1).
 
-### Solution décidée = MAP-REDUCE
-- **MAP** : 1 appel par document, en **réutilisant les prompts + JSON par type de l'analyse SIMPLE déjà en place** (DDT, PV_AG, COMPROMIS, etc.). Lancés **par petits paquets (~3 en parallèle)**, pas tous d'un coup (risque rate-limit), pas un par un (trop lent). Relances 429/529 conservées.
-- **REDUCE** : consolider les N JSON par doc dans la forme du **grand JSON agrégé existant**. **Hybride** : CODE pour assembler les chiffres / regrouper les diagnostics / compter les PV / le score ; **UN petit appel IA** pour la partie rédigée (`avis_verimo` / verdict) à partir des données déjà consolidées.
-- Le **score reste en code** (inchangé, respecte /methode à l'identique). L'**affichage de l'analyse complète (RapportPage) est réutilisé tel quel** À CONDITION que le reduce sorte la **même forme de JSON**.
-- **2 bouts du reduce existent déjà** et sont réutilisables : `validateDiagsManquants` (docs manquants) + `recalculerCategories` (score).
-- Le flow `analyser` → `analyser-run` **ne change pas** ; on ne modifie que **l'INTÉRIEUR** d'`analyser-run`.
-- Gain bonus : appels plus petits (1 doc) → **moins de risque de saturation/contexte** qu'aujourd'hui, et parallélisable = souvent plus rapide. Point à surveiller = le temps total d'exécution (mitigation : enregistrer chaque doc dès qu'il est lu + reprise par cron si besoin).
+### SQL prérequis (déjà passé par Alex)
+```sql
+alter table analyses add column if not exists map_resultats jsonb;
+```
 
-### Principes « anti-objection » (= ce qui donne la crédibilité aux agences)
-- ⚠️ **NE JAMAIS promettre « 100 % fiable »** (ça n'existe pas avec une IA, et ça se retourne contre toi). La crédibilité vient de : **chaque chiffre SOURCÉ** + **échec PROPRE** (doc illisible signalé) plutôt qu'une fausse info en silence.
-- **Traçabilité** : aujourd'hui RIEN par chiffre (juste la liste des docs analysés). À ajouter : la **source par chiffre clé** (prix, surface, charges, fonds travaux, procédures, dépôt de garantie). ⚠️ **Préférer afficher la PHRASE EXACTE du document plutôt qu'un n° de page** (le modèle se trompe de page → ça décrédibilise). À faire sur les chiffres clés seulement, pas tout.
-- **Échec propre** : un doc illisible → afficher « Document X illisible, à refournir » au lieu d'une analyse fausse silencieuse.
-- **Généraliser les relances ciblées** (comme déjà fait pour DPE/Carrez) sur les autres champs critiques manquants.
-- Réglages : **température 0** sur l'extraction (réponses stables), garder le **cache de prompt** (coût), **valider chaque JSON en code** avant de l'accepter.
+### Corrections livrées dans la foulée (03 juin)
+- **Scoring** : le score total = **somme des 5 catégories recalculées** (`recalculerCategories`), plus le score inventé par l'IA. Corrige l'incohérence vue (18 affiché vs 10,5 de catégories).
+- **Bug `anneeStr.match`** : `annee_construction` arrivait parfois en nombre → `String(...)` forcé. `validateDiagsManquants` (détection diags obligatoires manquants par règles légales : DPE/ERP/Carrez toujours, électrique <2011, amiante <1997, plomb <1949) ne plantait plus silencieusement.
+- **Règle cohérence travaux** (prompt) : un même travaux jamais à la fois en point fort ET en vigilance. Point fort = uniquement travaux **réalisés** (même pas tout payé, solde à charge vendeur). Travaux **voté mais suspendu/bloqué/annulé** = uniquement vigilance (coût peut retomber sur l'acheteur).
+- **Règle gravité des procédures** (prompt) : gravité jugée selon l'**impact concret sur l'acheteur** (coût/risque/blocage, y compris long terme). Élevée = impact direct lourd ; modérée = réel mais incertain/indirect ; faible = pas d'impact identifié ou résolu. Doute → niveau le plus élevé. (Rappel : gravité pèse sur le score — élevée −2, modérée −1, faible −0,5.)
 
-### État des renderers (= la base toute prête du MAP)
-- **14 types détectés** par le prompt ; **12 fiches dédiées** dans `DocumentRenderer.tsx` (DDT, PV_AG, APPEL_CHARGES, RCP, DTG_PPT, CARNET_ENTRETIEN, PRE_ETAT_DATE, ETAT_DATE, TAXE_FONCIERE, COMPROMIS, DIAGNOSTIC_PARTIES_COMMUNES, MODIFICATIF_RCP) + 1 générique (AUTRE).
-- ⚠️ **GAP : FICHE_SYNTHETIQUE** est détectée + a son JSON mais **n'a PAS de fiche dédiée** (tombe sur RendererAutre) → fiche à créer.
-- **Carrez** : bien rendu (composant `CarrezAccordeon` dans la fiche DDT : surface totale, pièce par pièce, hors Carrez, annexes ; gère le piège loi Boutin).
-- Décision : on **PART de l'existant** (JSON + renderers par doc), on **ne refait pas** tout.
-- Option « bonus » **écartée pour l'instant** : afficher les fiches détaillées par doc DANS le rapport complet (pas essentiel, risque de rallonger/dupliquer la synthèse).
+### Corrections frontend livrées (RapportPage.tsx, 03 juin)
+- **Carrez** : c'était un **bug d'affichage**, pas d'extraction (données parfaites dans `result`). 3 fix : `buildRapport` ne propageait pas `dpe_recommandations` (ajouté) ; le Carrez était cherché dans `autresDiags` (liste d'où il est exclu) → corrigé ; Carrez déplacé **dans la section « Votre lot »** (après « Identité du lot »), rendu en tableau soigné avec emojis par pièce + ligne « Total mesuré ».
+- **DPE recommandations** : s'affichent maintenant (la propagation `dpe_recommandations` était la vraie cause). Bloc « passer d'une lettre à l'autre » redesigné : pastilles plus grandes avec ombre + kWh, flèches dans des pastilles blanches visibles, fond dégradé turquoise, packs mis en avant (bordure latérale colorée + montant encadré).
+- **Procédures** : triées par gravité décroissante + **bloc dépliable « Comment lire les niveaux de gravité ? »** (3 cartes colorées avec impact points sur la note).
 
-### 🧪 STRATÉGIE BAC À SABLE (OBLIGATOIRE — ne jamais toucher la prod tant que pas validé)
-- **Frontend** : créer une **branche Git** (ex `analyse-v2`) → preview Vercel dédiée. `main` n'est pas touché. Si OK → merge ; si non → supprimer la branche.
-- **Edge function** : créer une **2e fonction SÉPARÉE `analyser-run-v2`** (copie). L'ancien `analyser-run` reste **intact et sert les vrais clients**. On route **uniquement les analyses de TEST** vers v2 (toggle admin ou flag dans l'appel).
-- **Sauvegarde** : télécharger le code actuel d'`analyser-run` (bouton Download dans Supabase) AVANT toute modif. GitHub garde l'historique de toute façon.
-- **CLÉ pour rollback facile** : v2 doit sortir la **MÊME forme de JSON** que l'ancien → pas de changement BDD, même affichage, bascule réversible dans les deux sens en 2 min.
-- Option : route admin cachée (ex `/admin/test-analyse`) pour comparer **v2 vs prod côte à côte** sans qu'aucun client ne le voie.
+### UX faux-échec corrigé (analyse-client.ts, 03 juin)
+- **Bug** : le frontend marquait `status:'failed'` de lui-même après stagnation → ligne « Non généré » en rouge alors que le backend tournait encore (MAP-REDUCE plus long qu'avant). 
+- **Fix** : le front ne décide JAMAIS d'un échec ; il **reflète** le `status` de la base (seule source de vérité, écrite par le backend/watchdog). Stagnation longue → bascule en « queued » rassurant, pas en échec.
+- Message rassurant déclenché dès **3 min** (« analyse prend plus de temps, vous serez prévenu par cloche 🔔 + email »). Timeout global front allongé **10 → 20 min**.
 
-### ✅ TO-DO MAP-REDUCE (ordre proposé, à valider avant de coder — méthode : une étape à la fois, fichiers complets, tester sur compte test)
-0. **[Bac à sable]** Créer branche `analyse-v2` + fonction `analyser-run-v2` (copie) + sauvegarde du code actuel. **AVANT tout code.**
-1. **[MAP]** Extraction doc par doc en réutilisant les prompts/JSON de l'analyse simple, lancés par paquets (~3 en parallèle), relances 429/529.
-2. **[REDUCE]** Écrire la consolidation N JSON → grand JSON agrégé (CODE pour chiffres/diags/PV ; petit appel IA pour `avis_verimo`). Réutiliser `validateDiagsManquants` + `recalculerCategories`.
-3. **[Affichage]** Vérifier que RapportPage rend bien le JSON produit par v2 (forme identique).
-4. **[Traçabilité]** Ajouter la source (phrase exacte du doc) sur les chiffres clés.
-5. **[Échec propre]** Gérer « document illisible » proprement (au lieu d'une analyse fausse).
-6. **[Robustesse]** Si temps d'exécution long : enregistrer chaque doc dès qu'il est lu + reprise par cron.
-7. **[Tests]** Comparer v2 vs prod sur les MÊMES dossiers (1 doc / 3 docs / 7-8 docs) avant toute bascule.
-8. **[Bascule]** Quand validé : basculer v2 → prod (recopier dans `analyser-run`).
-9. **[À part / indépendant]** Créer la fiche dédiée **FICHE_SYNTHETIQUE** (gap renderer identifié).
+### Gestion des pannes (état vérifié dans le code)
+- **Panne passagère** (429 rate-limit, 529/503 surcharge, réseau) : `callAI` retente **3 fois** (429 : pauses 10s/20s ; 529/503 : 15s ; réseau : 3s). Absorbe les pics courts → l'analyse continue.
+- **Panne persistante sur 1 doc** : après 3 tentatives, le doc est abandonné. ⚠️ **Comportement actuel : le REDUCE ne garde que les docs `ok` → le doc raté est SAUTÉ SILENCIEUSEMENT, aucun signalement au client.** (À traiter — voir backlog.)
+- **Échec total** (aucun doc lu, ou self-invoke échoue) : `handleAnalyseFailure` → remboursement crédit + status `failed` + message client + alerte admin + notif. MAIS ne se déclenche QUE si le code attrape l'erreur — une mort brutale (shutdown WallClockTime) coupe net sans l'exécuter → analyse bloquée en `processing` jusqu'au watchdog (seuil actuel 60 min). ⚠️ Maillon faible restant.
+
+### Charge simultanée (état vérifié)
+- **PAS de file d'attente globale** régulant la concurrence. 5 clients simultanés → 5 analyses en parallèle, indépendantes.
+- File d'attente **réactive** existante (`tryEnqueueOrFail` dans `analyser` + cron `analyser-retry`) : se déclenche si surcharge **au démarrage** (upload), met en `queued`, reprise par cron. Pas de régulation préventive.
+- **5-10 clients simultanés** : bien géré (parallèle + retry + queue de secours). **20-30+** : nécessiterait une vraie file globale. Plafond réel = limites de débit Anthropic du compte (à vérifier).
+
+### Mode debug (désactivé en fin de session)
+- Pendant le debug, le nettoyage `map_resultats = null` était commenté pour inspecter les résumés MAP en base. **Réactivé en fin de session.** Inspection pendant une analyse en cours : `select map_resultats from analyses order by created_at desc limit 1;`
+
+### État des renderers (inchangé)
+- **14 types détectés** ; **12 fiches dédiées** dans `DocumentRenderer.tsx` + 1 générique (AUTRE). ⚠️ **GAP : FICHE_SYNTHETIQUE** détectée + JSON mais pas de fiche dédiée (tombe sur RendererAutre) → à créer.
+
+### À fiabiliser plus tard (discuté, plan validé, NON codé)
+- **Heartbeat watchdog** (pour rattraper vite une mort brutale d'invocation) : (1) SQL `alter table analyses add column if not exists last_heartbeat timestamptz;` (2) `analyser-run` écrit `last_heartbeat=now()` à chaque progression (3) watchdog détecte les `processing` dont `last_heartbeat` > ~7-8 min (mort) au lieu de `created_at` > 60 min (4) passer le cron watchdog à ~3 min. Objectif : annulation en ~10 min max sans tuer une analyse vivante.
+- **Reprise par queue après surcharge d'un doc** (au lieu de sauter le doc) : si un doc échoue pour surcharge persistante → mettre l'analyse en `queued`, le cron `analyser-retry` la reprend ; **reprise au bon endroit** (garde les docs déjà résumés dans `map_resultats`, ré-upload depuis le bucket `analyse-temp` des docs non lus) ; abandon + remboursement après **6 tentatives / 30 min**. Chantier le plus lourd (touche analyser-run + analyser-retry + RGPD) → session dédiée.
+- **Garde-fou de concurrence** (demi-pas avant vraie file globale) : avant de lancer, compter les analyses en `processing` ; si > seuil (~10) → mettre en `queued` direct. Quelques lignes, réutilise la queue existante. À faire le jour où la charge le justifie.
 
 ---
 
@@ -451,6 +455,8 @@ Tout lire d'un coup provoque l'effet « noyé dans la masse » (lost in the midd
 ### 🔥 Priorité haute (avant lancement public Pro)
 
 1. **🚨 BUG REGROUPEMENT AGENCE ADMIN** — le code de regroupement visuel des comptes d'une agence dans AdminPage.tsx ne s'affiche pas en prod. À diagnostiquer en priorité absolue.
+2. **⚠️ Doc sauté silencieusement (MAP-REDUCE)** — un doc en échec après 3 tentatives est retiré du REDUCE sans signalement client. Risque : un rapport « complet » qui a ignoré un doc pouvant contenir une info critique. Décision en attente (A échec global / B partiel signalé / C reprise par queue — Alex penche C). Voir section MAP-REDUCE.
+3. **⚠️ Mort brutale d'invocation = watchdog lent (MAP-REDUCE)** — si une invocation est tuée (WallClockTime), l'analyse reste en `processing` jusqu'au watchdog (60 min). Plan heartbeat validé (NON codé) pour ramener à ~10 min.
 2. **Étape C2 — Permissions fines DossierDetail** : bloquer ajout vendeur / nouvelle analyse / modif titre pour non-créateurs ; garder ajout acheteur + envoi rapport accessibles à tous
 3. **Régénérer service_role key** (compromise dans screenshots session 11 mai) + recréer le cron avec nouvelle clé
 4. **Mettre à jour CGV Pro article 4.5** pour V2 multi-utilisateurs (V1 mentionnait "login partagé")
@@ -516,11 +522,20 @@ Tout lire d'un coup provoque l'effet « noyé dans la masse » (lost in the midd
 
 ### Sessions récentes (mai-juin 2026)
 
+- **Session 03 juin 2026 ⭐⭐⭐ : MAP-REDUCE analyse complète RÉALISÉ + déployé + polish rapport**
+  - **MAP-REDUCE multi-invocations livré** (`analyser-run` v18) — voir section dédiée « 🎯 MAP-REDUCE » plus haut. Architecture finale ≠ plan initial : le bloquant réel était le **WallClockTime Supabase** (~6-7 min/invocation), pas la qualité de lecture. Solution : découper MAP en tranches de 3 docs + self-invoke (`fetch` sur sa propre URL) entre chaque tranche puis vers le REDUCE. MAP = résumé **texte libre** (pas JSON par type) ; REDUCE = prompt complet original + post-traitement déterministe. Colonne BDD `map_resultats` (jsonb) ajoutée. **Validé en prod à 12 docs.**
+  - **Scoring corrigé** : score total = somme des 5 catégories recalculées (`recalculerCategories`), n'utilise plus le score inventé par l'IA.
+  - **Bug `anneeStr.match`** corrigé (`annee_construction` en nombre → `String()`), débloque `validateDiagsManquants`.
+  - **Règle cohérence travaux** (prompt) : jamais le même travaux en point fort ET vigilance ; point fort = réalisé uniquement ; voté/suspendu/bloqué = vigilance.
+  - **Règle gravité procédures** (prompt) : jugée selon l'impact concret sur l'acheteur (coût/risque/blocage, long terme inclus). Élevée −2 / modérée −1 / faible −0,5 sur le score. Doute → niveau le plus élevé.
+  - **RapportPage.tsx** : Carrez (bug d'affichage, pas d'extraction — propagation `dpe_recommandations` + recherche dans `diagsPriv` + déplacé dans « Votre lot » en tableau avec emojis par pièce) ; DPE recos affichées + bloc « passer d'une lettre à l'autre » redesigné (pastilles + kWh, flèches visibles, packs en avant) ; procédures triées par gravité + **bloc dépliable explicatif des gravités** (3 cartes colorées avec impact points).
+  - **analyse-client.ts** : fix faux « Non généré » (le front ne décide plus l'échec, reflète le status base ; stagnation → « queued » rassurant) ; message rassurant à 3 min ; timeout front 10 → 20 min.
+  - **Discussions archi (non codé)** : gestion pannes (retry 3× / doc, doc sauté silencieusement = à traiter, mort brutale = watchdog lent), charge simultanée (pas de file globale, OK 5-10, à revoir 20-30+), plan heartbeat watchdog, plan reprise par queue après surcharge (reprise au bon endroit, abandon 6 tentatives/30 min), garde-fou concurrence. Tout reporté → backlog.
 - **Session 02 juin 2026 ⭐ : Polish rapport COMPROMIS + fix lien partage + cadrage chantier MAP-REDUCE**
   - `DocumentRenderer.tsx` (frontend, livré) : suppression du bloc rouge « Points d'attention détectés » en haut du compromis (c'était un **doublon** avec la section « Clauses & particularités » plus bas). Fix bulle d'aide « i » (le `overflow:hidden` de la carte la coupait → passée en `position:fixed`, premier plan). Badge « En cours » des conditions suspensives forcé sur **une seule ligne**. Textes **agrandis** (parties vendeur/acheteur + conditions suspensives). **Lots cédés** refaits en **cartes lisibles** (au lieu d'un tableau serré). Bloc **Vendeur/Acheteur remonté** au-dessus de « Le bien ».
   - `analyser-run` prompt COMPROMIS (livré, ⚠️ **à redéployer manuellement dans Supabase**) : ajout règle **« point de vue ACHETEUR »** → ne jamais mentionner la fiscalité du vendeur (plus-value/moins-value), ne jamais ranger un élément favorable à l'acheteur (ex exonération droits d'enregistrement) en alerte/clause critique ; fourre-tout `"autre"` des `clauses_critiques` resserré (uniquement vrai risque/obligation acheteur).
   - **Fix bug lien de partage particulier** (livré) : « Rapport introuvable » au 1er affichage (marchait après refresh). Cause = `RapportPartagePage` bricolait l'URL avec `history.replaceState` → React Router ne voyait pas le token au 1er rendu. Fix = passer le token en **prop `shareTokenOverride`** à `RapportPage` (fichiers `RapportPartagePage.tsx` + `RapportPage.tsx`). **Frontend only, AUCUN impact** sur dashboard pro/particulier (la prop est optionnelle, repli sur l'ancien comportement). Confirmé OK par Alex.
-  - **Cadrage complet du chantier MAP-REDUCE** pour fiabiliser l'analyse complète (voir la section dédiée « 🎯 CHANTIER MAJEUR » plus haut). À lancer en session dédiée.
+  - **Cadrage complet du chantier MAP-REDUCE** pour fiabiliser l'analyse complète (réalisé depuis le 03 juin — voir la section dédiée « 🎯 MAP-REDUCE analyse complète — ✅ RÉALISÉ » plus haut). Le plan cadré ce jour-là a évolué à l'implémentation (texte libre + multi-invocations à cause du WallClockTime).
 - **Session 28 mai 2026 ⭐ : Plan Agence V2 multi-utilisateurs LIVRÉ**
   - 5 tables BDD créées : agences, agence_members, agence_invitations, envois_rapports, dossier_notes
   - Colonnes ajoutées : analyses (agence_id, created_by_user_id, deleted_at), profiles (agence_id, agence_role), pro_folders (agence_id avec trigger auto-fill)
@@ -567,13 +582,24 @@ Tout lire d'un coup provoque l'effet « noyé dans la masse » (lost in the midd
 
 ## 🎯 Prochaine session — Actions prioritaires
 
-### ⭐⭐⭐ CHANTIER À LANCER : MAP-REDUCE analyse complète
-Voir la section dédiée « 🎯 CHANTIER MAJEUR — Fiabiliser l'analyse complète via MAP-REDUCE » plus haut (état actuel vérifié, solution, principes anti-objection, stratégie bac à sable, et TO-DO numérotée 0→9). **Commencer par l'étape 0 (bac à sable) avant tout code.** Objectif : rapport irréprochable pour le démarchage des agences.
+### ⭐⭐⭐ MAP-REDUCE : FAIT — reste à valider en conditions réelles
+Le MAP-REDUCE a été livré et déployé le 03 juin (voir section dédiée « 🎯 MAP-REDUCE analyse complète — ✅ RÉALISÉ »). Il reste à :
+- **Vérifier la qualité sur de vrais dossiers** : ouvrir une analyse + les docs sources en parallèle, contrôler 4-5 chiffres clés (surface Carrez, montant appel de fonds, classe DPE, date AG). Comparer si possible avec l'ancien système sur le même dossier — jamais fait formellement.
+- **Vérifier l'affichage** des fix livrés une fois déployés : Carrez dans « Votre lot », bloc DPE redesigné, tri + bloc explicatif des gravités, plus de faux « Non généré ».
+
+### ⭐⭐ Robustesse MAP-REDUCE (plans validés, NON codés — voir section dédiée pour le détail)
+- **Doc sauté silencieusement** : aujourd'hui un doc en échec après 3 tentatives est retiré du REDUCE sans aucun signalement client. Décision en attente : (A) échec global + remboursement / (B) rapport partiel signalé / (C) reprise par queue au bon endroit. Alex penche vers **C** (reprise au bon endroit + abandon 6 tentatives/30 min) — chantier lourd, session dédiée.
+- **Heartbeat watchdog** : colonne `last_heartbeat` + watchdog basé sur inactivité ~7-8 min + cron à ~3 min, pour rattraper une mort brutale d'invocation en ~10 min au lieu de 60.
+- **Garde-fou concurrence** (optionnel, demi-pas avant vraie file globale) : si > ~10 analyses en `processing` → mettre en `queued` direct.
+
+### Rappels rapides issus de la session 03 juin
+- ⚠️ **Redéployer `analyser-run` (v18) à la main** dans Supabase (push GitHub ne déploie pas les edge functions). Contient tout le MAP-REDUCE + scoring + anneeStr + règles travaux/gravité.
+- ⚠️ **SQL déjà passé** : `alter table analyses add column if not exists map_resultats jsonb;` (vérifier que c'est bien le cas en prod).
+- Pousser sur GitHub les fichiers frontend livrés : `RapportPage.tsx`, `analyse-client.ts`.
+- Gap renderer à traiter quand l'occasion se présente : créer la fiche dédiée **FICHE_SYNTHETIQUE**.
 
 ### Rappels rapides issus de la session 02 juin
-- ⚠️ **Redéployer `analyser-run` à la main** dans Supabase pour activer la règle « point de vue acheteur » (push GitHub ne déploie pas les edge functions).
-- Vérifier que les fichiers frontend livrés (`DocumentRenderer.tsx`, `RapportPage.tsx`, `RapportPartagePage.tsx`) sont bien poussés sur GitHub.
-- Gap renderer à traiter quand l'occasion se présente : créer la fiche dédiée **FICHE_SYNTHETIQUE**.
+- Vérifier que les fichiers frontend livrés le 02 juin (`DocumentRenderer.tsx`, `RapportPartagePage.tsx`) sont bien poussés sur GitHub.
 
 ### 🔥 BUGS BLOQUANTS à fixer en priorité absolue
 
