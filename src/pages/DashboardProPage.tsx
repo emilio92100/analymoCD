@@ -753,6 +753,8 @@ function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, n
               ) : (
                 notifications.slice(0, 10).map(n => {
                   const isAnalysis = !!n.analysisId;
+                  const rawMsg = (n as unknown as Record<string, string>).message || '';
+                  const bienLabel = rawMsg.replace(/\s*—\s*(consulter le rapport|voir le rapport mis à jour)\s*$/i, '').trim();
                   return (
                   <button key={n.id}
                     onClick={() => { setBellOpen(false); if (isAnalysis && onClickNotification) onClickNotification(n.analysisId); }}
@@ -770,7 +772,7 @@ function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, n
                       <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, color: '#0f172a' }}>
                         {isAnalysis ? 'Rapport prêt' : n.title}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{isAnalysis ? n.title : (n as unknown as Record<string, string>).message || ''}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{isAnalysis ? (bienLabel || n.title) : rawMsg}</div>
                     </div>
                     <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{fmtDate(n.createdAt)}</span>
                   </button>
