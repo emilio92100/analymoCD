@@ -3178,6 +3178,40 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           badge={hasDiagAlert ? "Points d'attention" : `${autresDiags.length} diagnostic${autresDiags.length > 1 ? 's' : ''}`}
           defaultOpen={allOpen}>
 
+          {/* Surface Carrez — affichée en premier dans la section */}
+          {(() => {
+            // Le CARREZ est exclu de `autresDiags`, on le récupère dans la liste complète.
+            const carrez = diagsPriv.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
+            if (!carrez) return null;
+            const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
+            const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
+            return (
+              <div style={{ marginBottom: 18 }}>
+                <SectionTitle emoji="📐" text="Surface Carrez" tooltip="La loi Carrez impose la mesure officielle de la surface privative. Si la surface réelle est inférieure de plus de 5% à celle du compromis, vous pouvez demander une réduction du prix proportionnelle." />
+                <div style={{ background: 'var(--color-background-secondary)', borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--color-border-tertiary)' }}>
+                  {surface && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: (pieces && pieces.length > 0) ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Surface totale Carrez</span>
+                      <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-primary)' }}>{surface} m²</span>
+                    </div>
+                  )}
+                  {pieces && pieces.length > 0 && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
+                      <tbody>
+                        {pieces.map((p, i) => (
+                          <tr key={i} style={{ borderBottom: i < pieces.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'transparent' }}>
+                            <td style={{ padding: '11px 18px', fontSize: 14, color: 'var(--color-text-primary)' }}>{p.piece}</td>
+                            <td style={{ padding: '11px 18px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const }}>{p.surface} m²</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           <SectionTitle emoji="✅" text="Résultats des diagnostics" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(() => {
@@ -3199,37 +3233,6 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             })()}
           </div>
 
-          {/* Surface Carrez */}
-          {(() => {
-            // Le CARREZ est exclu de `autresDiags` (il a son bloc dédié ci-dessous),
-            // donc on le récupère dans la liste complète des diagnostics privatifs.
-            const carrez = diagsPriv.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
-            if (!carrez) return null;
-            const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
-            const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
-            return (
-              <>
-                <SectionTitle emoji="📐" text="Surface Carrez" tooltip="La loi Carrez impose la mesure officielle de la surface privative. Si la surface réelle est inférieure de plus de 5% à celle du compromis, vous pouvez demander une réduction du prix proportionnelle." />
-                <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, overflow: 'hidden' }}>
-                  {surface && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: pieces ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Surface totale Carrez</span>
-                      <span style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>{surface} m²</span>
-                    </div>
-                  )}
-                  {pieces && pieces.length > 0 && (
-                    <div style={{ padding: '12px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {pieces.map((p, i) => (
-                        <span key={i} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', color: 'var(--color-text-secondary)' }}>
-                          {p.piece} — {p.surface} m²
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            );
-          })()}
         </AccordionSection>
       )}
 
@@ -4412,6 +4415,7 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
     finances: financesObj ?? null,
     diagnostics: (r.diagnostics as Array<Record<string, unknown>>) || [],
     documents_analyses: (r.documents_analyses as Array<Record<string, unknown>>) || [],
+    dpe_recommandations: (r.dpe_recommandations as Record<string, unknown>) ?? null,
   };
 }
 
