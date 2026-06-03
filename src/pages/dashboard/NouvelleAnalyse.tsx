@@ -360,7 +360,7 @@ export default function NouvelleAnalyse() {
           <div style={{ background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 12, padding: '12px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 12.5, color: '#0f2d3d', lineHeight: 1.6 }}>
               📌 Vous pouvez consulter l'avancée à tout moment depuis votre espace
-              <strong> {userRole === 'pro' ? '"Mes dossiers"' : '"Mes analyses"'}</strong>. Une notification apparaîtra dans la cloche 🔔 et un email vous sera envoyé
+              <strong> {userRole === 'pro' ? '"Mes dossiers"' : '"Mes analyses"'}</strong>. Une notification apparaîtra dans la cloche 🔔{userRole === 'pro' ? '' : ' et un email vous sera envoyé'}
               dès que votre rapport sera prêt.
             </div>
           </div>
@@ -478,7 +478,7 @@ export default function NouvelleAnalyse() {
       setAnalyseError({ message: "Impossible de créer l'analyse. Votre crédit a été remboursé automatiquement.", creditType });
       setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
-    const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress });
+    const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress, isPro: userRole === 'pro' });
     if (!isMountedRef.current) return; // User navigated away — don't redirect, the dashboard polling will pick it up
 
     // 🆕 v9 — Mise en queue suite à surcharge Anthropic.
@@ -1048,7 +1048,7 @@ export default function NouvelleAnalyse() {
                       Pas besoin de rester sur cette page
                     </div>
                     <div style={{ fontSize: 13, color: '#047857', lineHeight: 1.55 }}>
-                      Votre analyse continue toute seule en arrière-plan. Vous pouvez fermer cette page en toute tranquillité — nous vous prévenons dans votre cloche 🔔 et par e-mail dès que votre rapport est prêt.
+                      Votre analyse continue toute seule en arrière-plan. Vous pouvez fermer cette page en toute tranquillité — nous vous prévenons dans votre cloche 🔔{userRole === 'pro' ? '' : ' et par e-mail'} dès que votre rapport est prêt.
                     </div>
                   </div>
                 </motion.div>
