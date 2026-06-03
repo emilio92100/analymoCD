@@ -3722,6 +3722,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
    ONGLET PROCÉDURES
 ══════════════════════════════════ */
 function TabProcedures({ rapport }: { rapport: RapportData }) {
+  const [showGraviteInfo, setShowGraviteInfo] = useState(false);
   if (!rapport.procedures_en_cours || rapport.procedures.length === 0) {
     return (
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '48px 32px', textAlign: 'center' }}>
@@ -3749,6 +3750,45 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
         <span style={{ fontSize: 15, fontWeight: 500, color: '#991b1b' }}>
           {rapport.procedures.length} procédure{rapport.procedures.length > 1 ? 's' : ''} détectée{rapport.procedures.length > 1 ? 's' : ''} dans les documents.
         </span>
+      </div>
+
+      {/* Bloc dépliable : comprendre les niveaux de gravité */}
+      <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, overflow: 'hidden', background: 'var(--color-background-primary)' }}>
+        <button
+          onClick={() => setShowGraviteInfo(v => !v)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '13px 18px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            <span style={{ fontSize: 15 }}>ℹ️</span>
+            Comment lire les niveaux de gravité ?
+          </span>
+          <span style={{ display: 'inline-block', transform: showGraviteInfo ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', fontSize: 11, color: 'var(--color-text-secondary)' }}>▶</span>
+        </button>
+        <div style={{ display: 'grid', gridTemplateRows: showGraviteInfo ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
+          <div style={{ overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ padding: '4px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                Les procédures sont classées selon leur <strong>impact concret sur vous, l'acheteur</strong> — coût potentiel, risque juridique ou blocage — y compris sur le long terme. Ce n'est pas la gravité « en soi » du litige, mais ce qu'il peut vous coûter ou impliquer.
+              </p>
+              {[
+                { emoji: '⚖️', dot: '#dc2626', titre: 'Gravité élevée', desc: "Impact financier ou juridique direct et potentiellement lourd : appel de fonds important à venir, contentieux bloquant un gros chantier, litige portant sur le lot vendu, ou procédure pesant durablement sur les finances de la copropriété." },
+                { emoji: '📋', dot: '#d97706', titre: 'Gravité modérée', desc: "Procédure réelle mais à l'impact incertain ou indirect : contentieux en cours sans montant connu, procédure sans chiffrage clair, tension sans coût établi pour vous." },
+                { emoji: '📄', dot: '#16a34a', titre: 'Gravité faible', desc: "Pas d'impact financier ou juridique identifié pour vous : procédure déjà résolue, ou litige n'impliquant pas significativement la copropriété." },
+              ].map((niv, i) => (
+                <div key={i} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{niv.emoji}</span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: niv.dot, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>{niv.titre}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.55, margin: 0 }}>{niv.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
       {[...rapport.procedures].sort((a, b) => {
         const rang = (g: string) => g === 'elevee' ? 0 : g === 'moderee' ? 1 : 2;
