@@ -4123,12 +4123,13 @@ function toTravaux(arr: unknown[]): any[] {
 /* ══════════════════════════════════
    POPUP COMPLÉTER LE DOSSIER
 ══════════════════════════════════ */
-function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
+function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backUrl }: {
   analyseId: string;
   profil: 'rp' | 'invest';
   rapport: Record<string, unknown>;
   onClose: () => void;
   onSuccess: () => void;
+  backUrl?: string;
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -4352,6 +4353,12 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
                 <div style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #2a7d9c, #5bb8d4)', width: `${Math.max(progressPercent, 3)}%`, transition: 'width 0.5s ease' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '40%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)', animation: 'cm-shimmer 1.5s ease-in-out infinite' }} />
               </div>
+
+              {analysisStarted && (
+                <Link to={backUrl || '/dashboard/analyses'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18, padding: '10px 18px', borderRadius: 10, background: '#0f2d3d', color: '#fff', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
+                  <ChevronLeft size={15} /> {(backUrl || '').includes('/dossier/') ? 'Revenir au dossier' : 'Revenir à mes analyses'}
+                </Link>
+              )}
             </div>
           )}
 
@@ -4932,6 +4939,7 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
               rapport={rapport as unknown as Record<string, unknown>}
               onClose={() => setShowComplement(false)}
               onSuccess={() => { setShowComplement(false); loadRapport(); }}
+              backUrl={backUrl}
             />
           )}
         </AnimatePresence>
