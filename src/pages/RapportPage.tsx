@@ -2708,47 +2708,6 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             status="neutral" badge='Informatif'
             defaultOpen={allOpen || hasPed}>
 
-            {/* Surface Carrez — en tête de "Votre lot" (c'est la surface du lot acheté) */}
-            {(() => {
-              const carrez = (rapport.diagnostics as Array<Record<string, unknown>>).find((d) => d.type === 'CARREZ' && d.perimetre === 'lot_privatif') as Record<string, unknown> | undefined;
-              if (!carrez) return null;
-              const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
-              const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
-              if (!surface && !(pieces && pieces.length > 0)) return null;
-              const totalPieces = pieces && pieces.length > 0 ? pieces.reduce((s, p) => s + (Number(p.surface) || 0), 0) : 0;
-              return (
-                <div style={{ marginBottom: 18 }}>
-                  <SectionTitle emoji="📐" text="Surface Carrez" tooltip="Surface privative officielle (loi Carrez), obligatoire à la vente en copropriété. Si la surface réelle est inférieure de plus de 5 % à celle annoncée au compromis, vous pouvez demander une réduction de prix proportionnelle." />
-                  <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 14, overflow: 'hidden' }}>
-                    {surface && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', borderBottom: (pieces && pieces.length > 0) ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0369a1', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Surface totale</span>
-                        <span style={{ fontSize: 26, fontWeight: 700, color: '#0c4a6e' }}>{surface} m²</span>
-                      </div>
-                    )}
-                    {pieces && pieces.length > 0 && (
-                      <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
-                        <tbody>
-                          {pieces.map((p, i) => (
-                            <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
-                              <td style={{ padding: '11px 18px', fontSize: 14, color: 'var(--color-text-primary)' }}>{p.piece}</td>
-                              <td style={{ padding: '11px 18px', fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{p.surface} m²</td>
-                            </tr>
-                          ))}
-                          {totalPieces > 0 && (
-                            <tr style={{ background: 'var(--color-background-secondary)' }}>
-                              <td style={{ padding: '11px 18px', fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.03em' }}>Total mesuré</td>
-                              <td style={{ padding: '11px 18px', fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{Math.round(totalPieces * 100) / 100} m²</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-
             {/* Identité du lot */}
             {(lot?.quote_part_tantiemes || (lot?.parties_privatives as unknown[] ?? []).length > 0) && (() => {
               // Parser les parties_privatives pour récupérer tantièmes de chaque lot
@@ -2866,6 +2825,63 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                   )}
                 </div>
               </>
+              );
+            })()}
+
+            {/* Surface Carrez — juste après l'identité du lot */}
+            {(() => {
+              const carrez = (rapport.diagnostics as Array<Record<string, unknown>>).find((d) => d.type === 'CARREZ' && d.perimetre === 'lot_privatif') as Record<string, unknown> | undefined;
+              if (!carrez) return null;
+              const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
+              const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
+              if (!surface && !(pieces && pieces.length > 0)) return null;
+              const totalPieces = pieces && pieces.length > 0 ? pieces.reduce((s, p) => s + (Number(p.surface) || 0), 0) : 0;
+              // Emoji selon le type de pièce (lecture du nom)
+              const pieceEmoji = (nom: string): string => {
+                const n = nom.toLowerCase();
+                if (/s[ée]jour|salon|living/.test(n)) return '🛋️';
+                if (/cuisine/.test(n)) return '🍳';
+                if (/chambre/.test(n)) return '🛏️';
+                if (/salle d.?eau|salle de bain|sdb|douche/.test(n)) return '🚿';
+                if (/wc|toilette/.test(n)) return '🚽';
+                if (/dressing|placard/.test(n)) return '👔';
+                if (/entr[ée]e|hall|d[ée]gagement|couloir/.test(n)) return '🚪';
+                if (/buanderie|cellier|rangement|local/.test(n)) return '🧺';
+                if (/bureau/.test(n)) return '💻';
+                if (/balcon|terrasse|loggia/.test(n)) return '🌿';
+                return '📐';
+              };
+              return (
+                <div style={{ marginTop: 18 }}>
+                  <SectionTitle emoji="📐" text="Surface loi Carrez" tooltip="Surface privative officielle (loi Carrez), obligatoire à la vente en copropriété. Si la surface réelle est inférieure de plus de 5 % à celle annoncée au compromis, vous pouvez demander une réduction de prix proportionnelle." />
+                  <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                    {surface && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', borderBottom: (pieces && pieces.length > 0) ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>📏 Surface totale</span>
+                        <span style={{ fontSize: 28, fontWeight: 700, color: '#0c4a6e', lineHeight: 1 }}>{surface} <span style={{ fontSize: 16, fontWeight: 600 }}>m²</span></span>
+                      </div>
+                    )}
+                    {pieces && pieces.length > 0 && (
+                      <div>
+                        {pieces.map((p, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+                            <span style={{ fontSize: 14, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 16 }}>{pieceEmoji(p.piece)}</span>
+                              {p.piece}
+                            </span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', whiteSpace: 'nowrap' as const }}>{p.surface} m²</span>
+                          </div>
+                        ))}
+                        {totalPieces > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 20px', background: 'var(--color-background-secondary)' }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Total mesuré</span>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)', whiteSpace: 'nowrap' as const }}>{Math.round(totalPieces * 100) / 100} m²</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               );
             })()}
 
@@ -3734,7 +3750,10 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
           {rapport.procedures.length} procédure{rapport.procedures.length > 1 ? 's' : ''} détectée{rapport.procedures.length > 1 ? 's' : ''} dans les documents.
         </span>
       </div>
-      {rapport.procedures.map((proc, i) => {
+      {[...rapport.procedures].sort((a, b) => {
+        const rang = (g: string) => g === 'elevee' ? 0 : g === 'moderee' ? 1 : 2;
+        return rang(safeStr(a.gravite)) - rang(safeStr(b.gravite));
+      }).map((proc, i) => {
         const g = graviteStyle(safeStr(proc.gravite));
         return (
           <div key={i} style={{ borderRadius: 14, border: `0.5px solid ${g.border}`, overflow: 'hidden' }}>
