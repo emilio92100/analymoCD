@@ -4163,8 +4163,8 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   const typeBien = safeStr(rapport.type_bien);
   const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
   const anneeNum = rapport.annee_construction ? parseInt(safeStr(rapport.annee_construction)) : null;
-  const diagsPrivProvidedModal = (rapport.diagnostics || []).some(
-    (d: Record<string, unknown>) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
+  const diagsPrivProvidedModal = ((rapport.diagnostics as Array<Record<string, unknown>>) || []).some(
+    (d) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
   );
 
   // Identiques à TabDocuments
