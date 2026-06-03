@@ -2267,6 +2267,12 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             status="neutral"
             badge={carnet.date_maj ? `MAJ ${carnet.date_maj}` : 'Détecté'}>
 
+            {/* Bandeau source : tout ce bloc vient du carnet d'entretien */}
+            <div style={{ padding: '10px 14px', background: 'var(--color-background-secondary)', border: '1px solid var(--color-border-tertiary)', borderRadius: 10, fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.55, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>📓</span>
+              <span>Toutes les sections ci-dessous sont issues du <strong style={{ color: 'var(--color-text-primary)' }}>carnet d'entretien de l'immeuble</strong> — document tenu par le syndic qui retrace les équipements, contrats, travaux et diagnostics des parties communes.</span>
+            </div>
+
             {/* Immatriculation registre */}
             {carnet.immatriculation_registre && (
               <div style={{ padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 13, color: '#075985' }}>
@@ -2326,7 +2332,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {/* Travaux votés en cours (depuis carnet) */}
             {travauxEnCours.length > 0 && (
               <>
-                <SectionTitle emoji="🔨" text="Travaux votés en AG (mentionnés dans le carnet)" />
+                <SectionTitle emoji="🔨" text="Travaux votés en AG" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {travauxEnCours.map((t, i) => (
                     <div key={i} style={{ padding: '10px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, fontSize: 13, color: '#92400e' }}>
@@ -2371,7 +2377,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {/* Diagnostics parties communes (depuis carnet) */}
             {diagsPC.length > 0 && (
               <>
-                <SectionTitle emoji="🔍" text="Diagnostics parties communes (mentionnés dans le carnet)" />
+                <SectionTitle emoji="🔍" text="Diagnostics parties communes" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {diagsPC.map((d, i) => {
                     const bg = d.resultat === 'positif' ? '#fef2f2' : d.resultat === 'negatif' ? '#f0fdf4' : '#f8fafc';
