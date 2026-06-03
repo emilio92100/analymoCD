@@ -4183,6 +4183,9 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   }, []);
 
   const progressPercent = progress?.percent || 0;
+  // Phase "envoi des fichiers" (debut) vs phase "analyse" (le serveur travaille).
+  // analyse-client passe le percent a 40 des que l'upload est fini et que l'analyse demarre.
+  const analysisStarted = progressPercent >= 40;
 
   // Utilise le TooltipBtn global — pas besoin d'id ni d'état local
   const TooltipBubble = ({ text }: { id?: string; text: string }) => (
@@ -4268,20 +4271,38 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
           {/* ══ État : Upload en cours ══ */}
           {uploading && !done && !queued && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ position: 'relative', width: 76, height: 76, margin: '0 auto 18px' }}>
-                <svg viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
+              <style>{`@keyframes cm-spin { to { transform: rotate(360deg); } } @keyframes cm-shimmer { from { transform: translateX(-120%); } to { transform: translateX(260%); } }`}</style>
+              <div style={{ position: 'relative', width: 84, height: 84, margin: '0 auto 18px' }}>
+                {/* Anneau de progression déterministe */}
+                <svg viewBox="0 0 80 80" width="84" height="84" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="40" cy="40" r="34" fill="none" stroke="#edf2f7" strokeWidth="6" />
                   <circle cx="40" cy="40" r="34" fill="none" stroke="#2a7d9c" strokeWidth="6"
                     strokeDasharray={`${2 * Math.PI * 34}`}
                     strokeDashoffset={`${2 * Math.PI * 34 * (1 - progressPercent / 100)}`}
                     strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
                 </svg>
+                {/* Spinner continu : montre que ça travaille même quand le % est figé (ex: 90%) */}
+                <div style={{ position: 'absolute', inset: -4, borderRadius: '50%', border: '2px solid transparent', borderTopColor: 'rgba(42,125,156,0.45)', animation: 'cm-spin 0.9s linear infinite', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{progressPercent}%</div>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{progress?.message || 'Mise à jour en cours…'}</div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Ne fermez pas cette fenêtre</div>
-              <div style={{ height: 6, borderRadius: 3, background: '#edf2f7', overflow: 'hidden' }}>
-                <div style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #2a7d9c, #5bb8d4)', width: `${progressPercent}%`, transition: 'width 0.5s ease' }} />
+
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+                {analysisStarted ? 'Analyse de vos documents en cours…' : 'Envoi de vos documents…'}
+              </div>
+
+              {analysisStarted ? (
+                <div style={{ fontSize: 12.5, color: '#047857', lineHeight: 1.5, marginBottom: 16, background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 8, textAlign: 'left' as const }}>
+                  <span style={{ fontSize: 15, flexShrink: 0 }}>🔔</span>
+                  <span>Vous pouvez fermer cette fenêtre — votre rapport continue en arrière-plan. Nous vous prévenons dans la cloche et par e-mail dès qu'il est prêt.</span>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Ne fermez pas tout de suite — vos documents sont en cours d'envoi.</div>
+              )}
+
+              {/* Barre de progression + reflet continu (ne paraît jamais figée) */}
+              <div style={{ position: 'relative', height: 6, borderRadius: 3, background: '#edf2f7', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #2a7d9c, #5bb8d4)', width: `${Math.max(progressPercent, 3)}%`, transition: 'width 0.5s ease' }} />
+                <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '40%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)', animation: 'cm-shimmer 1.5s ease-in-out infinite' }} />
               </div>
             </div>
           )}
@@ -4289,6 +4310,17 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
           {/* ══ État : Sélection ══ */}
           {!uploading && !done && !queued && (
             <>
+              {/* ── Pédagogie + avertissement "une seule fois" ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                <div style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.5, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px' }}>
+                  Ajoutez les documents qui manquaient : Verimo les analyse et <strong>recalcule le score</strong> de votre rapport en les combinant avec l'analyse existante.
+                </div>
+                <div style={{ fontSize: 12.5, color: '#92400e', lineHeight: 1.5, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <span style={{ flexShrink: 0 }}>⚠️</span>
+                  <span>Vous ne pourrez compléter votre dossier <strong>qu'une seule fois</strong>. Pensez à ajouter <strong>tous vos documents en une fois</strong> (5 maximum).</span>
+                </div>
+              </div>
+
               {/* ── HAUT : Upload + bouton ── */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
