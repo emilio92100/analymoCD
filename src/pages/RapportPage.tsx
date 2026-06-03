@@ -802,6 +802,22 @@ function filterTravauxEvoquesCopro(arr: any[] | null | undefined): any[] {
   });
 }
 
+/* Calcule la classe DPE officielle (réforme 2021) à partir des chiffres :
+   énergie primaire (kWh/m²/an) + GES (kg CO₂/m²/an), en gardant la PIRE des deux.
+   Fallback sur la lettre fournie par le moteur si les chiffres manquent. */
+function classeDpeAffichee(e?: { kwh_m2?: number | null; ges_kg_m2?: number | null; classe?: string | null } | null): string | null {
+  if (!e) return null;
+  const seuilsKwh: [number, string][] = [[70, 'A'], [110, 'B'], [180, 'C'], [250, 'D'], [330, 'E'], [420, 'F']];
+  const seuilsGes: [number, string][] = [[6, 'A'], [11, 'B'], [30, 'C'], [50, 'D'], [70, 'E'], [100, 'F']];
+  const fromVal = (v: number, seuils: [number, string][]) => { for (const [max, lettre] of seuils) if (v <= max) return lettre; return 'G'; };
+  const ordre = 'ABCDEFG';
+  const lettres: string[] = [];
+  if (typeof e.kwh_m2 === 'number' && e.kwh_m2 > 0) lettres.push(fromVal(e.kwh_m2, seuilsKwh));
+  if (typeof e.ges_kg_m2 === 'number' && e.ges_kg_m2 > 0) lettres.push(fromVal(e.ges_kg_m2, seuilsGes));
+  if (lettres.length === 0) return e.classe ? String(e.classe).toUpperCase() : null;
+  return lettres.reduce((pire, l) => ordre.indexOf(l) > ordre.indexOf(pire) ? l : pire, lettres[0]);
+}
+
 /* ══════════════════════════════════
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
@@ -3048,8 +3064,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
             const renderEtiquette = (e?: EtiquetteProj, label?: string) => {
               if (!e?.classe) return null;
-              const c = String(e.classe).toUpperCase();
-              const col = DPE_COLORS[c] || '#94a3b8';
+              const c = classeDpeAffichee(e) || String(e.classe).toUpperCase();
+              const lettre = c.match(/[A-G]/)?.[0] || c; // couleur depuis la 1re lettre (gère plages éventuelles)
+              const col = DPE_COLORS[lettre] || '#94a3b8';
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 64 }}>
                   <div style={{ width: 54, height: 54, borderRadius: '50%', background: col, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, boxShadow: `0 4px 12px ${col}55`, border: '3px solid #fff' }}>{c}</div>
@@ -3064,8 +3081,8 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 {/* Titre dynamique : "Pour passer de X à Y" si évolution dispo, sinon générique */}
                 {(() => {
                   const evo = recos?.evolution_etiquette;
-                  const cDepart = evo?.actuelle?.classe;
-                  const cArrivee = evo?.apres_pack_1_et_2?.classe || evo?.apres_pack_1?.classe;
+                  const cDepart = classeDpeAffichee(evo?.actuelle);
+                  const cArrivee = classeDpeAffichee(evo?.apres_pack_1_et_2) || classeDpeAffichee(evo?.apres_pack_1);
                   if (hasPacks && cDepart && cArrivee && cDepart !== cArrivee) {
                     return (
                       <SectionTitle
@@ -3125,9 +3142,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                     {/* Pack 1 + Pack 2 — sous-titres dynamiques selon le gain de classe */}
                     {(() => {
                       const evo = recos!.evolution_etiquette;
-                      const cActuelle = evo?.actuelle?.classe;
-                      const cApresP1 = evo?.apres_pack_1?.classe;
-                      const cApresP1P2 = evo?.apres_pack_1_et_2?.classe;
+                      const cActuelle = classeDpeAffichee(evo?.actuelle);
+                      const cApresP1 = classeDpeAffichee(evo?.apres_pack_1);
+                      const cApresP1P2 = classeDpeAffichee(evo?.apres_pack_1_et_2);
 
                       const subPack1 = cActuelle && cApresP1 && cActuelle !== cApresP1
                         ? `Pour passer de ${cActuelle} à ${cApresP1}`
