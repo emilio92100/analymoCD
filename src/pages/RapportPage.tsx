@@ -2699,13 +2699,55 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         type PedLot = { present?: boolean; impayes_vendeur?: number; fonds_travaux_alur?: number | null; fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null; honoraires_syndic?: number | null; charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null }; travaux_charge_vendeur?: Array<{ label?: string; montant?: number | null }>; procedures_contre_vendeur?: string[]; procedures_copro?: string; impayes_copro_global?: number | null; dette_fournisseurs?: number | null; fonds_travaux_copro_global?: number | null; historique_charges?: Array<{ exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null }> };
         const ped = (rapport as Record<string, unknown>).pre_etat_date as PedLot | null;
         const hasPed = ped?.present === true;
+        const hasCarrez = (rapport.diagnostics as Array<Record<string, unknown>>).some((d) => d.type === 'CARREZ' && d.perimetre === 'lot_privatif');
         const hasLotInfo = lot?.quote_part_tantiemes || fondsAlurNum || restrictions.length > 0 || (lot?.parties_privatives as unknown[] ?? []).length > 0;
-        if (!hasLotInfo && !hasPed && travauxEvoques.length === 0) return null;
+        if (!hasLotInfo && !hasPed && !hasCarrez && travauxEvoques.length === 0) return null;
         return (
           <AccordionSection
-            title="Votre lot" sub="Tantièmes · situation vendeur · restrictions" icon="🏠"
+            title="Votre lot" sub="Surface · tantièmes · situation vendeur" icon="🏠"
             status="neutral" badge='Informatif'
             defaultOpen={allOpen || hasPed}>
+
+            {/* Surface Carrez — en tête de "Votre lot" (c'est la surface du lot acheté) */}
+            {(() => {
+              const carrez = (rapport.diagnostics as Array<Record<string, unknown>>).find((d) => d.type === 'CARREZ' && d.perimetre === 'lot_privatif') as Record<string, unknown> | undefined;
+              if (!carrez) return null;
+              const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
+              const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
+              if (!surface && !(pieces && pieces.length > 0)) return null;
+              const totalPieces = pieces && pieces.length > 0 ? pieces.reduce((s, p) => s + (Number(p.surface) || 0), 0) : 0;
+              return (
+                <div style={{ marginBottom: 18 }}>
+                  <SectionTitle emoji="📐" text="Surface Carrez" tooltip="Surface privative officielle (loi Carrez), obligatoire à la vente en copropriété. Si la surface réelle est inférieure de plus de 5 % à celle annoncée au compromis, vous pouvez demander une réduction de prix proportionnelle." />
+                  <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 14, overflow: 'hidden' }}>
+                    {surface && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', borderBottom: (pieces && pieces.length > 0) ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0369a1', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Surface totale</span>
+                        <span style={{ fontSize: 26, fontWeight: 700, color: '#0c4a6e' }}>{surface} m²</span>
+                      </div>
+                    )}
+                    {pieces && pieces.length > 0 && (
+                      <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
+                        <tbody>
+                          {pieces.map((p, i) => (
+                            <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
+                              <td style={{ padding: '11px 18px', fontSize: 14, color: 'var(--color-text-primary)' }}>{p.piece}</td>
+                              <td style={{ padding: '11px 18px', fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{p.surface} m²</td>
+                            </tr>
+                          ))}
+                          {totalPieces > 0 && (
+                            <tr style={{ background: 'var(--color-background-secondary)' }}>
+                              <td style={{ padding: '11px 18px', fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.03em' }}>Total mesuré</td>
+                              <td style={{ padding: '11px 18px', fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{Math.round(totalPieces * 100) / 100} m²</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Identité du lot */}
             {(lot?.quote_part_tantiemes || (lot?.parties_privatives as unknown[] ?? []).length > 0) && (() => {
@@ -3171,46 +3213,12 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
       )}
 
       {/* ── DIAGNOSTICS PRIVATIFS ── */}
-      {(autresDiags.length > 0 || hasDiagAlert || diagsPriv.some((d: Record<string, unknown>) => d.type === 'CARREZ')) && (
+      {(autresDiags.length > 0 || hasDiagAlert) && (
         <AccordionSection
           title="Diagnostics privatifs" sub="Électricité · gaz · amiante · plomb · termites · Carrez" icon="🔍"
           status={hasDiagAlert ? 'alert' : 'ok'}
           badge={hasDiagAlert ? "Points d'attention" : `${autresDiags.length} diagnostic${autresDiags.length > 1 ? 's' : ''}`}
           defaultOpen={allOpen}>
-
-          {/* Surface Carrez — affichée en premier dans la section */}
-          {(() => {
-            // Le CARREZ est exclu de `autresDiags`, on le récupère dans la liste complète.
-            const carrez = diagsPriv.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
-            if (!carrez) return null;
-            const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
-            const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
-            return (
-              <div style={{ marginBottom: 18 }}>
-                <SectionTitle emoji="📐" text="Surface Carrez" tooltip="La loi Carrez impose la mesure officielle de la surface privative. Si la surface réelle est inférieure de plus de 5% à celle du compromis, vous pouvez demander une réduction du prix proportionnelle." />
-                <div style={{ background: 'var(--color-background-secondary)', borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--color-border-tertiary)' }}>
-                  {surface && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: (pieces && pieces.length > 0) ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Surface totale Carrez</span>
-                      <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-primary)' }}>{surface} m²</span>
-                    </div>
-                  )}
-                  {pieces && pieces.length > 0 && (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
-                      <tbody>
-                        {pieces.map((p, i) => (
-                          <tr key={i} style={{ borderBottom: i < pieces.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'transparent' }}>
-                            <td style={{ padding: '11px 18px', fontSize: 14, color: 'var(--color-text-primary)' }}>{p.piece}</td>
-                            <td style={{ padding: '11px 18px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const }}>{p.surface} m²</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
 
           <SectionTitle emoji="✅" text="Résultats des diagnostics" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
