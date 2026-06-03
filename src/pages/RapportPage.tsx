@@ -2187,7 +2187,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                 const pct = max > 0 ? (row.budget_total / max) * 100 : 0;
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < sorted.length - 1 ? '1px solid #f1f5f9' : 'none', background: i === sorted.length - 1 ? '#f0f7ff' : 'transparent' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: i === sorted.length - 1 ? '#2a7d9c' : '#0f172a', width: 42, flexShrink: 0 }}>{row.annee}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: i === sorted.length - 1 ? '#2a7d9c' : '#0f172a', width: 78, flexShrink: 0, whiteSpace: 'nowrap' }}>{row.annee}</span>
                     <div style={{ flex: 1, height: 8, background: '#edf2f7', borderRadius: 4, overflow: 'hidden' }}>
                       <div style={{ width: `${pct}%`, height: '100%', background: i === sorted.length - 1 ? '#2a7d9c' : '#94a3b8', borderRadius: 4, opacity: 0.7 + i * 0.15 }} />
                     </div>
@@ -3893,6 +3893,13 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
   const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
   const anneeNum = rapport.annee_construction ? parseInt(rapport.annee_construction) : null;
 
+  // Présence RÉELLE des diagnostics du lot (perimetre lot_privatif), alignée sur la notation /4.
+  // On ne se fie PLUS à la simple existence d'un fichier DPE/diagnostic : un DPE d'immeuble ou
+  // un diagnostic de parties communes ne couvre pas les diagnostics privatifs du lot.
+  const diagsPrivProvided = (rapport.diagnostics || []).some(
+    (d: Record<string, unknown>) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
+  );
+
   // Deadline 7 jours
   const deadlineStr = rapport.regeneration_deadline;
   const deadline = deadlineStr ? new Date(deadlineStr) : null;
@@ -3908,7 +3915,7 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
     { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null },
     { label: 'Règlement de copropriété', present: hasDoc(['REGLEMENT_COPRO']), tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' },
     { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' },
-    { label: 'Diagnostics privatifs (DDT)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: `Selon l'année de construction de l'immeuble${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` },
+    { label: 'Diagnostics privatifs (DDT)', present: diagsPrivProvided, tooltip: `Diagnostics propres à votre lot (DPE du lot, électricité, gaz, amiante, Carrez…). Un DPE d'immeuble ou un diagnostic de parties communes ne couvre pas ces diagnostics. Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains peuvent ne pas être obligatoires.` },
     { label: 'Appel de charges / Appel de fonds', present: hasDoc(['APPEL_CHARGES']), tooltip: null },
   ] : [
     { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' },
@@ -4156,13 +4163,16 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   const typeBien = safeStr(rapport.type_bien);
   const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
   const anneeNum = rapport.annee_construction ? parseInt(safeStr(rapport.annee_construction)) : null;
+  const diagsPrivProvidedModal = (rapport.diagnostics || []).some(
+    (d: Record<string, unknown>) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
+  );
 
   // Identiques à TabDocuments
   const docsEssentielsManquants = isCopro ? [
     !hasDoc(['PV_AG']) ? { emoji: '📋', label: '3 derniers PV d\'Assemblée Générale', tooltip: null } : null,
     !hasDoc(['REGLEMENT_COPRO']) ? { emoji: '📜', label: 'Règlement de copropriété', tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' } : null,
     !hasDoc(['CARNET_ENTRETIEN']) ? { emoji: '📓', label: 'Carnet d\'entretien de l\'immeuble', tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' } : null,
-    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: `Diagnostics privatifs (DDT)`, tooltip: `Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` } : null,
+    !diagsPrivProvidedModal ? { emoji: '🗂', label: `Diagnostics privatifs (DDT)`, tooltip: `Diagnostics propres à votre lot (DPE du lot, électricité, gaz, amiante, Carrez…). Un DPE d'immeuble ou un diagnostic de parties communes ne couvre pas ces diagnostics. Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains peuvent ne pas être obligatoires.` } : null,
     !hasDoc(['APPEL_CHARGES']) ? { emoji: '💶', label: 'Appel de charges / Appel de fonds', tooltip: null } : null,
   ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [
     !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: 'DDT complet (Dossier Diagnostic Technique)', tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' } : null,
@@ -4791,14 +4801,17 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   const hasDocType = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
   const typeBien = safeStr(rapport.type_bien);
   const isCoproForMissing = typeBien === 'appartement' || typeBien === 'maison_copro';
+  const diagsPrivProvidedTop = (rapport.diagnostics || []).some(
+    (d: Record<string, unknown>) => d.perimetre === 'lot_privatif' && d.presence !== 'non_realise'
+  );
   const missingEssentielsCount = isCoproForMissing ? [
     !hasDocType(['PV_AG']),
     !hasDocType(['REGLEMENT_COPRO']),
     !hasDocType(['CARNET_ENTRETIEN']),
-    !hasDocType(['DDT', 'DPE', 'DIAGNOSTIC']),
+    !diagsPrivProvidedTop,
     !hasDocType(['APPEL_CHARGES']),
   ].filter(Boolean).length : [
-    !hasDocType(['DDT', 'DPE', 'DIAGNOSTIC']),
+    !diagsPrivProvidedTop,
     !hasDocType(['TAXE_FONCIERE']),
   ].filter(Boolean).length;
 
