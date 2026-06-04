@@ -24,6 +24,34 @@ export type Analyse = {
   progress_message?: string;
 };
 
+// ──────────────────────────────────────────────────────────────
+// Titre d'affichage d'une analyse (particulier ET pro).
+// Source de vérité unique pour ne JAMAIS afficher le nom du fichier
+// uploadé à la place d'un titre d'analyse complète.
+//   • document simple        → nom du document
+//   • complète + adresse      → l'adresse réelle (rapport généré)
+//   • complète + pas d'adresse + en échec  → "Analyse complète"
+//   • complète + pas d'adresse + en cours  → "Analyse complète en cours…"
+// Accepte aussi bien le type Analyse (particulier) que ProAnalysis (pro).
+// ──────────────────────────────────────────────────────────────
+export function titreAnalyse(a: {
+  type?: string;
+  status?: string;
+  address?: string | null;
+  title?: string | null;
+  adresse_bien?: string | null;
+  nom_document?: string | null;
+}): string {
+  const isComplete = a.type !== 'document';
+  if (!isComplete) {
+    return a.nom_document || a.title || 'Document sans nom';
+  }
+  const adresse = a.adresse_bien || a.address || undefined;
+  if (adresse) return adresse;
+  const enEchec = a.status === 'error' || a.status === 'failed';
+  return enEchec ? 'Analyse complète' : 'Analyse complète en cours…';
+}
+
 export function useAnalyses() {
   const [analyses, setAnalyses] = useState<Analyse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +74,10 @@ export function useAnalyses() {
             : a.status === 'failed' ? 'error'
             : 'processing') as 'completed' | 'processing' | 'error',
           nom_document: a.type === 'document' ? a.title : undefined,
-          adresse_bien: a.type !== 'document' ? (a.address || a.title) : undefined,
+          // ⚠️ NE PAS retomber sur a.title (= nom du 1er fichier) : pour une analyse
+          // complète sans adresse encore extraite, on laisse adresse_bien vide et c'est
+          // titreAnalyse() qui décide du libellé selon le statut (en cours / échec).
+          adresse_bien: a.type !== 'document' ? (a.address || undefined) : undefined,
           score,
           recommandation: reco,
           recommandationColor: reco ? recoColor : undefined,
