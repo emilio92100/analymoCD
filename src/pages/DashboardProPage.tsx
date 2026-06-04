@@ -14,6 +14,7 @@ import {
   Paperclip, Phone, Users,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { titreAnalyse } from '../hooks/useAnalyses';
 import { getStripe } from '../lib/stripe-client';
 import CallbackRequestModal from '../components/CallbackRequestModal';
 
@@ -1136,7 +1137,7 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
                 <Link key={a.id} to={`/dashboard/dossier/${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textDecoration: 'none', transition: 'all 0.15s' }}>
                   {score !== null && <ScoreRing score={score} size={38} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.title}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{titreAnalyse(a)}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(a.created_at)}</div>
                   </div>
                   {shareCount > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>Envoyé {shareCount}×</span>}
@@ -5401,7 +5402,7 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
 
   // Extract clean doc name (first part before " — ")
   const getDocName = (a: ProAnalysis) => {
-    const raw = a.address || a.title || 'Analyse';
+    const raw = titreAnalyse(a);
     return raw.includes(' — ') ? raw.split(' — ')[0] : raw;
   };
 
@@ -5654,7 +5655,7 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                           {sel && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.title}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{titreAnalyse(a)}</div>
                           <div style={{ fontSize: 11, color: '#94a3b8' }}>
                             <span style={{ fontWeight: 700, color: a.type === 'complete' ? '#2a7d9c' : '#64748b' }}>{a.type === 'complete' ? 'Complète' : 'Simple'}</span> · {fmtDate(a.created_at)}
                           </div>
@@ -6500,7 +6501,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                      {a.address || a.title}
+                      {titreAnalyse(a)}
                     </div>
                     <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{fmtDate(a.created_at)}</span>
