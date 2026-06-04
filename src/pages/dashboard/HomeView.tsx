@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { FileText, ChevronRight, Plus, Sparkles, ExternalLink, Building2, BookOpen, ArrowRight } from 'lucide-react';
 import { useUser } from '../../hooks/useUser';
-import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
+import { useAnalyses, titreAnalyse, type Analyse } from '../../hooks/useAnalyses';
 import { useCredits } from '../../hooks/useCredits';
 import DashboardLoader from '../../components/DashboardLoader';
 
@@ -20,7 +20,7 @@ function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'md' 
 
 function AnalyseRow({ a }: { a: Analyse }) {
   const isComplete = a.type === 'complete';
-  const displayTitle = isComplete ? (a.adresse_bien || 'Adresse en cours de détection…') : (a.nom_document || 'Document sans nom');
+  const displayTitle = titreAnalyse(a);
   const typeLabel = isComplete ? 'Analyse Complète' : 'Analyse Document';
   const typeBg = isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
   const typeColor = isComplete ? '#0f2d3d' : '#2a7d9c';
