@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Search, Trash2, Copy, Mail, Share2, CheckSquare, Square, X, ExternalLink, FileText, ChevronDown, Info } from 'lucide-react';
 import { getOrCreateShareToken } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
-import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
+import { useAnalyses, titreAnalyse, type Analyse } from '../../hooks/useAnalyses';
 import DashboardLoader from '../../components/DashboardLoader';
 
 const C = {
@@ -158,7 +158,7 @@ function ShareModal({ analyseId, titre, onClose }: { analyseId: string; titre: s
 /* ═══ COMPLETE ROW ═══ */
 function CompleteRow({ a, onDelete, isLast, selectionMode, selected, onToggleSelect, onShare }: { a: Analyse; onDelete: (id: string) => void; isLast: boolean; selectionMode: boolean; selected: boolean; onToggleSelect: (id: string) => void; onShare: (id: string, title: string) => void; }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const title = a.adresse_bien || 'Adresse en cours de détection…';
+  const title = titreAnalyse(a);
   const rs = recoStyle(a.recommandation);
   const docCount = a.document_names?.length || 0;
   // 🆕 Une analyse est "en cours" tant qu'elle traverse les status pré-final (pending/files_ready/processing/queued)
@@ -212,7 +212,7 @@ function CompleteRow({ a, onDelete, isLast, selectionMode, selected, onToggleSel
 /* ═══ SIMPLE ROW ═══ */
 function SimpleRow({ a, onDelete, isLast, selectionMode, selected, onToggleSelect, onShare }: { a: Analyse; onDelete: (id: string) => void; isLast: boolean; selectionMode: boolean; selected: boolean; onToggleSelect: (id: string) => void; onShare: (id: string, title: string) => void; }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const title = a.type === 'complete' ? (a.adresse_bien || 'Adresse…') : (a.nom_document || 'Document sans nom');
+  const title = titreAnalyse(a);
   // 🆕 Idem CompleteRow : on couvre tous les status de progression, pas juste 'processing'
   const isInProgress = a.status === 'pending' || a.status === 'files_ready' || a.status === 'processing' || a.status === 'queued';
   return (
