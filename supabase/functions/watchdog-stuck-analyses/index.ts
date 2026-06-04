@@ -38,6 +38,7 @@ interface StuckAnalyse {
   type: string;
   status: string;
   title: string | null;
+  address: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -114,7 +115,12 @@ async function notifyUser(
   supabaseAdmin: SupabaseClient
 ): Promise<void> {
   try {
-    const titleAnalyse = analyse.title || 'votre analyse';
+    // Sujet NON trompeur : si l'analyse a planté avant d'extraire l'adresse, on ne nomme PAS
+    // un seul fichier pour une analyse complète (ce serait trompeur) → libellé neutre "complète".
+    const isComplete = analyse.type !== 'document';
+    const subject = analyse.address
+      ? `du bien « ${analyse.address} »`
+      : (isComplete ? 'complète' : (analyse.title ? `du document « ${analyse.title} »` : ''));
     const refundMsg = refunded
       ? ' Votre crédit a été remboursé automatiquement.'
       : '';
@@ -122,7 +128,7 @@ async function notifyUser(
     await supabaseAdmin.from('user_notifications').insert({
       user_id: analyse.user_id,
       title: 'Analyse non aboutie',
-      message: `Nous sommes désolés, votre analyse "${titleAnalyse}" n'a pas pu être finalisée à cause d'un incident technique.${refundMsg} Vous pouvez relancer une nouvelle analyse à tout moment.`,
+      message: `Nous sommes désolés, votre analyse${subject ? ' ' + subject : ''} n'a pas pu être finalisée à cause d'un incident technique.${refundMsg} Vous pouvez relancer une nouvelle analyse à tout moment.`,
     });
   } catch (err) {
     console.error(`[watchdog] Erreur insert user_notifications pour ${analyse.id}:`, err);
@@ -234,7 +240,7 @@ Deno.serve(async (req) => {
     // On utilise created_at comme référence (updated_at peut ne pas exister)
     const { data: stuck, error: queryErr } = await supabaseAdmin
       .from('analyses')
-      .select('id, user_id, type, status, title, created_at')
+      .select('id, user_id, type, status, title, address, created_at')
       .or(
         `and(status.eq.processing,created_at.lt.${processingThreshold}),` +
         `and(status.eq.files_ready,created_at.lt.${filesReadyThreshold}),` +
