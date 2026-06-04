@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 03 juin 2026
+# VERIMO — Contexte projet — 04 juin 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -389,6 +389,8 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 🎯 MAP-REDUCE analyse complète — ✅ RÉALISÉ ET DÉPLOYÉ (03 juin 2026) ⭐⭐⭐
 
+> ⚠️ **MISE À JOUR 04 juin 2026 — RETOUR AU SINGLE CALL.** Le MAP-REDUCE reste dans le repo (`analyser-run` ~2575 lignes) mais **n'est plus le mode actif en prod** : Alex a recollé manuellement l'ancien `analyser-run` **SINGLE CALL (v7)** dans Supabase. Raison : sur de vrais dossiers, le MAP-REDUCE s'est révélé **plus lent** que le single call. Le REDUCE empile des résumés MAP « exhaustifs » (jusqu'à 64000 tokens/doc, prompt « compte rendu fidèle et exhaustif ») souvent **plus lourds que les docs d'origine** → il **dilate** l'info au lieu de la compresser, et la génération du rapport final reste de toute façon aussi longue. Le single call suffit pour les dossiers normaux (contexte Sonnet 4.6 = **1M tokens**). Le vrai problème de fond (**timeout 400 s** sur très gros dossiers) est traité dans la section dédiée « ⏱️ CHANTIER 400 SECONDES » (prochaine session). La section ci-dessous décrit le MAP-REDUCE tel qu'il est codé dans le repo — conservée comme **référence / historique**.
+
 > Le chantier cadré le 02 juin a été réalisé le 03 juin, **mais avec une architecture différente de celle initialement prévue** (raison ci-dessous). Le mode complet fonctionne désormais en MAP-REDUCE découpé en plusieurs invocations. Modes `document` (analyse simple 1 doc) et `complement` (compléter dossier) **strictement inchangés** (toujours single appel).
 
 ### Pourquoi l'architecture finale diffère du plan initial
@@ -522,6 +524,12 @@ alter table analyses add column if not exists map_resultats jsonb;
 
 ### Sessions récentes (mai-juin 2026)
 
+- **Session 04 juin 2026 ⭐ : Fix titre analyses (nom de fichier) + grosse investigation timeout 400 s**
+  - **Fix affichage titre des analyses (LIVRÉ, frontend, 4 fichiers).** Une analyse complète en cours/échec affichait le **nom du 1er fichier uploadé** (ex « 7089_PV_AG_05.06.2019.pdf ») au lieu d'un libellé propre. **Cause racine** : `useAnalyses.ts` l.49 `adresse_bien = a.address || a.title` — le `|| a.title` (= nom du fichier) remontait quand l'adresse n'était pas encore extraite. **Fix** : fonction partagée **`titreAnalyse()`** ajoutée dans `useAnalyses.ts` (document → nom du doc ; complète + adresse → l'adresse ; complète sans adresse + en cours → « Analyse complète en cours… » ; en échec → « Analyse complète ») + suppression du `|| a.title`. Appliquée côté **particulier** (`MesAnalyses.tsx` CompleteRow + SimpleRow, `HomeView.tsx`) et côté **pro** (`DashboardProPage.tsx`, 4 endroits de **liste** : l.1139 / 5404 getDocName / 5657 / 6503). **Épargnés** (vérifié) : titre de la page rapport (l.2887, 5934) et notif `completed` (l.7789) — l'adresse y est toujours présente. Fichiers livrés : `useAnalyses.ts`, `MesAnalyses.tsx`, `HomeView.tsx`, `DashboardProPage.tsx`. **Frontend only → Vercel auto-deploy, AUCUN SQL ni edge function à redéployer.** ⚠️ Pousser `useAnalyses.ts` en premier (il définit la fonction importée par les autres).
+  - **Notif cloche d'échec : déjà bien gérée** (vérifié dans `watchdog-stuck-analyses`) — pour une analyse complète sans adresse, le sujet est « complète » (jamais le nom du fichier), commentaire explicite dans le code. Rien à corriger.
+  - **Watchdog vérifié** : couvre `processing` > 1h, `files_ready` > 30 min, `queued` > 1h30 → `failed` + refund + notif. **Cron actif** (confirmé par Alex). Le seuil 30 min est trop lent pour l'UX → à réduire (voir chantier 400 s).
+  - **Retour au SINGLE CALL en prod** (voir note en tête section MAP-REDUCE). Le single call gère bien les dossiers normaux ; le MAP-REDUCE était plus lent.
+  - **Grosse investigation du timeout 400 s** (hypothèses sortie vs entrée, faits vérifiés sur les limites Supabase/Anthropic, pistes de solution). Tout consigné dans la section « ⏱️ CHANTIER 400 SECONDES » ci-dessous (à continuer la prochaine fois).
 - **Session 03 juin 2026 ⭐⭐⭐ : MAP-REDUCE analyse complète RÉALISÉ + déployé + polish rapport**
   - **MAP-REDUCE multi-invocations livré** (`analyser-run` v18) — voir section dédiée « 🎯 MAP-REDUCE » plus haut. Architecture finale ≠ plan initial : le bloquant réel était le **WallClockTime Supabase** (~6-7 min/invocation), pas la qualité de lecture. Solution : découper MAP en tranches de 3 docs + self-invoke (`fetch` sur sa propre URL) entre chaque tranche puis vers le REDUCE. MAP = résumé **texte libre** (pas JSON par type) ; REDUCE = prompt complet original + post-traitement déterministe. Colonne BDD `map_resultats` (jsonb) ajoutée. **Validé en prod à 12 docs.**
   - **Scoring corrigé** : score total = somme des 5 catégories recalculées (`recalculerCategories`), n'utilise plus le score inventé par l'IA.
@@ -581,6 +589,46 @@ alter table analyses add column if not exists map_resultats jsonb;
 ---
 
 ## 🎯 Prochaine session — Actions prioritaires
+
+### ⏱️ CHANTIER 400 SECONDES — timeout analyse complète (À CONTINUER) ⭐⭐⭐ NOUVEAU 04 juin
+
+**Le problème.** En SINGLE CALL, sur un gros dossier (testé : 4 docs dont un **RCP de 150 pages**), l'appel Claude dépasse les **400 s de wall-clock Supabase** → shutdown brutal du worker → l'analyse reste figée en statut intermédiaire (`files_ready`), pas de rapport, rattrapée seulement par le watchdog 30 min plus tard. **Confirmé par les logs** : « Appel Claude » à 18:18:14 → « shutdown » à 18:24:53 = **exactement 6 min 40 = 400 s**, et **aucun log intermédiaire** (l'appel n'a jamais rendu sa réponse).
+
+**Faits établis et vérifiés cette session (sources officielles) :**
+- **Supabase edge functions** : wall-clock = **400 s** (dur, NON augmentable sauf self-hosting). CPU = 2 s mais ne compte QUE le calcul, **pas l'attente réseau** → l'appel Claude est borné par le wall-clock, pas le CPU. Free/Pro : 150 s pour la requête initiale, 400 s pour les **background tasks** (Alex est en background via self-invoke → a bien droit aux 400 s).
+- **Self-hosting** des edge functions lèverait le 400 s (réglage `workerTimeoutMs`) MAIS = beta + gérer un serveur Docker → **écarté** (disproportionné, et ça irait CONTRE l'UX : autoriser une attente de 10-15 min n'est pas une bonne UX).
+- **Limite PDF Anthropic** : la doc annonce 100 pages/PDF + 32 Mo/requête, MAIS en pratique le **RCP de 150 pages EST passé** (Sonnet 4.6 + Files API) → **la limite de pages n'est PAS le souci**.
+- **Context window Sonnet 4.6 = 1M tokens** (API standard, sans surcoût ; sortie plafonnée à 64K). PDF ≈ **1500-3000 tokens/page** (chaque page = image). Dossier moyen ~210 p ≈ 420K ; grosse copro ~340 p ≈ 510K-1M → **rentrent dans 1M**. Le dépassement de contexte est rare.
+- **Single call** : passe sur dossiers normaux/moyens, timeout sur les très gros.
+- **AbortController** (350 s en single / 240 s en reduce) **ne coupe PAS de façon fiable** l'appel fetch en cours → le worker traîne jusqu'au kill 400 s. Défaut connu.
+
+**Hypothèses sur l'origine du timeout (À TRANCHER PAR LA MESURE) :**
+- **Hyp. A — la SORTIE** (génération du rapport, écrite token par token = lent) : probablement le facteur dominant, mais **non prouvé**.
+- **Hyp. B — l'ENTRÉE** (lecture de gros volumes : RCP 150 p ≈ 300K tokens) : peut aussi peser lourd.
+- Impossible de trancher avec les logs actuels (rien entre « Appel Claude » et le shutdown).
+
+**➡️ PROCHAINE ÉTAPE N°1 (avant de coder une solution) : LOG DE MESURE.** Ajouter dans `analyser-run`, juste après l'appel `callAI`, un log affichant le **temps écoulé** + la **taille du rapport généré** (nb de caractères/tokens). Lancer une analyse petite / moyenne / grosse → voir si le temps suit la **taille du rapport** (= sortie) ou le **nb de pages** (= entrée). Sans ça, risque de coder la mauvaise solution.
+
+**Solutions selon le résultat :**
+- **Voie simple (à privilégier d'abord)** : garder le single call (suffit pour la grande majorité). Sur les rares dossiers trop lourds → bascule propre en échec + message clair (« dossier volumineux, réessayez »). + filet UX ci-dessous.
+- **Si la SORTIE est le goulot → découper la GÉNÉRATION par onglet.** Générer le rapport en plusieurs self-invocations, **un onglet par invocation** (copro, logement, procédure, doc, puis **synthèse + score en dernier**). Chaque invocation : génère 1 onglet → **sauvegarde** (colonne jsonb, type `map_resultats`) → **relance la suivante en fire-and-forget** (sans `await` bloquant) → se termine. Chaque morceau finit largement sous 400 s ; la barre de progression avance onglet par onglet (bonne UX). Mécanisme = le **self-invoke déjà présent dans le map-reduce**. **Avantage vs map-reduce** : chaque onglet voit les **vrais docs** (via cache), pas un résumé → **pas de perte d'info en cascade**.
+- **Si l'ENTRÉE est le goulot → prompt caching de l'entrée** : ne lire les docs qu'une fois.
+
+**Prompt caching (utile dans les deux cas, INDISPENSABLE si on découpe la sortie) :**
+- Marqueur **`cache_control: { type: 'ephemeral' }`** sur le **dernier** bloc `document` de la liste → tout ce qui est au-dessus (docs + system prompt) est mis en cache d'un coup.
+- Files API ≠ cache : le `file_id` évite de renvoyer le PDF sur le réseau, mais SANS cache le modèle **relit** le doc à chaque appel. Le cache garde le **travail de lecture** (~5 min, réallongé à chaque appel qui le touche → les onglets s'enchaînent dans la fenêtre).
+- Coût : 1ère écriture ~1,25× input, puis chaque lecture cache = **10 % du prix**. Sur 5 appels → largement gagnant.
+- **Les lectures cache ne comptent PAS dans l'ITPM** (limite de débit) → bonus rate limit.
+- ⚠️ Sans cache, le découpage par onglet RELIT les docs à chaque onglet → si l'entrée est le goulot, ça l'**aggrave**.
+
+**Filet UX (sous-chantier lié, à faire dans tous les cas) :**
+- **Front** : afficher « échec » dès qu'une analyse non-terminale dépasse **~8 min** (une réussie ne dépasse jamais ~7 min), sans attendre le watchdog (qui continue le remboursement en arrière-plan).
+- **Watchdog** : réduire le seuil `files_ready` de **30 min → ~10-12 min** (plus réactif, sans risque de tuer une analyse vivante puisque < 400 s).
+- `beforeunload` Supabase = **pas fiable** (Supabase dit de ne pas s'y reposer) → ne pas compter dessus pour basculer en échec.
+
+**État repo vs prod sur ce point :** le repo contient encore le MAP-REDUCE (`analyser-run` ~2575 lignes) ; la PROD tourne sur le **SINGLE CALL v7** recollé manuellement. Repartir du single call pour ce chantier.
+
+---
 
 ### ⭐⭐⭐ MAP-REDUCE : FAIT — reste à valider en conditions réelles
 Le MAP-REDUCE a été livré et déployé le 03 juin (voir section dédiée « 🎯 MAP-REDUCE analyse complète — ✅ RÉALISÉ »). Il reste à :
