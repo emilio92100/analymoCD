@@ -6655,11 +6655,17 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     <div style={{ marginTop: 10, padding: '11px 13px', background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', border: '1px solid #bae6fd', borderRadius: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: otherMembers.length > 0 ? 8 : 0 }}>
                         <span style={{ fontSize: 16 }}>🏛</span>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#0c4a6e' }}>
                             {roleIcon} {roleLabel} de l'agence <strong>{agenceInfo.agence_name}</strong>
                           </div>
                         </div>
+                        <button onClick={() => loadAgenceDetail(agenceInfo.agence_id, agenceInfo.agence_name)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 10px', background: '#fff', border: '1px solid #bae6fd', borderRadius: 7, cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#0c4a6e', flexShrink: 0 }}
+                          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f0f9ff'; }}
+                          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}>
+                          Voir l'agence <ChevronRight size={12} />
+                        </button>
                       </div>
                       {otherMembers.length > 0 && (
                         <div style={{ borderTop: '1px solid #bae6fd', paddingTop: 7 }}>
