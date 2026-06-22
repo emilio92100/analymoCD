@@ -279,7 +279,7 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
   const canInviteMore = slotsAvailable - pendingCount > 0;
 
   return (
-    <div style={{ padding: '24px 28px 60px', maxWidth: 1080, margin: '0 auto' }}>
+    <div style={{ paddingBottom: 60, maxWidth: 1100, margin: '0 auto' }}>
 
       {/* ═══ Header ═══ */}
       <div style={{ marginBottom: 28 }}>
@@ -555,7 +555,7 @@ function MemberDetailView({ member, agenceId, agence, currentUserId, isManager, 
   const maxCount = stats ? Math.max(1, ...stats.activity_by_week.map(w => w.count)) : 1;
 
   return (
-    <div style={{ padding: '24px 28px 60px', maxWidth: 1080, margin: '0 auto' }}>
+    <div style={{ paddingBottom: 60, maxWidth: 1100, margin: '0 auto' }}>
       {/* ═══ Bouton retour ═══ */}
       <button onClick={onBack}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#475569', fontSize: 13.5, fontWeight: 600, marginBottom: 16 }}>
