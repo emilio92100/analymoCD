@@ -5546,6 +5546,7 @@ type AgenceDetail = {
     id: string; raison_sociale: string; siret?: string | null; adresse?: string | null;
     plan?: string | null; nb_users_max?: number | null; status?: string | null;
     credits_complete?: number | null; credits_document?: number | null;
+    credits_complete_bonus?: number | null; credits_document_bonus?: number | null;
     email_contact?: string | null; telephone?: string | null;
     current_period_end?: string | null; created_at?: string | null;
   };
@@ -6246,11 +6247,17 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div style={{ background: '#f5f3ff', borderRadius: 12, padding: '14px 16px' }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>Crédits complets restants</div>
-                      <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{ag.credits_complete ?? 0}</div>
+                      <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{(ag.credits_complete ?? 0) + (ag.credits_complete_bonus ?? 0)}</div>
+                      {(ag.credits_complete_bonus ?? 0) > 0 && (
+                        <div style={{ fontSize: 11, color: '#7c3aed', fontWeight: 700, marginTop: 2 }}>{ag.credits_complete ?? 0} mensuels + {ag.credits_complete_bonus} offerts 🎁</div>
+                      )}
                     </div>
                     <div style={{ background: '#f0f7fb', borderRadius: 12, padding: '14px 16px' }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c' }}>Crédits simples restants</div>
-                      <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{ag.credits_document ?? 0}</div>
+                      <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{(ag.credits_document ?? 0) + (ag.credits_document_bonus ?? 0)}</div>
+                      {(ag.credits_document_bonus ?? 0) > 0 && (
+                        <div style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 700, marginTop: 2 }}>{ag.credits_document ?? 0} mensuels + {ag.credits_document_bonus} offerts 🎁</div>
+                      )}
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 10 }}>Ces crédits sont partagés entre tous les membres de l'agence.</div>
