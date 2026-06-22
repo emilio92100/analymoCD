@@ -4263,6 +4263,7 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backU
   // Phase "envoi des fichiers" (debut) vs phase "analyse" (le serveur travaille).
   // analyse-client passe le percent a 40 des que l'upload est fini et que l'analyse demarre.
   const analysisStarted = progressPercent >= 40;
+  const nomDossier = safeStr(rapport.adresse) || 'votre bien';
 
   // Utilise le TooltipBtn global — pas besoin d'id ni d'état local
   const TooltipBubble = ({ text }: { id?: string; text: string }) => (
@@ -4364,13 +4365,16 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backU
               </div>
 
               <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
-                {analysisStarted ? 'Analyse de vos documents en cours…' : 'Envoi de vos documents…'}
+                {analysisStarted ? 'Mise à jour de votre dossier en cours…' : 'Envoi de vos documents…'}
               </div>
 
               {analysisStarted ? (
                 <div style={{ fontSize: 12.5, color: '#047857', lineHeight: 1.5, marginBottom: 16, background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 8, textAlign: 'left' as const }}>
                   <span style={{ fontSize: 15, flexShrink: 0 }}>🔔</span>
-                  <span>Vous pouvez fermer cette fenêtre — votre rapport continue en arrière-plan. Nous vous prévenons dans la cloche et par e-mail dès qu'il est prêt.</span>
+                  <span>
+                    Votre dossier <strong>« {nomDossier} »</strong> est en cours de mise à jour. Vous pouvez fermer cette fenêtre :
+                    vous serez prévenu dans votre cloche 🔔 (et par e-mail) <strong>dès que le dossier sera mis à jour</strong>.
+                  </span>
                 </div>
               ) : (
                 <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Ne fermez pas tout de suite — vos documents sont en cours d'envoi.</div>
