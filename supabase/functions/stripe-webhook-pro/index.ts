@@ -1412,12 +1412,22 @@ async function upsertProSubscription(userId: string, sub: Stripe.Subscription) {
         .maybeSingle();
 
       if (memberData?.agence_id) {
+        // 🆕 23 juin — Préserver un nb_users_max custom (offre sur-mesure > 3 places).
+        // Au renouvellement, on ne REDESCEND JAMAIS le nombre d'utilisateurs :
+        // on garde le maximum entre 3 (plan standard) et la valeur déjà en base.
+        const { data: agenceCurrent } = await supabase
+          .from('agences')
+          .select('nb_users_max')
+          .eq('id', memberData.agence_id)
+          .single();
+        const nbUsersMax = Math.max(3, agenceCurrent?.nb_users_max || 3);
+
         // L'entité agence existe déjà → on l'active + recharge les crédits
         const { error: agenceUpdateErr } = await supabase
           .from('agences')
           .update({
             status: 'active',
-            nb_users_max: 3, // Plan 3 utilisateurs (par défaut pour agence_3)
+            nb_users_max: nbUsersMax, // 🆕 préserve un éventuel custom > 3 (ne plus forcer 3)
             plan: 'agence_3',
             stripe_subscription_id: sub.id,
             stripe_customer_id: sub.customer as string,
