@@ -5588,6 +5588,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [grantModal, setGrantModal] = useState(false);
   const [grantForm, setGrantForm] = useState({ complete: '', document: '', reason: '' });
   const [granting, setGranting] = useState(false);
+  // 🆕 Nombre max d'utilisateurs de l'agence (offre sur-mesure > 3)
+  const [usersMaxInput, setUsersMaxInput] = useState('');
+  const [savingUsersMax, setSavingUsersMax] = useState(false);
   // 📋 Analyses de l'agence — pagination "Voir plus" (10 par page)
   const [agenceAnalyses, setAgenceAnalyses] = useState<AgenceAnalysisItem[]>([]);
   const [agenceAnalysesHasMore, setAgenceAnalysesHasMore] = useState(false);
@@ -5833,6 +5836,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setAgenceDetail(null);
     // Ligne complète de l'agence (pool de crédits, plan, identité…)
     const { data: ag } = await supabase.from('agences').select('*').eq('id', agenceId).maybeSingle();
+    setUsersMaxInput(String((ag as { nb_users_max?: number } | null)?.nb_users_max ?? 3));
     // Membres (déjà en mémoire via clients + agenceInfoByUser)
     const members = clients.filter(c => agenceInfoByUser.get(c.id)?.agence_id === agenceId);
     const memberIds = members.map(m => m.id);
@@ -5934,6 +5938,28 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       loadAgenceDetail(selectedAgence.id, selectedAgence.name); // rafraîchit pool + historique
     } catch (e) { showToast('Erreur : ' + String(e)); }
     setGranting(false);
+  };
+
+  // 🆕 Modifier le nombre max d'utilisateurs d'une agence (offre sur-mesure > 3)
+  const handleSetAgenceUsersMax = async () => {
+    if (!selectedAgence) return;
+    const newMax = parseInt(usersMaxInput);
+    if (!Number.isFinite(newMax) || newMax < 1 || newMax > 50) { showToast('Nombre invalide (1 à 50).'); return; }
+    setSavingUsersMax(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'set_agence_users_max', agence_id: selectedAgence.id, nb_users_max: newMax }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast('Erreur : ' + data.error); setSavingUsersMax(false); return; }
+      await logAction('Modif nb utilisateurs agence', `${selectedAgence.name} → ${newMax} places`);
+      showToast(`${selectedAgence.name} : ${newMax} utilisateurs max ✅`);
+      loadAgenceDetail(selectedAgence.id, selectedAgence.name);
+    } catch (e) { showToast('Erreur : ' + String(e)); }
+    setSavingUsersMax(false);
   };
 
   // Auto-open client from external navigation (e.g. from Users tab)
@@ -6275,6 +6301,34 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* 🆕 Nombre max d'utilisateurs (offre sur-mesure) */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 18, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>👥 Utilisateurs max</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.5 }}>
+                      Standard : 3. Augmente ce nombre pour une offre sur-mesure — le renouvellement Stripe ne le redescendra plus.
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number" min={1} max={50}
+                      value={usersMaxInput}
+                      onChange={e => setUsersMaxInput(e.target.value)}
+                      style={{ width: 76, padding: '9px 10px', borderRadius: 9, border: '1.5px solid #e2e8f0', fontSize: 15, fontWeight: 700, textAlign: 'center' as const, color: '#0f172a' }}
+                    />
+                    <button
+                      onClick={handleSetAgenceUsersMax}
+                      disabled={savingUsersMax || String(ag.nb_users_max ?? 3) === usersMaxInput}
+                      style={{
+                        padding: '10px 18px', borderRadius: 9, border: 'none', fontSize: 13, fontWeight: 700, color: '#fff',
+                        background: (savingUsersMax || String(ag.nb_users_max ?? 3) === usersMaxInput) ? '#cbd5e1' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)',
+                        cursor: (savingUsersMax || String(ag.nb_users_max ?? 3) === usersMaxInput) ? 'not-allowed' : 'pointer',
+                      }}>
+                      {savingUsersMax ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
                   </div>
                 </div>
 
