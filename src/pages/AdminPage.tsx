@@ -5556,8 +5556,9 @@ type AgenceDetail = {
   totalRapports: number;
   responsable?: ProClient | null; // le payeur (pour la facturation)
   grants: { id: string; credit_type: string; quantity: number; reason: string | null; created_at: string }[]; // 🎁 crédits offerts
-  analysesList: { id: string; label: string; memberName: string; status: string; created_at: string; score?: number }[]; // 📋 analyses cliquables
 };
+
+type AgenceAnalysisItem = { id: string; label: string; memberName: string; status: string; created_at: string; score?: number };
 // Ligne de facture telle que renvoyée par pro-checkout-create (mode list_invoices)
 type ProInvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number };
 
@@ -5587,6 +5588,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [grantModal, setGrantModal] = useState(false);
   const [grantForm, setGrantForm] = useState({ complete: '', document: '', reason: '' });
   const [granting, setGranting] = useState(false);
+  // 📋 Analyses de l'agence — pagination "Voir plus" (10 par page)
+  const [agenceAnalyses, setAgenceAnalyses] = useState<AgenceAnalysisItem[]>([]);
+  const [agenceAnalysesHasMore, setAgenceAnalysesHasMore] = useState(false);
+  const [agenceAnalysesLoadingMore, setAgenceAnalysesLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
@@ -5789,6 +5794,38 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   };
 
   // 🏛 Charge le détail complet d'une agence (clic sur le bandeau doré)
+  const PAGE_AGENCE_ANALYSES = 10;
+  // Charge UN lot de 10 analyses (tous membres confondus), trié du plus récent
+  const fetchAgenceAnalysesBatch = async (memberIds: string[], nameById: Map<string, string>, offset: number): Promise<AgenceAnalysisItem[]> => {
+    if (memberIds.length === 0) return [];
+    const { data } = await supabase
+      .from('analyses')
+      .select('id, user_id, title, address, status, created_at, result')
+      .in('user_id', memberIds)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE_AGENCE_ANALYSES - 1);
+    return (data || []).map((a: Record<string, unknown>) => ({
+      id: a.id as string,
+      label: (a.address as string) || (a.title as string) || 'Analyse',
+      memberName: nameById.get(a.user_id as string) || '—',
+      status: a.status as string,
+      created_at: a.created_at as string,
+      score: (a.result && typeof a.result === 'object' && 'score' in (a.result as Record<string, unknown>)) ? (a.result as Record<string, number>).score : undefined,
+    }));
+  };
+
+  // Bouton "Voir plus" : charge les 10 suivantes depuis la base et les ajoute
+  const loadMoreAgenceAnalyses = async () => {
+    if (!agenceDetail || agenceAnalysesLoadingMore) return;
+    setAgenceAnalysesLoadingMore(true);
+    const memberIds = agenceDetail.membersStats.map(m => m.client.id);
+    const nameById = new Map(agenceDetail.membersStats.map(m => [m.client.id, m.client.full_name || m.client.email || '—']));
+    const next = await fetchAgenceAnalysesBatch(memberIds, nameById, agenceAnalyses.length);
+    setAgenceAnalyses(prev => [...prev, ...next]);
+    setAgenceAnalysesHasMore(next.length === PAGE_AGENCE_ANALYSES);
+    setAgenceAnalysesLoadingMore(false);
+  };
+
   const loadAgenceDetail = async (agenceId: string, agenceName: string) => {
     setSelected(null);
     setSelectedAgence({ id: agenceId, name: agenceName });
@@ -5831,25 +5868,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       .select('id, credit_type, quantity, reason, created_at')
       .eq('agence_id', agenceId)
       .order('created_at', { ascending: false });
-    // 📋 Liste cliquable des analyses (tous membres confondus, 40 plus récentes)
+    // 📋 Analyses de l'agence — premier lot (10), pagination "Voir plus" ensuite
     const memberNameById = new Map(members.map(m => [m.id, m.full_name || m.email || '—']));
-    let analysesList: AgenceDetail['analysesList'] = [];
-    if (memberIds.length > 0) {
-      const { data: al } = await supabase
-        .from('analyses')
-        .select('id, user_id, title, address, status, created_at, result')
-        .in('user_id', memberIds)
-        .order('created_at', { ascending: false })
-        .limit(40);
-      analysesList = (al || []).map((a: Record<string, unknown>) => ({
-        id: a.id as string,
-        label: (a.address as string) || (a.title as string) || 'Analyse',
-        memberName: memberNameById.get(a.user_id as string) || '—',
-        status: a.status as string,
-        created_at: a.created_at as string,
-        score: (a.result && typeof a.result === 'object' && 'score' in (a.result as Record<string, unknown>)) ? (a.result as Record<string, number>).score : undefined,
-      }));
-    }
+    const firstBatch = await fetchAgenceAnalysesBatch(memberIds, memberNameById, 0);
+    setAgenceAnalyses(firstBatch);
+    setAgenceAnalysesHasMore(firstBatch.length === PAGE_AGENCE_ANALYSES);
+    setAgenceAnalysesLoadingMore(false);
     setAgenceDetail({
       agence: (ag || { id: agenceId, raison_sociale: agenceName }) as AgenceDetail['agence'],
       membersStats,
@@ -5858,7 +5882,6 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       totalRapports: shares.length,
       responsable,
       grants: (grantsData || []) as AgenceDetail['grants'],
-      analysesList,
     });
     setAgenceDetailLoading(false);
 
@@ -6433,21 +6456,22 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   })}
                 </div>
 
-                {/* 📋 Analyses de l'agence (tous membres confondus, cliquables) */}
-                {agenceDetail.analysesList.length > 0 && (
+                {/* 📋 Analyses de l'agence (tous membres confondus, cliquables, 10 par 10) */}
+                {agenceAnalyses.length > 0 && (
                   <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginTop: 16 }}>
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, flex: 1 }}>📋 Analyses de l'agence</h3>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 100 }}>{agenceDetail.analysesList.length}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 100 }}>{agenceAnalyses.length}{agenceAnalysesHasMore ? '+' : ''}</span>
                     </div>
                     <div style={{ padding: '12px 20px 18px', display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                      {agenceDetail.analysesList.map(a => {
+                      {agenceAnalyses.map(a => {
                         const isDone = a.status === 'completed';
+                        const when = new Date(a.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                         const inner = (
                           <>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.label}</div>
-                              <div style={{ fontSize: 11, color: '#94a3b8' }}>{a.memberName} · {fmtDate(a.created_at)} · {a.status}</div>
+                              <div style={{ fontSize: 11, color: '#94a3b8' }}>👤 {a.memberName} · {when} · {a.status}</div>
                             </div>
                             {a.score != null && <span style={{ fontSize: 14, fontWeight: 800, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626', flexShrink: 0 }}>{a.score}/20</span>}
                             {isDone && <Eye size={14} style={{ color: '#2a7d9c', flexShrink: 0 }} />}
@@ -6466,6 +6490,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                           </div>
                         );
                       })}
+                      {agenceAnalysesHasMore && (
+                        <button onClick={loadMoreAgenceAnalyses} disabled={agenceAnalysesLoadingMore}
+                          style={{ marginTop: 6, padding: '10px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#2a7d9c', fontSize: 13, fontWeight: 700, cursor: agenceAnalysesLoadingMore ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          {agenceAnalysesLoadingMore ? 'Chargement…' : <><ChevronDown size={14} /> Voir plus (10 de plus)</>}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
