@@ -5556,6 +5556,7 @@ type AgenceDetail = {
   totalRapports: number;
   responsable?: ProClient | null; // le payeur (pour la facturation)
   grants: { id: string; credit_type: string; quantity: number; reason: string | null; created_at: string }[]; // 🎁 crédits offerts
+  analysesList: { id: string; label: string; memberName: string; status: string; created_at: string; score?: number }[]; // 📋 analyses cliquables
 };
 // Ligne de facture telle que renvoyée par pro-checkout-create (mode list_invoices)
 type ProInvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number };
@@ -5830,6 +5831,25 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       .select('id, credit_type, quantity, reason, created_at')
       .eq('agence_id', agenceId)
       .order('created_at', { ascending: false });
+    // 📋 Liste cliquable des analyses (tous membres confondus, 40 plus récentes)
+    const memberNameById = new Map(members.map(m => [m.id, m.full_name || m.email || '—']));
+    let analysesList: AgenceDetail['analysesList'] = [];
+    if (memberIds.length > 0) {
+      const { data: al } = await supabase
+        .from('analyses')
+        .select('id, user_id, title, address, status, created_at, result')
+        .in('user_id', memberIds)
+        .order('created_at', { ascending: false })
+        .limit(40);
+      analysesList = (al || []).map((a: Record<string, unknown>) => ({
+        id: a.id as string,
+        label: (a.address as string) || (a.title as string) || 'Analyse',
+        memberName: memberNameById.get(a.user_id as string) || '—',
+        status: a.status as string,
+        created_at: a.created_at as string,
+        score: (a.result && typeof a.result === 'object' && 'score' in (a.result as Record<string, unknown>)) ? (a.result as Record<string, number>).score : undefined,
+      }));
+    }
     setAgenceDetail({
       agence: (ag || { id: agenceId, raison_sociale: agenceName }) as AgenceDetail['agence'],
       membersStats,
@@ -5838,6 +5858,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       totalRapports: shares.length,
       responsable,
       grants: (grantsData || []) as AgenceDetail['grants'],
+      analysesList,
     });
     setAgenceDetailLoading(false);
 
@@ -6411,6 +6432,43 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     );
                   })}
                 </div>
+
+                {/* 📋 Analyses de l'agence (tous membres confondus, cliquables) */}
+                {agenceDetail.analysesList.length > 0 && (
+                  <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginTop: 16 }}>
+                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, flex: 1 }}>📋 Analyses de l'agence</h3>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 100 }}>{agenceDetail.analysesList.length}</span>
+                    </div>
+                    <div style={{ padding: '12px 20px 18px', display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                      {agenceDetail.analysesList.map(a => {
+                        const isDone = a.status === 'completed';
+                        const inner = (
+                          <>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.label}</div>
+                              <div style={{ fontSize: 11, color: '#94a3b8' }}>{a.memberName} · {fmtDate(a.created_at)} · {a.status}</div>
+                            </div>
+                            {a.score != null && <span style={{ fontSize: 14, fontWeight: 800, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626', flexShrink: 0 }}>{a.score}/20</span>}
+                            {isDone && <Eye size={14} style={{ color: '#2a7d9c', flexShrink: 0 }} />}
+                          </>
+                        );
+                        return isDone ? (
+                          <a key={a.id} href={`/dashboard/rapport?id=${a.id}`} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc', textDecoration: 'none', cursor: 'pointer' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#eef2f7')}
+                            onMouseLeave={e => (e.currentTarget.style.background = '#f8fafc')}>
+                            {inner}
+                          </a>
+                        ) : (
+                          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
+                            {inner}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </>
             );
           })()}
@@ -7137,15 +7195,31 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               <div style={{ padding: '0 20px 20px' }}>
                 {clientAnalyses.length === 0 ? <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucune analyse.</p> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {clientAnalyses.map(a => (
-                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{a.address || a.title}</div>
-                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(a.created_at)} · {a.status}</div>
+                    {clientAnalyses.map(a => {
+                      const isDone = a.status === 'completed';
+                      const inner = (
+                        <>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{a.address || a.title}</div>
+                            <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(a.created_at)} · {a.status}</div>
+                          </div>
+                          {a.score != null && <span style={{ fontSize: 14, fontWeight: 800, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626' }}>{a.score}/20</span>}
+                          {isDone && <Eye size={14} style={{ color: '#2a7d9c', flexShrink: 0 }} />}
+                        </>
+                      );
+                      return isDone ? (
+                        <a key={a.id} href={`/dashboard/rapport?id=${a.id}`} target="_blank" rel="noopener noreferrer"
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc', textDecoration: 'none', cursor: 'pointer' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#eef2f7')}
+                          onMouseLeave={e => (e.currentTarget.style.background = '#f8fafc')}>
+                          {inner}
+                        </a>
+                      ) : (
+                        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
+                          {inner}
                         </div>
-                        {a.score != null && <span style={{ fontSize: 14, fontWeight: 800, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626' }}>{a.score}/20</span>}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
