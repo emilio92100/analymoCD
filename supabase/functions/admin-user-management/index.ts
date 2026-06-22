@@ -1138,6 +1138,64 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    /* ── 🎁 Offrir des crédits au POOL BONUS d'une agence ──────────
+       Geste commercial : ajoute des crédits durables (hors quota mensuel)
+       au pool partagé de l'agence + trace dans agence_credit_grants.
+       Visible immédiatement par tous les membres (get_pro_credits_balance
+       additionne déjà credits_*_bonus).
+    ───────────────────────────────────────────────────────────── */
+    if (action === 'grant_agence_credits') {
+      const { agence_id, reason } = body
+      const addComplete = parseInt(body.credits_complete_add) || 0
+      const addDocument = parseInt(body.credits_document_add) || 0
+
+      if (!agence_id) {
+        return new Response(JSON.stringify({ error: 'agence_id requis' }), { status: 400, headers: corsHeaders })
+      }
+      if (addComplete <= 0 && addDocument <= 0) {
+        return new Response(JSON.stringify({ error: 'Indiquez au moins 1 crédit à offrir.' }), { status: 400, headers: corsHeaders })
+      }
+
+      // Lire le bonus actuel
+      const { data: ag, error: agErr } = await adminClient
+        .from('agences')
+        .select('credits_complete_bonus, credits_document_bonus')
+        .eq('id', agence_id)
+        .single()
+
+      if (agErr || !ag) {
+        return new Response(JSON.stringify({ error: 'Agence introuvable' }), { status: 404, headers: corsHeaders })
+      }
+
+      // Incrémenter le pool bonus (durable, hors quota mensuel)
+      const { error: updErr } = await adminClient
+        .from('agences')
+        .update({
+          credits_complete_bonus: (ag.credits_complete_bonus || 0) + addComplete,
+          credits_document_bonus: (ag.credits_document_bonus || 0) + addDocument,
+        })
+        .eq('id', agence_id)
+
+      if (updErr) {
+        return new Response(JSON.stringify({ error: 'Erreur DB: ' + updErr.message }), { status: 500, headers: corsHeaders })
+      }
+
+      // Tracer (1 ligne par type de crédit offert)
+      const grantRows: Record<string, unknown>[] = []
+      if (addComplete > 0) grantRows.push({ agence_id, granted_by: user.id, credit_type: 'complete', quantity: addComplete, reason: reason || null })
+      if (addDocument > 0) grantRows.push({ agence_id, granted_by: user.id, credit_type: 'document', quantity: addDocument, reason: reason || null })
+      if (grantRows.length > 0) {
+        const { error: logErr } = await adminClient.from('agence_credit_grants').insert(grantRows)
+        if (logErr) console.error('[grant_agence_credits] Log échoué (crédits ajoutés quand même):', logErr.message)
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        added_complete: addComplete,
+        added_document: addDocument,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     /* ── Inviter par email (existant) ──────────────────── */
     if (action === 'invite') {
       const { email } = body
