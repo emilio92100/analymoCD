@@ -5553,7 +5553,10 @@ type AgenceDetail = {
   totalAnalyses: number;
   totalCompletes: number;
   totalRapports: number;
+  responsable?: ProClient | null; // le payeur (pour la facturation)
 };
+// Ligne de facture telle que renvoyée par pro-checkout-create (mode list_invoices)
+type ProInvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number };
 
 function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled, focusClientId, onFocusClientHandled }: {
   showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void>;
@@ -5576,6 +5579,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [selectedAgence, setSelectedAgence] = useState<{ id: string; name: string } | null>(null);
   const [agenceDetail, setAgenceDetail] = useState<AgenceDetail | null>(null);
   const [agenceDetailLoading, setAgenceDetailLoading] = useState(false);
+  const [agenceInvoices, setAgenceInvoices] = useState<ProInvoiceItem[]>([]);
+  const [agenceInvoicesLoading, setAgenceInvoicesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
@@ -5813,14 +5818,35 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       };
     }).sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99));
 
+    const responsable = membersStats.find(m => m.role === 'responsable')?.client || null;
     setAgenceDetail({
       agence: (ag || { id: agenceId, raison_sociale: agenceName }) as AgenceDetail['agence'],
       membersStats,
       totalAnalyses: analyses.length,
       totalCompletes: analyses.filter(a => isComplete(a.type)).length,
       totalRapports: shares.length,
+      responsable,
     });
     setAgenceDetailLoading(false);
+
+    // 💶 Facturation de l'agence = factures du responsable (le payeur Stripe)
+    setAgenceInvoices([]);
+    if (responsable) {
+      setAgenceInvoicesLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ mode: 'list_invoices', target_user_id: responsable.id }),
+          });
+          const data = await res.json();
+          if (data.invoices) setAgenceInvoices((data.invoices as ProInvoiceItem[]).filter(inv => inv.type === 'subscription' || inv.type === 'unit'));
+        }
+      } catch { setAgenceInvoices([]); }
+      setAgenceInvoicesLoading(false);
+    }
   };
 
   // Auto-open client from external navigation (e.g. from Users tab)
@@ -6204,6 +6230,80 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* 💶 Facturation de l'agence (factures du responsable = payeur) */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Euro size={15} style={{ color: '#16a34a' }} />
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Historique de facturation</div>
+                    {agenceInvoices.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 100 }}>{agenceInvoices.length}</span>}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#94a3b8', marginBottom: 14 }}>
+                    Facturation centralisée{agenceDetail.responsable ? ` · payée par 👑 ${agenceDetail.responsable.full_name}` : ''}
+                  </div>
+                  {agenceInvoicesLoading ? (
+                    <div style={{ textAlign: 'center' as const, padding: 20, color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
+                  ) : agenceInvoices.length === 0 ? (
+                    <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucun paiement enregistré.</p>
+                  ) : (() => {
+                    const successful = agenceInvoices.filter(inv => (!inv.status || inv.status === 'paid') && inv.status_variant !== 'refunded');
+                    const totalTTC = successful.reduce((s, inv) => {
+                      const a = parseFloat(inv.amount.replace(/[^0-9.,]/g, '').replace(',', '.'));
+                      return s + (isNaN(a) ? 0 : a);
+                    }, 0);
+                    const variantStyles: Record<string, { bg: string; border: string; amountColor: string; badgeBg: string; badgeColor: string }> = {
+                      success: { bg: '#f8fafc', border: 'transparent', amountColor: '#16a34a', badgeBg: '#dcfce7', badgeColor: '#15803d' },
+                      pending: { bg: '#fffbeb', border: '#fde68a', amountColor: '#ca8a04', badgeBg: '#fef3c7', badgeColor: '#92400e' },
+                      failed: { bg: '#fef2f2', border: '#fecaca', amountColor: '#dc2626', badgeBg: '#fee2e2', badgeColor: '#991b1b' },
+                      void: { bg: '#f8fafc', border: '#e2e8f0', amountColor: '#94a3b8', badgeBg: '#f1f5f9', badgeColor: '#64748b' },
+                      refunded: { bg: '#fef2f2', border: '#fecaca', amountColor: '#94a3b8', badgeBg: '#fee2e2', badgeColor: '#dc2626' },
+                    };
+                    return (
+                      <>
+                        <div style={{ padding: '14px 18px', borderRadius: 12, background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', textAlign: 'center' as const, marginBottom: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6 }}>
+                            <div style={{ fontSize: 24, fontWeight: 900, color: '#16a34a', lineHeight: 1 }}>{(totalTTC / 1.20).toFixed(2).replace('.', ',')}€</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>HT</div>
+                          </div>
+                          {totalTTC > 0 && <div style={{ fontSize: 12.5, color: '#15803d', fontWeight: 600, marginTop: 4 }}>({totalTTC.toFixed(2).replace('.', ',')}€ TTC)</div>}
+                          <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600, marginTop: 6 }}>Total encaissé pour l'agence</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                          {agenceInvoices.map(inv => {
+                            const variant = inv.status_variant || 'success';
+                            const styles = variantStyles[variant] || variantStyles.success;
+                            const showBadge = (inv.status && inv.status !== 'paid') || variant === 'refunded';
+                            return (
+                              <div key={inv.id} style={{ padding: '10px 12px', borderRadius: 10, background: styles.bg, border: styles.border !== 'transparent' ? `1px solid ${styles.border}` : 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{inv.description}</div>
+                                  <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
+                                    <span>{inv.date}</span>
+                                    <span>·</span>
+                                    <span style={{ fontWeight: 700, color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a' }}>{inv.type === 'subscription' ? 'Abo' : 'Unitaire'}</span>
+                                    {showBadge && (
+                                      <>
+                                        <span>·</span>
+                                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100, background: styles.badgeBg, color: styles.badgeColor }}>{inv.status_label}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: 14, fontWeight: 800, color: styles.amountColor, flexShrink: 0, textDecoration: variant === 'void' ? 'line-through' : 'none' }}>{inv.amount}</span>
+                                {inv.pdf_url && (
+                                  <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 10px', borderRadius: 7, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 11, fontWeight: 700, border: '1px solid #d0e8f0', flexShrink: 0 }}>
+                                    <Download size={11} /> PDF
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Membres */}
