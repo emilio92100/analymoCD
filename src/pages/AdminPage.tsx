@@ -5549,6 +5549,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [collapsedAgences, setCollapsedAgences] = useState<Set<string>>(new Set());
   const [proFilter, setProFilter] = useState<'all' | 'demo' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [filterByType, setFilterByType] = useState<string>('all'); // 🆕 Filtre par type de profil (agent/investisseur/notaire/autre)
+  const [proSearch, setProSearch] = useState(''); // 🔎 Recherche par nom, email, entreprise ou nom d'agence
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
@@ -7243,6 +7244,27 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               </div>
             </div>
           </div>
+          {/* 🔎 Barre de recherche : nom, email, entreprise ou nom d'agence */}
+          <div style={{ position: 'relative' as const, marginBottom: 12 }}>
+            <Search size={16} style={{ position: 'absolute' as const, left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' as const }} />
+            <input
+              value={proSearch}
+              onChange={e => setProSearch(e.target.value)}
+              placeholder="Rechercher par nom, email, entreprise ou nom d'agence…"
+              style={{ width: '100%', padding: '11px 38px 11px 40px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit' }}
+              onFocus={e => (e.currentTarget.style.borderColor = '#7c3aed')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#edf2f7')}
+            />
+            {proSearch && (
+              <button
+                onClick={() => setProSearch('')}
+                style={{ position: 'absolute' as const, right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: 4 }}
+                title="Effacer"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
             {loading ? <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
               : clients.length === 0 ? (
@@ -7262,13 +7284,24 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 // 🆕 Application cumulative du filtre par type de profil
                 // Le filtre "agence" inclut tous les membres d'une agence (responsable, co-resp, agent),
                 // pas uniquement ceux dont pro_profile_type = 'agence'
-                const filtered = filterByType === 'all'
+                const filteredByType = filterByType === 'all'
                   ? baseFiltered
                   : filterByType === 'agence'
                   ? baseFiltered.filter(c => (c.pro_profile_type === 'agence') || agenceInfoByUser.has(c.id))
                   : baseFiltered.filter(c => (c.pro_profile_type || 'autre') === filterByType && !agenceInfoByUser.has(c.id));
+                // 🔎 Recherche : nom, email, entreprise ou nom d'agence
+                const q = proSearch.trim().toLowerCase();
+                const filtered = !q ? filteredByType : filteredByType.filter(c => {
+                  const ag = agenceInfoByUser.get(c.id);
+                  return (c.full_name || '').toLowerCase().includes(q)
+                    || (c.email || '').toLowerCase().includes(q)
+                    || (c.pro_company_name || '').toLowerCase().includes(q)
+                    || (ag?.agence_name || '').toLowerCase().includes(q);
+                });
                 return filtered.length === 0 ? (
-                  <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun client dans cette catégorie.</div>
+                  <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>
+                    {q ? `Aucun résultat pour « ${proSearch.trim()} ».` : 'Aucun client dans cette catégorie.'}
+                  </div>
                 ) : (() => {
                   // 🏛 Séparer membres d'agence vs solos
                   const byAgence = new Map<string, ProClient[]>(); // agence_id → membres
