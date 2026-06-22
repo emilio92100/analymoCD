@@ -3601,6 +3601,9 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   type InvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: 'subscription' | 'unit' | 'promo' | 'grant'; status?: string };
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
+  // 🎁 Crédits offerts au POOL de l'agence (table agence_credit_grants) → affichés
+  // dans la même section "Crédits offerts" que pour un pro solo.
+  const [agenceGrants, setAgenceGrants] = useState<InvoiceItem[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -3619,6 +3622,43 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       setInvoicesLoading(false);
     })();
   }, [successPopup, cancelStep]);
+
+  // 🎁 Charger les crédits offerts à l'agence (si l'utilisateur est dans une agence)
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setAgenceGrants([]); return; }
+      // Source de vérité : agence_members (et non profiles.agence_id, pas toujours rempli)
+      const { data: membership } = await supabase
+        .from('agence_members')
+        .select('agence_id')
+        .eq('user_id', user.id)
+        .is('removed_at', null)
+        .limit(1)
+        .maybeSingle();
+      const aid = membership?.agence_id;
+      if (!aid) { setAgenceGrants([]); return; }
+      const { data } = await supabase
+        .from('agence_credit_grants')
+        .select('id, credit_type, quantity, reason, created_at')
+        .eq('agence_id', aid)
+        .order('created_at', { ascending: false });
+      const mapped: InvoiceItem[] = (data || []).map(g => {
+        const isComplete = g.credit_type === 'complete';
+        const label = isComplete ? 'analyse complète' : 'analyse simple';
+        return {
+          id: 'agence-grant-' + g.id,
+          date: new Date(g.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+          description: `${g.quantity} ${label}${g.quantity > 1 ? 's' : ''} offerte${g.quantity > 1 ? 's' : ''}`,
+          amount: '',
+          pdf_url: null,
+          type: 'grant' as const,
+          status: 'paid',
+        };
+      });
+      setAgenceGrants(mapped);
+    })();
+  }, [successPopup]);
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -4776,7 +4816,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
           (inv.type === 'subscription' || inv.type === 'unit')
           && (!inv.status || inv.status === 'paid')
         );
-        const grantInvoices = invoices.filter(inv => inv.type === 'promo' || inv.type === 'grant');
+        const grantInvoices = [...invoices.filter(inv => inv.type === 'promo' || inv.type === 'grant'), ...agenceGrants];
         return (<>
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 28 }}>
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
