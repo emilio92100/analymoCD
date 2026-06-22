@@ -5533,6 +5533,28 @@ type ProClient = {
 };
 type ProInvitation = { id: string; profile_id: string; email: string; token: string; sent_at?: string; accepted_at?: string; created_at: string };
 
+// 🏛 Détail complet d'une agence (vue dédiée accessible via le bandeau doré)
+type AgenceMemberStat = {
+  client: ProClient;
+  role: 'responsable' | 'co_responsable' | 'agent';
+  total: number;        // analyses créées par ce membre
+  completes: number;    // dont complètes
+  rapports: number;     // rapports envoyés
+};
+type AgenceDetail = {
+  agence: {
+    id: string; raison_sociale: string; siret?: string | null; adresse?: string | null;
+    plan?: string | null; nb_users_max?: number | null; status?: string | null;
+    credits_complete?: number | null; credits_document?: number | null;
+    email_contact?: string | null; telephone?: string | null;
+    current_period_end?: string | null; created_at?: string | null;
+  };
+  membersStats: AgenceMemberStat[];
+  totalAnalyses: number;
+  totalCompletes: number;
+  totalRapports: number;
+};
+
 function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled, focusClientId, onFocusClientHandled }: {
   showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void>;
   prefillDemande: Record<string, unknown> | null; onPrefillHandled: () => void;
@@ -5550,6 +5572,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proFilter, setProFilter] = useState<'all' | 'demo' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [filterByType, setFilterByType] = useState<string>('all'); // 🆕 Filtre par type de profil (agent/investisseur/notaire/autre)
   const [proSearch, setProSearch] = useState(''); // 🔎 Recherche par nom, email, entreprise ou nom d'agence
+  // 🏛 Vue détaillée d'une AGENCE (clic sur le bandeau doré)
+  const [selectedAgence, setSelectedAgence] = useState<{ id: string; name: string } | null>(null);
+  const [agenceDetail, setAgenceDetail] = useState<AgenceDetail | null>(null);
+  const [agenceDetailLoading, setAgenceDetailLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
@@ -5696,6 +5722,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   }, [prefillDemande, onPrefillHandled]);
 
   const loadClientDetail = async (client: ProClient) => {
+    setSelectedAgence(null); // quitte la vue agence si on ouvre la fiche d'un membre
     setSelected(client);
     setEditingIdentity(false);
     setEditCompanyName(client.pro_company_name || '');
@@ -5748,6 +5775,52 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       }
     } catch { setClientInvoices([]); }
     setClientInvoicesLoading(false);
+  };
+
+  // 🏛 Charge le détail complet d'une agence (clic sur le bandeau doré)
+  const loadAgenceDetail = async (agenceId: string, agenceName: string) => {
+    setSelected(null);
+    setSelectedAgence({ id: agenceId, name: agenceName });
+    setAgenceDetailLoading(true);
+    setAgenceDetail(null);
+    // Ligne complète de l'agence (pool de crédits, plan, identité…)
+    const { data: ag } = await supabase.from('agences').select('*').eq('id', agenceId).maybeSingle();
+    // Membres (déjà en mémoire via clients + agenceInfoByUser)
+    const members = clients.filter(c => agenceInfoByUser.get(c.id)?.agence_id === agenceId);
+    const memberIds = members.map(m => m.id);
+    // Analyses de tous les membres
+    let analyses: { user_id: string; type: string; status: string }[] = [];
+    if (memberIds.length > 0) {
+      const { data } = await supabase.from('analyses').select('user_id, type, status').in('user_id', memberIds);
+      analyses = (data || []) as typeof analyses;
+    }
+    // Rapports envoyés par les membres (via report_shares — lisible par l'admin)
+    let shares: { sender_id: string }[] = [];
+    if (memberIds.length > 0) {
+      const { data } = await supabase.from('report_shares').select('sender_id').in('sender_id', memberIds);
+      shares = (data || []) as typeof shares;
+    }
+    const isComplete = (t: string) => t === 'complete' || t === 'pack2' || t === 'pack3';
+    const roleOrder: Record<string, number> = { responsable: 0, co_responsable: 1, agent: 2 };
+    const membersStats: AgenceMemberStat[] = members.map(m => {
+      const mine = analyses.filter(a => a.user_id === m.id);
+      return {
+        client: m,
+        role: (agenceInfoByUser.get(m.id)?.role || 'agent') as AgenceMemberStat['role'],
+        total: mine.length,
+        completes: mine.filter(a => isComplete(a.type)).length,
+        rapports: shares.filter(s => s.sender_id === m.id).length,
+      };
+    }).sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99));
+
+    setAgenceDetail({
+      agence: (ag || { id: agenceId, raison_sociale: agenceName }) as AgenceDetail['agence'],
+      membersStats,
+      totalAnalyses: analyses.length,
+      totalCompletes: analyses.filter(a => isComplete(a.type)).length,
+      totalRapports: shares.length,
+    });
+    setAgenceDetailLoading(false);
   };
 
   // Auto-open client from external navigation (e.g. from Users tab)
@@ -6051,7 +6124,123 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       </div>
 
       {/* Liste des clients */}
-      {selected ? (
+      {selectedAgence ? (
+        /* ── 🏛 Fiche AGENCE détaillée ── */
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
+          <button onClick={() => { setSelectedAgence(null); setAgenceDetail(null); }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
+            <ChevronLeft size={14} /> Retour à la liste
+          </button>
+
+          {agenceDetailLoading || !agenceDetail ? (
+            <div style={{ padding: 48, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement de l'agence…</div>
+          ) : (() => {
+            const ag = agenceDetail.agence;
+            const statusBadge = ag.status === 'active'
+              ? { label: 'Active', color: '#16a34a', bg: '#f0fdf4' }
+              : ag.status === 'demo'
+              ? { label: 'Démo', color: '#d97706', bg: '#fffbeb' }
+              : { label: ag.status || 'En attente', color: '#64748b', bg: '#f8fafc' };
+            return (
+              <>
+                {/* Header agence */}
+                <div style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: 16, border: '1.5px solid #fde68a', padding: 24, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>🏛</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                        <h2 style={{ fontSize: 21, fontWeight: 800, color: '#78350f', margin: 0 }}>{ag.raison_sociale}</h2>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: statusBadge.color, background: statusBadge.bg, padding: '3px 10px', borderRadius: 7 }}>{statusBadge.label}</span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: '#92400e', marginTop: 4 }}>
+                        {ag.nb_users_max ? `Plan Agence · ${ag.nb_users_max} utilisateurs max` : 'Plan Agence'}
+                        {ag.siret ? ` · SIRET ${ag.siret}` : ''}
+                      </div>
+                      {([ag.email_contact, ag.telephone].filter(Boolean).join(' · ') || ag.current_period_end) && (
+                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 2 }}>
+                          {[ag.email_contact, ag.telephone].filter(Boolean).join(' · ')}
+                          {ag.current_period_end ? `${[ag.email_contact, ag.telephone].filter(Boolean).length ? ' · ' : ''}Renouvellement le ${fmtDate(ag.current_period_end)}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pool de crédits partagés */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap' as const, gap: 10 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>💳 Pool de crédits partagés</div>
+                    <button
+                      onClick={() => showToast('Bouton crédits : branché à la prochaine étape')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                      <Plus size={14} /> Ajouter des crédits au pool
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ background: '#f5f3ff', borderRadius: 12, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed' }}>Crédits complets restants</div>
+                      <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{ag.credits_complete ?? 0}</div>
+                    </div>
+                    <div style={{ background: '#f0f7fb', borderRadius: 12, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c' }}>Crédits simples restants</div>
+                      <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{ag.credits_document ?? 0}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 10 }}>Ces crédits sont partagés entre tous les membres de l'agence.</div>
+                </div>
+
+                {/* Stats globales */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 14 }}>📊 Activité de l'agence</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                    {[
+                      { l: 'Membres', v: agenceDetail.membersStats.length, c: '#d97706' },
+                      { l: 'Analyses totales', v: agenceDetail.totalAnalyses, c: '#0f172a' },
+                      { l: 'Dont complètes', v: agenceDetail.totalCompletes, c: '#7c3aed' },
+                      { l: 'Rapports envoyés', v: agenceDetail.totalRapports, c: '#2a7d9c' },
+                    ].map((k, i) => (
+                      <div key={i} style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 12px', textAlign: 'center' as const }}>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: k.c }}>{k.v}</div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginTop: 2 }}>{k.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Membres */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', fontSize: 14, fontWeight: 800, color: '#0f172a' }}>
+                    👥 Membres ({agenceDetail.membersStats.length})
+                  </div>
+                  {agenceDetail.membersStats.map((ms, idx) => {
+                    const icon = ms.role === 'responsable' ? '👑' : ms.role === 'co_responsable' ? '🤝' : '👤';
+                    const roleLabel = ms.role === 'responsable' ? 'Responsable' : ms.role === 'co_responsable' ? 'Co-responsable' : 'Agent';
+                    return (
+                      <div key={ms.client.id} onClick={() => loadClientDetail(ms.client)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: idx < agenceDetail.membersStats.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer' }}
+                        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#fafcfd'}
+                        onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                          {(ms.client.full_name?.charAt(0) || 'P').toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{icon} {ms.client.full_name} <span style={{ fontSize: 10.5, fontWeight: 600, color: '#64748b' }}>· {roleLabel}</span></div>
+                          <div style={{ fontSize: 12, color: '#94a3b8' }}>{ms.client.email}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 18, flexShrink: 0, fontSize: 11, color: '#94a3b8', textAlign: 'center' as const }}>
+                          <div><div style={{ fontWeight: 800, color: '#0f172a', fontSize: 15 }}>{ms.total}</div>analyses</div>
+                          <div><div style={{ fontWeight: 800, color: '#7c3aed', fontSize: 15 }}>{ms.completes}</div>complètes</div>
+                          <div><div style={{ fontWeight: 800, color: '#2a7d9c', fontSize: 15 }}>{ms.rapports}</div>rapports</div>
+                        </div>
+                        <ChevronRight size={14} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
+        </motion.div>
+      ) : selected ? (
         /* ── Fiche client détaillée ── */
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
           <button onClick={() => setSelected(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
@@ -7419,14 +7608,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                           <div key={`agence-${agenceId}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             {/* Header agence */}
                             <div
-                              onClick={() => {
-                                setCollapsedAgences(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(agenceId)) next.delete(agenceId);
-                                  else next.add(agenceId);
-                                  return next;
-                                });
-                              }}
+                              onClick={() => loadAgenceDetail(agenceId, agenceName)}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 14,
                                 padding: '14px 18px',
@@ -7437,13 +7619,30 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                               }}
                               onMouseOver={e => (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #fef3c7, #fcd34d)'}
                               onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #fef3c7, #fde68a)'}
+                              title="Voir le détail de l'agence"
                             >
-                              <ChevronDown size={16} style={{
-                                color: '#92400e',
-                                transition: 'transform 0.2s',
-                                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                                flexShrink: 0,
-                              }} />
+                              {/* Chevron = déplier/replier les membres (sans ouvrir la fiche agence) */}
+                              <span
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setCollapsedAgences(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(agenceId)) next.delete(agenceId);
+                                    else next.add(agenceId);
+                                    return next;
+                                  });
+                                }}
+                                title={isCollapsed ? 'Déplier les membres' : 'Replier les membres'}
+                                style={{ display: 'flex', padding: 2, borderRadius: 6, cursor: 'pointer', flexShrink: 0 }}
+                                onMouseOver={e => { e.stopPropagation(); (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.5)'; }}
+                                onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                              >
+                                <ChevronDown size={16} style={{
+                                  color: '#92400e',
+                                  transition: 'transform 0.2s',
+                                  transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                                }} />
+                              </span>
                               <div style={{ width: 36, height: 36, borderRadius: 10, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
                                 🏛
                               </div>
@@ -7459,6 +7658,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                               <span style={{ fontSize: 11, fontWeight: 700, color: '#78350f', background: 'rgba(255,255,255,0.7)', padding: '4px 10px', borderRadius: 7 }}>
                                 {agenceMembers.length} {agenceMembers.length > 1 ? 'comptes' : 'compte'}
                               </span>
+                              <ChevronRight size={16} style={{ color: '#b45309', flexShrink: 0 }} />
                             </div>
                             {/* Membres de l'agence (si dépliée) */}
                             {!isCollapsed && agenceMembers.map((m, idx) =>
