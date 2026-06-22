@@ -1196,6 +1196,45 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    /* ── 🆕 23 juin — Modifier le nb max d'utilisateurs d'une agence ──
+       Offre sur-mesure (> 3 places). L'admin fixe le plafond ;
+       le webhook Stripe ne le redescend plus (max(3, valeur)).
+       Garde-fou : jamais en dessous du nombre de membres actifs.
+    ───────────────────────────────────────────────────────────── */
+    if (action === 'set_agence_users_max') {
+      const { agence_id } = body
+      const newMax = parseInt(body.nb_users_max)
+
+      if (!agence_id) {
+        return new Response(JSON.stringify({ error: 'agence_id requis' }), { status: 400, headers: corsHeaders })
+      }
+      if (!Number.isFinite(newMax) || newMax < 1 || newMax > 50) {
+        return new Response(JSON.stringify({ error: "Nombre d'utilisateurs invalide (1 à 50)." }), { status: 400, headers: corsHeaders })
+      }
+
+      // Garde-fou : ne pas descendre sous le nombre de membres actifs déjà présents
+      const { count: activeMembers } = await adminClient
+        .from('agence_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('agence_id', agence_id)
+        .is('removed_at', null)
+
+      if (typeof activeMembers === 'number' && newMax < activeMembers) {
+        return new Response(JSON.stringify({ error: `Impossible : l'agence compte déjà ${activeMembers} membre(s) actif(s).` }), { status: 400, headers: corsHeaders })
+      }
+
+      const { error: updErr } = await adminClient
+        .from('agences')
+        .update({ nb_users_max: newMax })
+        .eq('id', agence_id)
+
+      if (updErr) {
+        return new Response(JSON.stringify({ error: 'Erreur DB: ' + updErr.message }), { status: 500, headers: corsHeaders })
+      }
+
+      return new Response(JSON.stringify({ success: true, nb_users_max: newMax }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     /* ── Inviter par email (existant) ──────────────────── */
     if (action === 'invite') {
       const { email } = body
