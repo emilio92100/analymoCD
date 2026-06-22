@@ -6066,6 +6066,17 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   {/* 🆕 Badge type cliquable avec dropdown pour modifier */}
                   {(() => {
                     const currentType = selected.pro_profile_type || 'autre';
+                    // 🏛 Membre d'agence ajouté par invitation d'un responsable : son "type de profil"
+                    // n'a pas été défini (→ "autre"). On affiche un libellé clair plutôt que "Autre".
+                    // Le responsable, lui, a pro_profile_type='agence' → garde son badge "🏛 Agence".
+                    const agenceInfoSel = agenceInfoByUser.get(selected.id);
+                    if (agenceInfoSel && currentType === 'autre') {
+                      return (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#b45309', background: '#fef3c7', padding: '4px 12px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          🏛 Membre d'agence
+                        </span>
+                      );
+                    }
                     const b = proTypeBadges[currentType] || proTypeBadges.autre;
                     return (
                       <div style={{ position: 'relative' as const }}>
