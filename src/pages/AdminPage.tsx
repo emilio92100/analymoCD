@@ -5554,6 +5554,7 @@ type AgenceDetail = {
   totalCompletes: number;
   totalRapports: number;
   responsable?: ProClient | null; // le payeur (pour la facturation)
+  grants: { id: string; credit_type: string; quantity: number; reason: string | null; created_at: string }[]; // 🎁 crédits offerts
 };
 // Ligne de facture telle que renvoyée par pro-checkout-create (mode list_invoices)
 type ProInvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number };
@@ -5581,6 +5582,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [agenceDetailLoading, setAgenceDetailLoading] = useState(false);
   const [agenceInvoices, setAgenceInvoices] = useState<ProInvoiceItem[]>([]);
   const [agenceInvoicesLoading, setAgenceInvoicesLoading] = useState(false);
+  const [grantModal, setGrantModal] = useState(false);
+  const [grantForm, setGrantForm] = useState({ complete: '', document: '', reason: '' });
+  const [granting, setGranting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
@@ -5819,6 +5823,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     }).sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99));
 
     const responsable = membersStats.find(m => m.role === 'responsable')?.client || null;
+    // 🎁 Crédits offerts (bonus) tracés
+    const { data: grantsData } = await supabase
+      .from('agence_credit_grants')
+      .select('id, credit_type, quantity, reason, created_at')
+      .eq('agence_id', agenceId)
+      .order('created_at', { ascending: false });
     setAgenceDetail({
       agence: (ag || { id: agenceId, raison_sociale: agenceName }) as AgenceDetail['agence'],
       membersStats,
@@ -5826,6 +5836,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       totalCompletes: analyses.filter(a => isComplete(a.type)).length,
       totalRapports: shares.length,
       responsable,
+      grants: (grantsData || []) as AgenceDetail['grants'],
     });
     setAgenceDetailLoading(false);
 
@@ -5847,6 +5858,37 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       } catch { setAgenceInvoices([]); }
       setAgenceInvoicesLoading(false);
     }
+  };
+
+  // 🎁 Offrir des crédits au pool BONUS d'une agence (via edge function service_role)
+  const handleGrantAgenceCredits = async () => {
+    if (!selectedAgence) return;
+    const c = parseInt(grantForm.complete) || 0;
+    const d = parseInt(grantForm.document) || 0;
+    if (c <= 0 && d <= 0) { showToast('Indiquez au moins 1 crédit à offrir.'); return; }
+    setGranting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({
+          action: 'grant_agence_credits',
+          agence_id: selectedAgence.id,
+          credits_complete_add: c,
+          credits_document_add: d,
+          reason: grantForm.reason || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast('Erreur : ' + data.error); setGranting(false); return; }
+      await logAction('Crédits offerts à une agence', `${selectedAgence.name} (+${c} complète, +${d} simple)`);
+      showToast(`Crédits offerts à ${selectedAgence.name} 🎁`);
+      setGrantModal(false);
+      setGrantForm({ complete: '', document: '', reason: '' });
+      loadAgenceDetail(selectedAgence.id, selectedAgence.name); // rafraîchit pool + historique
+    } catch (e) { showToast('Erreur : ' + String(e)); }
+    setGranting(false);
   };
 
   // Auto-open client from external navigation (e.g. from Users tab)
@@ -6196,7 +6238,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap' as const, gap: 10 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>💳 Pool de crédits partagés</div>
                     <button
-                      onClick={() => showToast('Bouton crédits : branché à la prochaine étape')}
+                      onClick={() => { setGrantForm({ complete: '', document: '', reason: '' }); setGrantModal(true); }}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
                       <Plus size={14} /> Ajouter des crédits au pool
                     </button>
@@ -6306,6 +6348,32 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   })()}
                 </div>
 
+                {/* 🎁 Crédits offerts (bonus) — historique */}
+                {agenceDetail.grants.length > 0 && (
+                  <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <span style={{ fontSize: 15 }}>🎁</span>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Crédits offerts</div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', padding: '2px 6px', borderRadius: 100 }}>{agenceDetail.grants.length}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                      {agenceDetail.grants.map(g => (
+                        <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#faf5ff', border: '1px solid #ede9fe' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                              +{g.quantity} crédit{g.quantity > 1 ? 's' : ''} {g.credit_type === 'complete' ? 'complète' : 'simple'}{g.quantity > 1 ? 's' : ''}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                              {fmtDate(g.created_at)}{g.reason ? ` · ${g.reason}` : ''}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#ede9fe', padding: '3px 9px', borderRadius: 100, flexShrink: 0 }}>Bonus offert</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Membres */}
                 <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
                   <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', fontSize: 14, fontWeight: 800, color: '#0f172a' }}>
@@ -6339,6 +6407,48 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               </>
             );
           })()}
+
+          {/* 🎁 Modal : offrir des crédits au pool bonus */}
+          {grantModal && selectedAgence && (
+            <Modal title={`🎁 Offrir des crédits à ${selectedAgence.name}`} onClose={() => !granting && setGrantModal(false)} width={480}>
+              <p style={{ fontSize: 12.5, color: '#64748b', margin: '0 0 16px', lineHeight: 1.5 }}>
+                Ces crédits sont ajoutés au <strong>pool partagé</strong> de l'agence (utilisables immédiatement par tous les membres) et sont <strong>durables</strong> : ils ne sont jamais effacés au renouvellement mensuel.
+              </p>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', display: 'block', marginBottom: 5 }}>Analyses complètes</label>
+                  <input type="number" min={0} value={grantForm.complete}
+                    onChange={e => setGrantForm(f => ({ ...f, complete: e.target.value }))}
+                    placeholder="0"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, boxSizing: 'border-box' as const, fontFamily: 'inherit', outline: 'none' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', display: 'block', marginBottom: 5 }}>Analyses simples</label>
+                  <input type="number" min={0} value={grantForm.document}
+                    onChange={e => setGrantForm(f => ({ ...f, document: e.target.value }))}
+                    placeholder="0"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, boxSizing: 'border-box' as const, fontFamily: 'inherit', outline: 'none' }} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', display: 'block', marginBottom: 5 }}>Motif (optionnel)</label>
+                <input type="text" value={grantForm.reason}
+                  onChange={e => setGrantForm(f => ({ ...f, reason: e.target.value }))}
+                  placeholder="Ex : geste commercial, compensation…"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, boxSizing: 'border-box' as const, fontFamily: 'inherit', outline: 'none' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setGrantModal(false)} disabled={granting}
+                  style={{ flex: 1, padding: '11px', borderRadius: 11, border: '1.5px solid #edf2f7', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: granting ? 'wait' : 'pointer' }}>
+                  Annuler
+                </button>
+                <button onClick={handleGrantAgenceCredits} disabled={granting}
+                  style={{ flex: 1, padding: '11px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: granting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  {granting ? 'Ajout…' : <><Plus size={14} /> Offrir les crédits</>}
+                </button>
+              </div>
+            </Modal>
+          )}
         </motion.div>
       ) : selected ? (
         /* ── Fiche client détaillée ── */
