@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 22 juin 2026
+# VERIMO — Contexte projet — 23 juin 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -65,7 +65,7 @@
 - Activation sur invitation admin : workflow inchangé depuis V1
 - Cumul de crédits identique aux plans solo (plafond 2× = 30 complètes / 60 simples max)
 - Sans engagement, résiliable depuis Stripe Customer Portal
-- Article 4.5 ajouté aux CGV Pro (à mettre à jour pour V2 multi-utilisateurs)
+- Article 4.5 ✅ **mis à jour le 23 juin** pour V2 multi-utilisateurs (fin du « login partagé », fonctionnement détaillé, au-delà de 3 = sur devis). Version CGV gardée à **v2.3**.
 
 **Coûts réels Claude API** : ~0,50€/analyse complète (médiane), ~0,15€/analyse simple. Marges saines à 55-90%.
 
@@ -258,6 +258,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 
 ### Fonctions SQL clés
 - `my_agence_id()` — SECURITY DEFINER pour casser la boucle RLS infinie. Toutes les policies basées sur cette fonction
+- 🆕 `set_analyse_agence_fields()` (23 juin) — **trigger BEFORE INSERT sur `analyses`** : pose auto `created_by_user_id = user_id` + `agence_id` (agence du créateur via `agence_members`). Indispensable pour que la fiche « Mon équipe » remonte les analyses par membre. Miroir de `set_folder_agence_id`.
 - ⚠️ **Crédits agence (réalité depuis 22 juin)** : les fonctions LIVE sont les **v1 sans suffixe** `get_pro_credits_balance` / `consume_pro_credit` / `refund_pro_credit`, **rendues agence-aware via `agence_members`**. Les variantes `_v2` existent mais **ne sont appelées NULLE PART**. Ordre conso agence : pool → bonus (`credits_*_bonus`) → unitaires perso du membre. Voir section « Architecture crédits » + session 22 juin.
 - `get_visible_analyses()` — retourne analyses agence + perso
 - `create_agence_invitation()` — crée une invitation token
@@ -308,7 +309,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 
 ### CGV Pro
 
-Article 4.5 ajouté à mettre à jour pour V2 multi-utilisateurs (V1 mentionnait "login partagé").
+Article 4.5 ✅ **mis à jour le 23 juin** pour V2 multi-utilisateurs (la V1 mentionnait à tort "login partagé" — corrigé en "chacun son propre accès" + fonctionnement détaillé + au-delà de 3 sur devis).
 
 ### UUIDs de test
 
@@ -460,8 +461,9 @@ alter table analyses add column if not exists map_resultats jsonb;
 2. **⚠️ Doc sauté silencieusement (MAP-REDUCE)** — un doc en échec après 3 tentatives est retiré du REDUCE sans signalement client. Risque : un rapport « complet » qui a ignoré un doc pouvant contenir une info critique. Décision en attente (A échec global / B partiel signalé / C reprise par queue — Alex penche C). Voir section MAP-REDUCE.
 3. **⚠️ Mort brutale d'invocation = watchdog lent (MAP-REDUCE)** — si une invocation est tuée (WallClockTime), l'analyse reste en `processing` jusqu'au watchdog (60 min). Plan heartbeat validé (NON codé) pour ramener à ~10 min.
 2. **Étape C2 — Permissions fines DossierDetail** : bloquer ajout vendeur / nouvelle analyse / modif titre pour non-créateurs ; garder ajout acheteur + envoi rapport accessibles à tous
-3. **Régénérer service_role key** (compromise dans screenshots session 11 mai) + recréer le cron avec nouvelle clé
-4. **Mettre à jour CGV Pro article 4.5** pour V2 multi-utilisateurs (V1 mentionnait "login partagé")
+3. **🔴 Régénérer service_role key** (compromise screenshots 11 mai) + recréer le cron avec nouvelle clé — **SEUL must-do certain restant avant onboarding de vraies agences** (confirmé par l'audit sécu du 23 juin). Reste ouvert.
+4. ~~**Mettre à jour CGV Pro article 4.5** pour V2 multi-utilisateurs~~ ✅ **FAIT 23 juin** (`CGVProPage.tsx`, version gardée v2.3)
+4b. **🟠 Durcir l'auth `analyser` / `analyser-run`** (audit 23 juin) — `analyser` : ajouter `getUser()` + contrôle de propriété de l'analyseId ; `analyser-run` : secret interne partagé. Non bloquant pour démarchage. ⚠️ Prod = single-call v7 hors repo → récupérer le vrai code prod avant.
 5. **Test E2E pro complet** : souscription Découverte → upgrade Starter → upgrade Power → downgrade → achat unitaire → remboursement
 6. **Test E2E agence complet** : Création responsable → activation → souscription Stripe → invitation 2 agents → acceptation → dossiers partagés → analyse créée par agent → rapport envoyé
 7. **Custom text Stripe Dashboard** → Settings → Branding (mention CGV Pro au checkout)
@@ -524,6 +526,29 @@ alter table analyses add column if not exists map_resultats jsonb;
 
 ### Sessions récentes (mai-juin 2026)
 
+- **Session 23 juin 2026 ⭐⭐ : Fiche membre agence RÉPARÉE (SQL) + AUDIT SÉCURITÉ COMPLET + CGV Pro 4.5 + UX complément + fix layout Mon équipe**
+  - **🔒 FICHE MEMBRE « Mon équipe » — RÉPARÉE (100 % SQL, zéro frontend).** Symptôme : depuis le compte responsable, cliquer sur un membre affichait « 0 analyse » pour tout le monde (KPIs + liste vides). **Diagnostic vérifié par requêtes prod** : la fiche filtre sur `analyses.agence_id` + `created_by_user_id`, or `agence_id` était rempli sur **0 / 38** analyses (et `created_by_user_id` sur 16 = vieux backfill historique, **aucun trigger actif**). `createAnalyse` ne posait ni l'un ni l'autre. **Fix livré et testé OK en prod :**
+    - **BLOC 1 (trigger)** : `set_analyse_agence_fields()` (BEFORE INSERT on `analyses`, SECURITY DEFINER) → pose auto `created_by_user_id = user_id` + `agence_id` = agence dont le créateur est membre actif (`agence_members`, `removed_at is null`). Miroir du trigger `set_folder_agence_id` des dossiers. Particulier / pro solo → `agence_id` reste null (normal).
+    - **BLOC 2 (backfill)** : `update analyses set created_by_user_id = user_id where null` + `update analyses a set agence_id = am.agence_id from agence_members am where am.user_id = a.created_by_user_id and removed_at is null`. Résultat vérifié : **38/38** creator, **1** agence.
+    - **BLOC 3 (policy RLS agence) — JUGÉ INUTILE, NON FAIT.** Raison vérifiée dans le code : un pro est **obligé** de choisir un dossier avant de lancer (`NouvelleAnalyse` : `setStep(selectedFolder ? 'type_bien' : 'folder_select')`) → **aucune analyse pro n'existe hors dossier** → la policy folder-based du 22 juin (« Membres agence lecture analyses dossiers ») couvre déjà 100 % des lectures. Le `agence_id` manquant était le seul vrai chaînon cassé (pour le **filtre** d'affichage), pas la lecture. **Ne pas re-créer le bloc 3.**
+    - **Cloisonnement confirmé** : le responsable voit uniquement les analyses de **SON** agence (`agence_id` = son agence + créateur membre), jamais celles d'autres agences/particuliers. Sain.
+  - **🛡️ AUDIT SÉCURITÉ COMPLET (avant démarchage pro). Résultats :**
+    - ✅ **Secrets** : aucune clé sensible dans le code. Seule clé en dur = clé `anon` (publique par design, OK). Aucun `service_role` / `sk_live` côté front. `.gitignore` + `.env.example` propres.
+    - ✅ **Webhooks Stripe** (`stripe-webhook-pro` + `stripe-webhook`) : signature vérifiée (`constructEventAsync`) → paiements/remboursements infalsifiables.
+    - ✅ **`admin-user-management`** : valide le vrai token (`auth.getUser()`) + rôle admin + propriété (401/403). Bon pattern.
+    - ✅ **Prix 100 % cohérents** (frontend + edge functions) : particuliers 4,90/19,90/29,90/39,90 ; pro 19,90/49,90/89,90/149,90 ; unitaires 9,90/2,90 ; quotas Découverte 1+3 / Starter 5+15 / Power 10+30 / Agence 15+30 ; Price IDs Stripe alignés ; TVA appliquée. **Aucun tarif pro sur pages publiques.** Mot « IA » absent du public.
+    - ✅ **RLS activée sur les 34 tables** (vérifié `pg_tables`).
+    - 🔴 **2 TROUS RLS TROUVÉS ET CORRIGÉS (SQL, déployé)** : policies mal créées sur `{public}` avec `qual = true` (combinaison OR → ouvre à tous, anon inclus).
+      - `contact_pro` : les 3 policies « admin » SELECT/UPDATE/DELETE étaient ouvertes au public → n'importe qui pouvait lire/modifier/supprimer les messages de prospects pros. **Fix** : recréées `for ... to authenticated using (is_admin())`. Insertion publique (formulaire) conservée.
+      - `comparaisons` : policy « Service role full access comparaisons » sur `{public}` true → accès total ouvert à tous. **Fix** : `drop policy` (le service_role bypass déjà la RLS). Les policies `auth.uid() = user_id` suffisent.
+    - ⚠️ **`analyser` / `analyser-run` : auth faible/absente** (constaté dans le repo). `analyser` vérifie seulement que le header `Authorization` existe (pas de `getUser()`, pas de contrôle de propriété de l'analyseId). `analyser-run` (v18 repo) : **aucun** contrôle. Risque réel **étroit** (il faut des `fileIds` Anthropic valides ; un abus consommerait les crédits de l'attaquant ; `verify_jwt` Supabase peut filtrer en amont — non visible dans le repo). **À durcir (non bloquant pour démarchage)** : valider le token + propriété dans `analyser`, secret interne partagé pour `analyser-run`. ⚠️ Prod = single-call v7 recollé à la main, **pas dans le repo** → me faire coller le vrai `analyser-run` prod avant de le durcir.
+    - 🔴 **RESTE LE SEUL MUST-DO CERTAIN : régénérer la clé `service_role`** (compromise 11 mai, screenshots). Tant que non fait → contournement possible de toute la RLS.
+  - **Verdict audit** : **démarchage + démos = GO maintenant.** **Onboarding de vraies agences (vraies données RGPD) = GO dès que la clé service_role est régénérée.**
+  - **📜 CGV Pro — article 4.5 réécrit (LIVRÉ, `CGVProPage.tsx`).** Fin du « login partagé » → « chacun son propre compte/identifiants ». Ajout bloc « Fonctionnement multi-utilisateurs » (invitation mail lien 7j, 3 rôles, pool partagé, dossiers partagés, facturation centralisée) + encadré « Au-delà de 3 utilisateurs → sur devis ». **Version CGV GARDÉE à v2.3** (aucun pro actif → pas de re-consentement à déclencher). Frontend only.
+  - **🔔 UX « Compléter mon dossier » (LIVRÉ, `RapportPage.tsx`).** Constat : l'écran était déjà bon (pédagogie + recalcul score annoncé + message rassurant cloche + bouton retour). Seul ajout : **message rassurant personnalisé avec le nom du dossier** (« Votre dossier « {adresse} » est en cours de mise à jour… prévenu dans la cloche 🔔 dès que le dossier sera mis à jour ») + titre « Mise à jour de votre dossier en cours… ». Variable `nomDossier = safeStr(rapport.adresse) || 'votre bien'`. Vérifié : la note /20 **se recalcule bien** en mode complément (déterministe `recalculerCategories` + somme des 5 catégories) ; la notif cloche backend fire bien pour complément avec le nom du dossier (particulier = cloche + email, pro = cloche seule). Frontend only.
+  - **🎨 Fix layout « Mon équipe » (LIVRÉ, `MonEquipePage.tsx`).** Bande blanche à gauche = double padding (le `<main>` pose déjà 24px + la page reposait 28px). Fix : conteneur racine passé de `padding: '24px 28px 60px', maxWidth: 1080` à `paddingBottom: 60, maxWidth: 1100` (aligné sur les autres pages). Appliqué aux 2 conteneurs (liste + fiche membre). Frontend only.
+  - **Nettoyage** : fichier parasite `supabase/functions/a` (1 octet) à supprimer sur GitHub.
+  - **⚠️ 4 fichiers frontend à pousser sur GitHub** : `CGVProPage.tsx`, `RapportPage.tsx`, `MonEquipePage.tsx` (+ supprimer `supabase/functions/a`). Le SQL (trigger + backfill + 2 fixes RLS) est **déjà passé en prod** en direct.
 - **Session 22 juin 2026 ⭐⭐ : Système crédits AGENCE finalisé (consommation + recharge + crédits offerts) + partage dossiers entre collègues + gros polish admin agence**
   - **Diagnostic clé** : le pool agence (`agences.credits_complete/document`) était AFFICHÉ mais jamais réellement CONSOMMÉ. Les fonctions live partout sont les **v1 sans suffixe** (`get_pro_credits_balance`, `consume_pro_credit`, `refund_pro_credit`) ; les variantes `_v2` ne sont appelées NULLE PART. Seul `get_pro_credits_balance` était agence-aware → l'agent (sans abo perso) était bloqué « plus de crédit ». Source de vérité = **`agence_members`** (et non `profiles.agence_id`, pas toujours rempli).
   - **2a (SQL, déployé + testé OK)** : ajout colonnes `agences.credits_complete_bonus` / `credits_document_bonus` (crédits offerts durables). Réécriture de `consume_pro_credit`, `refund_pro_credit`, `get_pro_credits_balance` pour être agence-aware via `agence_members`. Ordre de consommation agence : **pool mensuel → bonus → achats unitaires perso du membre**. Remboursement → pool. Solde = pool + bonus + unitaires perso. Branches SOLO strictement inchangées.
@@ -599,6 +624,13 @@ alter table analyses add column if not exists map_resultats jsonb;
 ---
 
 ## 🎯 Prochaine session — Actions prioritaires
+
+### 🔒 ÉTAT SÉCURITÉ (audit complet du 23 juin) ⭐⭐⭐
+**Solide :** RLS activée sur les 34 tables · webhooks Stripe signés · admin verrouillé (token+rôle) · aucun secret exposé (seule clé anon en dur = publique OK) · prix cohérents partout · tarifs pro non publics.
+**Corrigé le 23 juin :** 2 trous RLS (`contact_pro` + `comparaisons`, policies `{public} true` → réservées `is_admin()` / supprimées).
+**🔴 RESTE 1 MUST-DO : régénérer la clé `service_role`** (compromise 11 mai) + remettre la nouvelle clé dans les secrets edge functions + recréer le cron. **C'est le dernier verrou avant d'onboarder de vraies agences.** Démarchage/démos = OK dès maintenant.
+**🟠 Ensuite (non bloquant) : durcir auth `analyser`/`analyser-run`** (cf. session 23 juin — récupérer le vrai `analyser-run` prod hors repo avant).
+
 
 ### ⏱️ CHANTIER 400 SECONDES — timeout analyse complète (À CONTINUER) ⭐⭐⭐ NOUVEAU 04 juin
 
