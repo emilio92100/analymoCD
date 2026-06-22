@@ -7731,7 +7731,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 {([
                   { id: 'all', label: 'Tous' },
                   { id: 'agent', label: '🏠 Agent solo' },
-                  { id: 'agence', label: '🏛 Agence' },
+                  { id: 'agence', label: '🏛 Agences' },
                   { id: 'investisseur', label: '📈 Investisseur' },
                   { id: 'notaire', label: '⚖️ Notaire' },
                   { id: 'autre', label: '💼 Autre' },
@@ -7758,7 +7758,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; } }}
                       onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = '#edf2f7'; e.currentTarget.style.background = '#fff'; } }}
                     >
-                      {t.label} ({count})
+                      {t.id === 'agence'
+                        ? `${t.label} (${new Set(clients.filter(c => agenceInfoByUser.has(c.id)).map(c => agenceInfoByUser.get(c.id)!.agence_id)).size} · ${count} comptes)`
+                        : `${t.label} (${count})`}
                     </button>
                   );
                 })}
