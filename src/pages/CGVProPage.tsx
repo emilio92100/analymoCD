@@ -272,24 +272,42 @@ export default function CGVProPage() {
                 <li>Sans régularisation au terme de cette période, l'abonnement est suspendu automatiquement</li>
               </ul>
 
-              <SubTitle>4.5 — Formule Agence</SubTitle>
+              <SubTitle>4.5 — Formule Agence (multi-utilisateurs)</SubTitle>
               <p>
-                L'offre <strong>Verimo Pro · Agence</strong> est une formule destinée aux structures employant plusieurs collaborateurs.
-                Elle se distingue des formules solo (Découverte, Starter, Power) par ses volumes et son périmètre d'usage.
+                L'offre <strong>Verimo Pro · Agence</strong> est une formule destinée aux structures employant plusieurs
+                collaborateurs (agences, cabinets, réseaux de mandataires). Elle se distingue des formules solo
+                (Découverte, Starter, Power) par son fonctionnement multi-utilisateurs, ses volumes et sa facturation centralisée.
               </p>
+
+              <p style={{ fontWeight: 700, marginTop: 4 }}>Tarif et crédits inclus</p>
               <ul style={{ paddingLeft: 22, lineHeight: 2 }}>
                 <li><strong>Tarif</strong> : 149,90 € HT par mois (soit 179,88 € TTC, TVA française 20 % en sus)</li>
-                <li><strong>Crédits inclus</strong> : 15 analyses complètes mensuelles + 30 analyses simples mensuelles</li>
-                <li><strong>Limite d'agents</strong> : 3 agents maximum par compte agence (login partagé)</li>
-                <li><strong>Cumul de crédits</strong> : crédits non consommés cumulables sur 2 mois maximum (plafond 2×)</li>
-                <li><strong>Engagement</strong> : abonnement sans engagement, résiliable à tout moment depuis le Customer Portal Stripe</li>
-                <li><strong>Facturation</strong> : prélèvement automatique mensuel à date d'anniversaire de souscription, facture PDF générée et envoyée par email après chaque paiement</li>
+                <li><strong>Crédits inclus</strong> : 15 analyses complètes et 30 analyses simples par mois, réunis dans un <strong>pool commun partagé</strong> entre tous les membres de l'agence</li>
+                <li><strong>Cumul de crédits</strong> : les crédits non consommés sont cumulables sur 2 mois maximum (plafond 2×, soit jusqu'à 30 analyses complètes et 60 analyses simples)</li>
               </ul>
-              <p>
-                L'activation de la formule Agence se fait sur invitation, après un échange avec l'équipe Verimo
-                permettant de valider l'adéquation de l'offre avec les besoins de la structure. Les agences intéressées
-                peuvent demander un rappel depuis leur dashboard, rubrique « Mon abonnement ».
-              </p>
+
+              <p style={{ fontWeight: 700, marginTop: 8 }}>Fonctionnement multi-utilisateurs</p>
+              <ul style={{ paddingLeft: 22, lineHeight: 2 }}>
+                <li><strong>3 utilisateurs maximum</strong>, disposant chacun de son <strong>propre compte et de ses propres identifiants de connexion</strong> (un responsable et jusqu'à 2 collaborateurs supplémentaires)</li>
+                <li><strong>Invitation des collaborateurs</strong> : le responsable invite ses collaborateurs par email depuis son espace « Mon équipe ». Chaque invitation contient un lien personnel, valable <strong>7 jours</strong> et utilisable une seule fois</li>
+                <li><strong>Rôles et droits</strong> : trois niveaux existent — <em>responsable</em> (gestion complète de l'équipe et de la facturation), <em>co-responsable</em> (mêmes droits de gestion, sur délégation du responsable) et <em>agent</em> (utilisation du service, sans accès à la facturation ni à la gestion de l'équipe)</li>
+                <li><strong>Dossiers partagés</strong> : les dossiers et analyses créés par les membres sont visibles en lecture par l'ensemble de l'équipe, afin de faciliter la collaboration</li>
+                <li><strong>Facturation centralisée</strong> : le responsable est l'unique titulaire de l'abonnement et le seul redevable du paiement pour l'ensemble de l'équipe ; les collaborateurs n'ont aucun accès à la facturation</li>
+              </ul>
+
+              <Callout type="info" title="Au-delà de 3 utilisateurs">
+                La formule Agence est limitée à 3 utilisateurs. Les structures ayant besoin d'un nombre supérieur de comptes
+                peuvent solliciter une <strong>offre sur mesure</strong> en contactant l'équipe Verimo. Les conditions (nombre de comptes,
+                volume de crédits et tarif) sont alors définies au cas par cas dans une proposition commerciale dédiée.
+              </Callout>
+
+              <p style={{ fontWeight: 700, marginTop: 8 }}>Activation, engagement et résiliation</p>
+              <ul style={{ paddingLeft: 22, lineHeight: 2 }}>
+                <li><strong>Activation</strong> : sur invitation, après un échange avec l'équipe Verimo permettant de valider l'adéquation de l'offre avec les besoins de la structure. Les agences intéressées peuvent demander un rappel depuis leur dashboard, rubrique « Mon abonnement »</li>
+                <li><strong>Engagement</strong> : abonnement sans engagement, résiliable à tout moment depuis le Customer Portal Stripe ; la résiliation prend effet à la fin du cycle de facturation en cours</li>
+                <li><strong>Facturation</strong> : prélèvement automatique mensuel à la date d'anniversaire de la souscription ; facture PDF générée et envoyée par email après chaque paiement</li>
+              </ul>
+
               <p>
                 Les règles de cumul de crédits, d'échec de paiement et de modalités de paiement énoncées aux articles 4.3, 4.4 et 5
                 s'appliquent intégralement à la formule Agence.
