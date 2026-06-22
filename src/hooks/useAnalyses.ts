@@ -28,10 +28,13 @@ export type Analyse = {
 // Titre d'affichage d'une analyse (particulier ET pro).
 // Source de vérité unique pour ne JAMAIS afficher le nom du fichier
 // uploadé à la place d'un titre d'analyse complète.
-//   • document simple        → nom du document
-//   • complète + adresse      → l'adresse réelle (rapport généré)
-//   • complète + pas d'adresse + en échec  → "Analyse complète"
-//   • complète + pas d'adresse + en cours  → "Analyse complète en cours…"
+//   • document simple                          → nom du document
+//   • complète terminée + adresse              → l'adresse (case adresse, sinon case "titre"
+//                                                 qui contient l'adresse une fois le rapport généré)
+//   • complète terminée sans adresse / échec   → "Analyse complète"
+//   • complète en cours (pas encore d'adresse) → "Analyse complète en cours…"
+// ⚠️ La case "titre" vaut le NOM DU FICHIER tant que l'analyse tourne, et l'ADRESSE une fois
+//    terminée → on ne s'en sert comme adresse QUE si status === 'completed'.
 // Accepte aussi bien le type Analyse (particulier) que ProAnalysis (pro).
 // ──────────────────────────────────────────────────────────────
 export function titreAnalyse(a: {
@@ -46,10 +49,17 @@ export function titreAnalyse(a: {
   if (!isComplete) {
     return a.nom_document || a.title || 'Document sans nom';
   }
-  const adresse = a.adresse_bien || a.address || undefined;
-  if (adresse) return adresse;
   const enEchec = a.status === 'error' || a.status === 'failed';
-  return enEchec ? 'Analyse complète' : 'Analyse complète en cours…';
+  const termine = a.status === 'completed';
+  // Adresse : case dédiée (adresse_bien / address), sinon — UNIQUEMENT si l'analyse est
+  // terminée — la case "titre", qui contient l'adresse une fois le rapport généré (le moteur
+  // écrase le nom de fichier par l'adresse à la fin). On NE prend JAMAIS a.title tant que ça
+  // tourne (= nom du 1er fichier uploadé).
+  const adresse = a.adresse_bien || a.address || (termine ? a.title : null) || undefined;
+  if (adresse) return adresse;
+  // Sans adresse : une analyse terminée (ou en échec) ne doit JAMAIS afficher "en cours…".
+  if (enEchec || termine) return 'Analyse complète';
+  return 'Analyse complète en cours…';
 }
 
 export function useAnalyses() {
@@ -74,10 +84,14 @@ export function useAnalyses() {
             : a.status === 'failed' ? 'error'
             : 'processing') as 'completed' | 'processing' | 'error',
           nom_document: a.type === 'document' ? a.title : undefined,
-          // ⚠️ NE PAS retomber sur a.title (= nom du 1er fichier) : pour une analyse
-          // complète sans adresse encore extraite, on laisse adresse_bien vide et c'est
-          // titreAnalyse() qui décide du libellé selon le statut (en cours / échec).
-          adresse_bien: a.type !== 'document' ? (a.address || undefined) : undefined,
+          // Adresse d'une analyse complète : a.address (case dédiée) si remplie ; sinon,
+          // UNIQUEMENT si l'analyse est terminée, on récupère a.title — qui contient l'adresse
+          // une fois le rapport généré (le moteur écrase le nom de fichier par l'adresse à la
+          // fin). On NE prend JAMAIS a.title tant que ça tourne (= nom du 1er fichier uploadé).
+          // Si rien → titreAnalyse() pose le bon libellé (en cours / terminée / échec).
+          adresse_bien: a.type !== 'document'
+            ? (a.address || (a.status === 'completed' ? (a.title || undefined) : undefined))
+            : undefined,
           score,
           recommandation: reco,
           recommandationColor: reco ? recoColor : undefined,
