@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 04 juin 2026
+# VERIMO — Contexte projet — 22 juin 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -228,9 +228,10 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 ### Structure BDD
 
 **Tables créées** :
-- `agences` (id, raison_sociale, siret, adresse, plan, nb_users_max, status, credits_complete, credits_document, email_contact, telephone, created_at, updated_at)
+- `agences` (id, raison_sociale, siret, adresse, plan, nb_users_max, status, credits_complete, credits_document, **credits_complete_bonus**, **credits_document_bonus**, email_contact, telephone, created_at, updated_at) — les `*_bonus` (ajoutées 22 juin) = crédits offerts durables, hors quota mensuel, jamais effacés au renouvellement
 - `agence_members` (id, agence_id, user_id, role, joined_at, removed_at, last_active_at, color_hex)
 - `agence_invitations` (id, agence_id, email, token, status, invited_by, invited_by_name, created_at, expires_at, accepted_at, cancelled_at, resend_count)
+- `agence_credit_grants` (id, agence_id, granted_by, credit_type, quantity, reason, created_at) — **log des crédits offerts** au pool bonus (ajoutée 22 juin). RLS : membres voient leur agence, admin via `is_admin()`. Écriture via service_role (edge function)
 - `envois_rapports` (id, agence_id, sent_by, analysis_id, recipient_email, sent_at)
 - `dossier_notes` (id, agence_id, folder_id, user_id, content, deleted_at, created_at)
 
@@ -257,9 +258,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 
 ### Fonctions SQL clés
 - `my_agence_id()` — SECURITY DEFINER pour casser la boucle RLS infinie. Toutes les policies basées sur cette fonction
-- `get_pro_credits_balance_v2()` — gère le cas agence (lit pool agence si membre, sinon perso)
-- `consume_pro_credit_v2()` — déduit du pool agence si membre
-- `refund_pro_credit_v2()` — rembourse au pool agence
+- ⚠️ **Crédits agence (réalité depuis 22 juin)** : les fonctions LIVE sont les **v1 sans suffixe** `get_pro_credits_balance` / `consume_pro_credit` / `refund_pro_credit`, **rendues agence-aware via `agence_members`**. Les variantes `_v2` existent mais **ne sont appelées NULLE PART**. Ordre conso agence : pool → bonus (`credits_*_bonus`) → unitaires perso du membre. Voir section « Architecture crédits » + session 22 juin.
 - `get_visible_analyses()` — retourne analyses agence + perso
 - `create_agence_invitation()` — crée une invitation token
 - `accept_agence_invitation()` — accepte (crée membre + pro_invitations pour badge "Compte activé")
@@ -305,7 +304,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 - Fiche client : bandeau bleu agence avec liste cliquable des autres membres
 - Filtre "Agence" inclut tous les membres (responsable + co-resp + agents)
 - Filtre "Autre" exclut les membres d'agence
-- ⚠️ **Bug à régler en priorité prochaine session** : le **regroupement visuel par agence** (header doré dépliable + membres indentés + séparateur "Comptes individuels") code livré mais **ne s'affiche pas en prod**. Hypothèses : pas push correctement OU bug logique dans `sortedAgences`. À vérifier en priorité.
+- ✅ **Regroupement visuel par agence (header doré dépliable + membres indentés)** — RÉSOLU le 22 juin. Le code était bon ; cause = RLS (`agences` / `agence_members` sans policy admin). Fix = policies SELECT `is_admin()` sur les deux tables. + Vue détail agence complète, analyses cliquables paginées, filtre « Agences (N · M comptes) », bouton « Voir l'agence ». Voir session 22 juin.
 
 ### CGV Pro
 
@@ -347,18 +346,19 @@ Article 4.5 ajouté à mettre à jour pour V2 multi-utilisateurs (V1 mentionnait
 
 ### Sources de crédits pro
 Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui agrège :
-1. **Abonnement** → `pro_subscriptions` (ou **pool agence** si membre d'une agence — fonction patchée 28 mai)
+1. **Abonnement** → `pro_subscriptions` (ou, si membre d'une agence, le **pool partagé** `agences.credits_complete/document` + le **bonus** `credits_*_bonus`). Agence-aware via `agence_members` (réécriture 22 juin — voir session). Ordre de conso agence : pool → bonus → unitaires perso.
 2. **Achats unitaires** → `pro_unit_purchases`
-3. **Crédits offerts** → `credit_grants` + trigger `apply_credit_grant`
+3. **Crédits offerts (solo)** → `credit_grants` + trigger `apply_credit_grant`
+4. **Crédits offerts (agence)** → pool bonus `agences.credits_*_bonus`, tracés dans `agence_credit_grants` (écrits par l'edge function `admin-user-management` action `grant_agence_credits`, service_role)
 
 ### Sources de crédits particulier
 Stockés directement dans `profiles.credits_document` et `profiles.credits_complete`.
 
 ### Fonctions SQL crédits
-- **Consommation pro** : `consume_pro_credit(p_user_id, p_credit_type)`
+- **Consommation pro** : `consume_pro_credit(p_user_id, p_credit_type)` — agence-aware (pool → bonus → perso)
 - **Consommation particulier** : `consume_particulier_credit(p_user_id, p_credit_type)`
-- **Remboursement crédit interne pro** : `refund_pro_credit(p_user_id, p_credit_type)`
-- **Reset cycle abo** : `reset_pro_subscription_credits(p_subscription_id)`
+- **Remboursement crédit interne pro** : `refund_pro_credit(p_user_id, p_credit_type)` — agence-aware (rembourse au pool)
+- **Reset cycle abo** : `reset_pro_subscription_credits(p_subscription_id)` — gère le plan `agence` (recharge pool, cumul plafonné 2× = 30/60, bonus intact) depuis le 22 juin
 - **Cumul upgrade** : `upgrade_pro_subscription_credits(p_subscription_id, p_new_plan)`
 - **Incrément promo** : `increment_promo_uses(code_id)`
 
@@ -456,7 +456,7 @@ alter table analyses add column if not exists map_resultats jsonb;
 
 ### 🔥 Priorité haute (avant lancement public Pro)
 
-1. **🚨 BUG REGROUPEMENT AGENCE ADMIN** — le code de regroupement visuel des comptes d'une agence dans AdminPage.tsx ne s'affiche pas en prod. À diagnostiquer en priorité absolue.
+1. ~~**🚨 BUG REGROUPEMENT AGENCE ADMIN**~~ ✅ **RÉSOLU 22 juin** (RLS : policies `is_admin()` ajoutées sur `agences` + `agence_members`). + système crédits agence finalisé, partage dossiers entre collègues, polish admin (détail agence, analyses cliquables paginées, filtre « Agences », bouton « Voir l'agence »). Voir session 22 juin.
 2. **⚠️ Doc sauté silencieusement (MAP-REDUCE)** — un doc en échec après 3 tentatives est retiré du REDUCE sans signalement client. Risque : un rapport « complet » qui a ignoré un doc pouvant contenir une info critique. Décision en attente (A échec global / B partiel signalé / C reprise par queue — Alex penche C). Voir section MAP-REDUCE.
 3. **⚠️ Mort brutale d'invocation = watchdog lent (MAP-REDUCE)** — si une invocation est tuée (WallClockTime), l'analyse reste en `processing` jusqu'au watchdog (60 min). Plan heartbeat validé (NON codé) pour ramener à ~10 min.
 2. **Étape C2 — Permissions fines DossierDetail** : bloquer ajout vendeur / nouvelle analyse / modif titre pour non-créateurs ; garder ajout acheteur + envoi rapport accessibles à tous
@@ -524,6 +524,16 @@ alter table analyses add column if not exists map_resultats jsonb;
 
 ### Sessions récentes (mai-juin 2026)
 
+- **Session 22 juin 2026 ⭐⭐ : Système crédits AGENCE finalisé (consommation + recharge + crédits offerts) + partage dossiers entre collègues + gros polish admin agence**
+  - **Diagnostic clé** : le pool agence (`agences.credits_complete/document`) était AFFICHÉ mais jamais réellement CONSOMMÉ. Les fonctions live partout sont les **v1 sans suffixe** (`get_pro_credits_balance`, `consume_pro_credit`, `refund_pro_credit`) ; les variantes `_v2` ne sont appelées NULLE PART. Seul `get_pro_credits_balance` était agence-aware → l'agent (sans abo perso) était bloqué « plus de crédit ». Source de vérité = **`agence_members`** (et non `profiles.agence_id`, pas toujours rempli).
+  - **2a (SQL, déployé + testé OK)** : ajout colonnes `agences.credits_complete_bonus` / `credits_document_bonus` (crédits offerts durables). Réécriture de `consume_pro_credit`, `refund_pro_credit`, `get_pro_credits_balance` pour être agence-aware via `agence_members`. Ordre de consommation agence : **pool mensuel → bonus → achats unitaires perso du membre**. Remboursement → pool. Solde = pool + bonus + unitaires perso. Branches SOLO strictement inchangées.
+  - **2b (SQL, déployé)** : `reset_pro_subscription_credits` plantait sur le plan `agence` (CASE solo only) → pool jamais rechargé au renouvellement. Ajout branche `agence` : recharge mensuelle **cumul plafonné 2×** (pool += 15 complètes max 30 / += 30 simples max 60 ; bonus jamais touché). Résout l'agence à sec après le 1er mois.
+  - **2c (SQL + edge function + frontend, déployé)** : bouton « Offrir des crédits au pool » réellement branché. Nouvelle table **`agence_credit_grants`** (log id/agence_id/granted_by/credit_type/quantity/reason/created_at + RLS membres & admin). Nouvelle action **`grant_agence_credits`** dans `admin-user-management` (service_role : UPDATE pool bonus + INSERT log ; protégée par la garde admin l.815). Frontend : modal admin (complètes/simples/**motif interne admin uniquement**) + bloc « 🎁 Crédits offerts » sur la fiche agence + section « Crédits offerts » côté **dashboard responsable/membres** (charge `agence_credit_grants` de son agence via `agence_members` et l'affiche comme un pro solo). **Pourquoi edge function pour l'agence et pas solo/particulier** : le pool partagé n'a pas de `user_id` → RLS bloque l'écriture frontend → service_role requis ; le solo/particulier passe par `credit_grants` (trigger, keyé `user_id`).
+  - **Affichage admin pool corrigé** : la carte « Pool de crédits partagés » lisait `credits_complete` seul → n'augmentait pas quand on offrait du bonus. Affiche désormais **base + bonus** (« 6 · 4 mensuels + 2 offerts 🎁 »).
+  - **Partage des dossiers entre collègues (SQL, déployé + testé OK)** : un membre voyait « 0 analyse » dans le dossier d'un collègue. Cause = RLS `analyses` limitée à `user_id = auth.uid()` (createAnalyse ne pose PAS `agence_id` sur l'analyse). Fix = policy SELECT « Membres agence lecture analyses dossiers » : un membre peut lire une analyse si son `folder_id` pointe vers un `pro_folders` dont l'`agence_id` est une agence où il est membre (`agence_members`, `removed_at IS NULL`). C'est ce qui rend la « lecture libre des dossiers » réellement effective.
+  - **BUG REGROUPEMENT AGENCE ADMIN — ✅ RÉSOLU** : le code était bon, c'était un RLS. Les tables `agences` et `agence_members` n'avaient qu'une policy SELECT membre (`my_agence_id()`), pas de policy admin → l'admin (non-membre) lisait vide → pas de regroupement. Fix = policies SELECT `is_admin()` sur les deux tables.
+  - **Polish admin AdminPage.tsx (livré, frontend)** : (1) **Vue détail agence complète** (clic bandeau doré) : identité/plan, pool (base+bonus), stats globales, liste membres cliquable, facturation (factures Stripe du responsable = payeur), bloc crédits offerts, **liste « 📋 Analyses de l'agence »** tous membres confondus, cliquables vers le rapport, **paginée « Voir plus » 10 par 10** (range serveur, jamais tout chargé) avec nom membre + date + horaire. (2) **Analyses cliquables sur la fiche client** (complétées → `/dashboard/rapport?id=`). (3) Filtre profil « 🏛 Agence (4) » → **« 🏛 Agences (1 · 4 comptes) »** (agences distinctes · comptes rattachés). (4) Bouton **« Voir l'agence → »** sur la fiche membre (saut direct vers la fiche agence). (5) Barre de recherche Clients Pro + badge « 🏛 Membre d'agence ».
+  - **Méthode** : tout buildé + `tsc`/`npm run build` clean avant chaque livraison. Déploiement : SQL dans SQL Editor, edge function redeploy manuel Supabase Studio, frontend push GitHub (Vercel auto-deploy).
 - **Session 04 juin 2026 ⭐ : Fix titre analyses (nom de fichier) + grosse investigation timeout 400 s**
   - **Fix affichage titre des analyses (LIVRÉ, frontend, 4 fichiers).** Une analyse complète en cours/échec affichait le **nom du 1er fichier uploadé** (ex « 7089_PV_AG_05.06.2019.pdf ») au lieu d'un libellé propre. **Cause racine** : `useAnalyses.ts` l.49 `adresse_bien = a.address || a.title` — le `|| a.title` (= nom du fichier) remontait quand l'adresse n'était pas encore extraite. **Fix** : fonction partagée **`titreAnalyse()`** ajoutée dans `useAnalyses.ts` (document → nom du doc ; complète + adresse → l'adresse ; complète sans adresse + en cours → « Analyse complète en cours… » ; en échec → « Analyse complète ») + suppression du `|| a.title`. Appliquée côté **particulier** (`MesAnalyses.tsx` CompleteRow + SimpleRow, `HomeView.tsx`) et côté **pro** (`DashboardProPage.tsx`, 4 endroits de **liste** : l.1139 / 5404 getDocName / 5657 / 6503). **Épargnés** (vérifié) : titre de la page rapport (l.2887, 5934) et notif `completed` (l.7789) — l'adresse y est toujours présente. Fichiers livrés : `useAnalyses.ts`, `MesAnalyses.tsx`, `HomeView.tsx`, `DashboardProPage.tsx`. **Frontend only → Vercel auto-deploy, AUCUN SQL ni edge function à redéployer.** ⚠️ Pousser `useAnalyses.ts` en premier (il définit la fonction importée par les autres).
   - **Notif cloche d'échec : déjà bien gérée** (vérifié dans `watchdog-stuck-analyses`) — pour une analyse complète sans adresse, le sujet est « complète » (jamais le nom du fichier), commentaire explicite dans le code. Rien à corriger.
