@@ -1,17 +1,10 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser-run (v18 — MAP-REDUCE en 2 INVOCATIONS)
-// 🆕 Mode complet découpé pour ne plus dépasser le WallClockTime :
-//    INVOCATION 1 (phase MAP)    : 1 résumé TEXTE LIBRE par doc (paquets
-//                                  de 3) → stocké dans analyses.map_resultats
-//                                  → se ré-invoque en phase 'reduce'.
-//    INVOCATION 2 (phase REDUCE) : relit les résumés → 1 appel avec le
-//                                  PROMPT COMPLET → scoring déterministe
-//                                  → rapport final.
-//    Passes A/B/C SUPPRIMÉES. Modes 'document' et 'complement' INCHANGÉS.
-// Prérequis SQL : alter table analyses add column if not exists map_resultats jsonb;
-// (v7 — complement + typeBienDeclare)
+// EDGE FUNCTION — analyser-run (v7 — complement + typeBienDeclare)
+// Étape 2 : Appel Claude avec file_ids → rapport → suppression RGPD
 // Mode complement : fusionne rapport existant + nouveaux docs
-// Pas de limite HTTP par invocation, mais chaque invocation reste courte.
+// Session 4 : reçoit type_bien_declare (appart/maison/maison_copro/indetermine)
+//             et l'injecte dans le prompt pour fiabiliser le rendu
+// Pas de limite HTTP → peut durer 10+ minutes
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -166,7 +159,6 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
 
     for (const d of diagsPrivatifs) {
       const detail = (d.resultat || d.alerte || d.label || '').toLowerCase();
-      const presence = String(d.presence || '').toLowerCase();
       if (d.type === 'DPE') {
         if (/classe\s*g/i.test(detail)) {
           noteDiagsPrivatifs -= profil === 'invest' ? 2 : 1.5;
@@ -174,25 +166,20 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
           noteDiagsPrivatifs -= profil === 'invest' ? 1.5 : 1;
         }
       }
-      // Pénalités d'anomalie : UNIQUEMENT si une anomalie a réellement été détectée.
-      // Un diagnostic réalisé mais propre (presence 'absence') ne doit JAMAIS être pénalisé
-      // — évite que "aucune anomalie" ou "aucun indice détecté" déclenche une pénalité à tort.
-      if (presence === 'detectee') {
-        if (d.type === 'ELECTRICITE') {
-          if (/majeur|danger|risque/i.test(detail)) noteDiagsPrivatifs -= 1;
-          else noteDiagsPrivatifs -= 0.3;
-        }
-        if (d.type === 'GAZ') {
-          if (/a1\b/i.test(detail)) noteDiagsPrivatifs -= 1;
-          else if (/a2\b/i.test(detail)) noteDiagsPrivatifs -= 0.5;
-        }
-        if (d.type === 'AMIANTE') {
-          if (/d[ée]grad|positif|pr[ée]sent/i.test(detail)) noteDiagsPrivatifs -= 1;
-          else if (/suspect|[ée]valuation p[ée]riodique/i.test(detail)) noteDiagsPrivatifs -= 0.3;
-        }
-        if (d.type === 'PLOMB' && /d[ée]grad|positif/i.test(detail)) noteDiagsPrivatifs -= 1;
-        if (d.type === 'TERMITES') noteDiagsPrivatifs -= 2;
+      if (d.type === 'ELECTRICITE') {
+        if (/majeur|danger|risque/i.test(detail) && /anomali/i.test(detail)) noteDiagsPrivatifs -= 1;
+        else if (/anomali/i.test(detail)) noteDiagsPrivatifs -= 0.3;
       }
+      if (d.type === 'GAZ') {
+        if (/a1\b/i.test(detail)) noteDiagsPrivatifs -= 1;
+        else if (/a2\b/i.test(detail)) noteDiagsPrivatifs -= 0.5;
+      }
+      if (d.type === 'AMIANTE') {
+        if (/d[ée]grad|positif|pr[ée]sent/i.test(detail) && !/non/i.test(detail)) noteDiagsPrivatifs -= 1;
+        else if (/suspect|[ée]valuation p[ée]riodique/i.test(detail)) noteDiagsPrivatifs -= 0.3;
+      }
+      if (d.type === 'PLOMB' && /d[ée]grad|positif/i.test(detail)) noteDiagsPrivatifs -= 1;
+      if (d.type === 'TERMITES' && /pr[ée]sence|d[ée]tect[ée]|positif/i.test(detail) && !/absence|non/i.test(detail)) noteDiagsPrivatifs -= 2;
     }
 
     // PLANCHER : si au moins 1 diag extrait, la note ne peut pas descendre sous 1
@@ -241,7 +228,7 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
 function validateDiagsManquants(rapport: RapportShape): RapportShape {
   const r = rapport as Record<string, unknown>;
   const typeBien = (r.type_bien as string) || '';
-  const anneeStr = r.annee_construction != null ? String(r.annee_construction) : '';
+  const anneeStr = (r.annee_construction as string) || '';
   const anneeMatch = anneeStr.match(/\d{4}/);
   const annee = anneeMatch ? parseInt(anneeMatch[0]) : null;
 
@@ -253,21 +240,7 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
     return diagnostics.some(d => {
       const t = String(d.type || '').toUpperCase();
       const presence = String(d.presence || '').toLowerCase();
-      // 'absence' = diagnostic réalisé mais résultat négatif (rien trouvé) → le document EST présent.
-      // Seul 'non_realise' (ou type absent) = diagnostic réellement manquant du dossier.
-      return t === type && presence !== 'non_realise';
-    });
-  };
-
-  // Variante PÉRIMÈTRE LOT : un diag n'est "présent pour le lot" que s'il porte sur le logement vendu
-  // (perimetre lot_privatif). Évite qu'un diag d'immeuble/parties communes — ex : DPE collectif,
-  // plomb des parties communes — masque le diagnostic du lot réellement manquant.
-  const diagPresentLot = (type: string): boolean => {
-    return diagnostics.some(d => {
-      const t = String(d.type || '').toUpperCase();
-      const perimetre = String(d.perimetre || '').toLowerCase();
-      const presence = String(d.presence || '').toLowerCase();
-      return t === type && perimetre === 'lot_privatif' && presence !== 'non_realise';
+      return t === type && presence !== 'non_realise' && presence !== 'absence';
     });
   };
 
@@ -305,10 +278,10 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
     if (!existe) pointsVigilance.push(texte);
   };
 
-  // ── DPE (du logement vendu — un DPE collectif/d'immeuble ne le remplace pas)
-  if (!diagPresentLot('DPE')) {
-    ajouter("DPE du logement — Diagnostic de performance énergétique (obligatoire pour la vente)");
-    ajouterVigilance("Le DPE du logement vendu n'a pas été détecté (un DPE collectif ou d'immeuble ne le remplace pas). Il est obligatoire pour la vente. Demandez-le au vendeur.");
+  // ── DPE
+  if (!diagPresent('DPE')) {
+    ajouter("DPE — Diagnostic de performance énergétique (obligatoire pour la vente)");
+    ajouterVigilance("Le DPE n'a pas été détecté dans le dossier. Il est obligatoire pour la vente. Demandez-le au vendeur.");
   }
 
   // ── ERP
@@ -335,7 +308,7 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
       const t = String(d.type || '').toUpperCase();
       const perimetre = String(d.perimetre || '').toLowerCase();
       const presence = String(d.presence || '').toLowerCase();
-      return t === 'AMIANTE' && perimetre === 'lot_privatif' && presence !== 'non_realise';
+      return t === 'AMIANTE' && perimetre === 'lot_privatif' && presence !== 'non_realise' && presence !== 'absence';
     });
     if (!amiantePrivatif) {
       ajouter("Diagnostic amiante privatif (obligatoire pour les biens construits avant 1997)");
@@ -343,10 +316,10 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
     }
   }
 
-  // ── PLOMB / CREP du logement (avant 1949 — un constat sur les parties communes ne le remplace pas)
-  if (annee && annee < 1949 && !diagPresentLot('PLOMB')) {
-    ajouter("Constat de risque d'exposition au plomb — CREP du logement (obligatoire pour les biens construits avant 1949)");
-    ajouterVigilance("Le constat de risque d'exposition au plomb (CREP) du logement n'a pas été détecté (un constat sur les parties communes ne le remplace pas). Il est obligatoire pour les biens construits avant 1949. Demandez-le au vendeur.");
+  // ── PLOMB (construction avant 1949)
+  if (annee && annee < 1949 && !diagPresent('PLOMB')) {
+    ajouter("Constat de risque d'exposition au plomb — CREP (obligatoire pour les biens construits avant 1949)");
+    ajouterVigilance("Le constat de risque d'exposition au plomb (CREP) n'a pas été détecté. Il est obligatoire pour les biens construits avant 1949. Demandez-le au vendeur.");
   }
 
   // ── AUDIT ENERGETIQUE (maison + DPE E/F/G)
@@ -719,22 +692,17 @@ async function sendMailjet(
 function buildSuccessEmail(opts: {
   prenom: string;
   isComplete: boolean;
-  isComplement?: boolean;
   subject: string;
   reportUrl: string;
   isPro: boolean;
 }): string {
-  const intro = opts.isComplement
-    ? `Votre rapport sur le bien situé <strong style="color:#0f2d3d;">${opts.subject}</strong> a été mis à jour avec vos nouveaux documents. Le score a été recalculé.`
-    : opts.isComplete
+  const intro = opts.isComplete
     ? `Votre analyse complète du bien situé <strong style="color:#0f2d3d;">${opts.subject}</strong> est terminée.`
     : `Votre analyse du document <strong style="color:#0f2d3d;">"${opts.subject}"</strong> est terminée.`;
   const summary = opts.isComplete
     ? `Notre rapport détaille le score global, les points forts et faibles, l'état des finances de la copropriété, les diagnostics, les éventuels risques et nos recommandations avant signature.`
     : `Notre rapport vous résume les points-clés du document, identifie les éléments importants à retenir et signale les points de vigilance éventuels.`;
-  const proLabel = opts.isComplement
-    ? (opts.isPro ? 'PRO · RAPPORT MIS À JOUR' : '✓ RAPPORT MIS À JOUR')
-    : (opts.isPro ? 'PRO · ANALYSE PRÊTE' : '✓ ANALYSE PRÊTE');
+  const proLabel = opts.isPro ? 'PRO · ANALYSE PRÊTE' : '✓ ANALYSE PRÊTE';
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -881,7 +849,6 @@ async function notifyAnalysisFailure(
 async function notifyAnalysisReady(
   supabaseAdmin: SupabaseClient,
   analyseId: string,
-  mode?: string,
 ): Promise<void> {
   try {
     const { data: a } = await supabaseAdmin
@@ -894,14 +861,13 @@ async function notifyAnalysisReady(
 
     const subject = a.address || a.title || 'votre analyse';
     const isComplete = a.type !== 'document';
-    const isComplement = mode === 'complement';
 
     // 1. Notification cloche
     await insertNotification(
       supabaseAdmin,
       a.user_id,
-      isComplement ? 'Votre rapport a été mis à jour' : 'Votre analyse est prête',
-      isComplement ? `${subject} — voir le rapport mis à jour` : `${subject} — consulter le rapport`,
+      'Votre analyse est prête',
+      `${subject} — consulter le rapport`,
       analyseId, // 🆕 Livraison 1 : rend la notif cliquable vers /rapport?id=...
     );
 
@@ -932,7 +898,6 @@ async function notifyAnalysisReady(
     const html = buildSuccessEmail({
       prenom,
       isComplete,
-      isComplement,
       subject,
       reportUrl,
       isPro,
@@ -941,7 +906,7 @@ async function notifyAnalysisReady(
     await sendMailjet(
       profile.email,
       profile.full_name || '',
-      isComplement ? '✅ Votre rapport Verimo a été mis à jour' : '✅ Votre analyse Verimo est prête',
+      '✅ Votre analyse Verimo est prête',
       html,
       isPro,
     );
@@ -955,7 +920,7 @@ async function notifyAnalysisReady(
 async function callAI(params: {
   system: string; userContent: unknown[]; maxTokens: number; apiKey: string; timeoutMs?: number;
 }): Promise<{ text: string; error?: string }> {
-  const { system, userContent, maxTokens, apiKey, timeoutMs = 240000 } = params;
+  const { system, userContent, maxTokens, apiKey, timeoutMs = 350000 } = params;
   for (let attempt = 1; attempt <= 3; attempt++) {
     // Timeout dur sur l'appel : sans ça, un appel lent attend jusqu'à la limite wall-clock (~400s)
     // de l'edge function → le worker est tué EN PLEIN APPEL et l'analyse reste bloquée en "processing".
@@ -1051,8 +1016,7 @@ function buildDocumentPrompt(p: string): string {
   parts.push('- Si surface_type = "boutin" : TOUJOURS ajouter dans points_vigilance du DDT ET dans rapport.points_vigilance de la synthese finale : "Le diagnostic mentionne une surface loi Boutin (surface habitable pour la location) et non une surface Carrez. En tant qu acheteur, exigez un mesurage Carrez aupres du vendeur — la surface Carrez est obligatoire pour toute vente en copropriete et peut differer de la surface Boutin."');
   parts.push('- La surface Boutin exclut les murs, cloisons, marches, cages d escalier, gaines — elle est souvent inferieure a la surface Carrez. Sans mesurage Carrez, l acheteur ne peut pas verifier le prix au m2 reel.');
   parts.push('');
-  parts.push('PV_AG : {"document_type":"PV_AG","titre":"...","resume":"...","date_ag":null,"lieu_ag":null,"type_ag":"ordinaire|extraordinaire|mixte","syndic":null,"president_seance":null,"nb_resolutions":null,"syndic_reconduit":null,"syndic_statut":null,"syndic_sortant":null,"syndic_entrant":null,"syndic_fin_mandat":null,"quorum":{"presents":null,"total":null,"tantiemes_pct":null},"budget_vote":{"annee":null,"montant":null,"fonds_travaux":null},"budget_precedent":{"annee":null,"montant":null},"travaux_votes":[{"label":"...","montant":null,"echeance":null}],"travaux_evoques":[{"label":"...","precision":null,"concerne_lot_prive":false}],"ppt_evoque":{"present":false,"etat":null,"budget":null,"detail":null},"questions_diverses":[],"procedures":[],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
-  parts.push('- ppt_evoque : renseigner present=true UNIQUEMENT si le PV mentionne explicitement un PPT (Plan Pluriannuel de Travaux) ou un DTG (Diagnostic Technique Global) — vote, presentation, report, ou projet. etat = "vote"|"presente"|"reporte"|"projet" selon le contexte. budget = montant global du PPT si cite (nombre en euros, sinon null). detail = 1 phrase de contexte. Si le PV ne parle ni de PPT ni de DTG, laisser present=false. Ne PAS confondre avec de simples travaux votes.');
+  parts.push('PV_AG : {"document_type":"PV_AG","titre":"...","resume":"...","date_ag":null,"lieu_ag":null,"type_ag":"ordinaire|extraordinaire|mixte","syndic":null,"president_seance":null,"nb_resolutions":null,"syndic_reconduit":null,"syndic_statut":null,"syndic_sortant":null,"syndic_entrant":null,"syndic_fin_mandat":null,"quorum":{"presents":null,"total":null,"tantiemes_pct":null},"budget_vote":{"annee":null,"montant":null,"fonds_travaux":null},"budget_precedent":{"annee":null,"montant":null},"travaux_votes":[{"label":"...","montant":null,"echeance":null}],"travaux_evoques":[{"label":"...","precision":null,"concerne_lot_prive":false}],"questions_diverses":[],"procedures":[],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('REGLES PV_AG nouveaux champs :');
   parts.push('- lieu_ag : ville ou adresse où se tient l\'AG si mentionnée.');
   parts.push('- type_ag : ordinaire si AGO, extraordinaire si AGE, mixte si les deux.');
@@ -1247,42 +1211,6 @@ IMPORTANT :
 - Ne JAMAIS perdre de donnees du rapport existant. Si un champ avait une valeur et que le nouveau document ne le mentionne pas, GARDER la valeur existante.
 - Les documents originaux de l analyse initiale n existent plus. Tu ne peux pas les relire. Tu te bases sur le JSON existant pour les donnees anterieures.
 - Applique les memes regles de notation /20 que pour une analyse complete standard.
-
-═══════════════════════════════════════════════════════════════
-REGLES D EXTRACTION DES NOUVEAUX DOCUMENTS (CRITIQUE)
-═══════════════════════════════════════════════════════════════
-Pour CHAQUE nouveau document, identifie son type puis RANGE l information extraite dans le BON CHAMP STRUCTURE du JSON (pas seulement dans du texte / resume). Une donnee mise au mauvais endroit, ou dans un resume au lieu de sa case dediee, ne sera PAS comptee dans le score ni affichee. Regle d or : si une section etait vide (tableau []), tu dois la REMPLIR avec des entrees au format ci-dessous, et NON la laisser vide.
-
-1) DIAGNOSTICS (DDT, DPE, ERP, amiante, plomb, termites, electricite, gaz, Carrez) → tableau "diagnostics".
-   - Chaque diagnostic = UNE entree : {"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"...","resultat":"resultat lisible (classe + GES si DPE, A1/A2 si gaz, anomalie majeure si elec...)","presence":"detectee|absence|non_realise","alerte":"1 phrase si point critique sinon null","pieces_detail":null}.
-   - Le champ "perimetre" est OBLIGATOIRE sur CHAQUE entree. Sans lui, le diagnostic n est PAS compte.
-     * perimetre = "lot_privatif" pour : DPE DU LOGEMENT vendu, ELECTRICITE, GAZ, AMIANTE du lot, PLOMB (CREP), TERMITES, CARREZ, ERP. Ce sont les diagnostics du logement vendu.
-     * perimetre = "parties_communes" pour : amiante/plomb/termites des PARTIES COMMUNES de l immeuble (souvent via un diagnostic copropriete distinct), ET un DPE COLLECTIF / DPE A L IMMEUBLE (porte sur tout le batiment et plusieurs lots ; titre "DPE collectif", "DPE de l immeuble", "DPE batiment"). IMPORTANT : un DPE collectif NE remplace PAS le DPE du logement vendu. Si tu ne disposes QUE d un DPE collectif (aucun DPE propre au logement), cree l entree avec perimetre="parties_communes" (et NON "lot_privatif") — ainsi le DPE du lot reste signale comme manquant.
-   - REGLE DDT (Dossier de Diagnostic Technique) : un DDT contient PLUSIEURS diagnostics privatifs en un seul fichier. Tu dois l ECLATER : creer une entree distincte dans "diagnostics" pour CHACUN (DPE, electricite, gaz, amiante, plomb, termites, Carrez, ERP), chacune avec perimetre="lot_privatif".
-   - DPE SEUL (le document est uniquement un DPE) : creer l entree diagnostics type "DPE" (perimetre lot_privatif) ET remplir dpe_recommandations (present=true, packs, evolution_etiquette) si la section recommandations existe.
-   - ERP SEUL : creer une entree diagnostics type "ERP" (perimetre lot_privatif), presence selon le document. L ERP est informatif mais doit figurer dans "diagnostics".
-   - Renseigne aussi diagnostics_resume (synthese globale courte) et, si DDT/DPE, le resume.diagnostics_privatifs.
-
-2) PV D AG → travaux (realises/votes/evoques), procedures, et vie_copropriete (participation_ag, dtg si conclusions, syndic, appels_fonds_exceptionnels, questions_diverses_notables). Un travaux REALISE va dans travaux.realises, un VOTE non execute dans travaux.votes, un simplement EVOQUE dans travaux.evoques. Un litige/contentieux va dans "procedures" avec sa gravite.
-
-3) DTG / diagnostic des parties communes → vie_copropriete.dtg (present, etat_general, budgets, travaux_prioritaires) ET, pour amiante/plomb/termites des communs, des entrees "diagnostics" avec perimetre="parties_communes".
-
-4) APPEL DE CHARGES / BUDGET → finances (budget_total_copro, charges_annuelles_lot, fonds_travaux + statut, impayes...).
-
-5) PRE-ETAT DATE / ETAT DATE → pre_etat_date (present, impayes_vendeur, fonds_travaux_alur, charges_futures, historique_charges...).
-
-6) COMPROMIS → lot_achete.compromis (present=true + tous les sous-champs : bien, finances, financement, conditions_suspensives, diagnostics_annexes, calendrier...).
-
-7) CARNET D ENTRETIEN → vie_copropriete.carnet_entretien (present, equipements_copro, contrats_entretien, travaux, diagnostics_parties_communes_carnet...).
-
-8) MODIFICATIF DE RCP → vie_copropriete.modificatifs_rcp. FICHE SYNTHETIQUE → vie_copropriete.fiche_synthetique. TAXE FONCIERE → finances.taxe_fonciere_annuelle.
-
-9) Dans TOUS les cas :
-   - Ajoute le nouveau document dans documents_analyses ({"type":"...","annee":...,"nom":"nom fichier"}).
-   - Retire de documents_manquants tout document desormais fourni (ex : si tu ajoutes un DDT/DPE, retire les diagnostics correspondants de documents_manquants).
-   - Mets a jour points_forts / points_vigilance si le nouveau doc revele un point notable.
-
-NOTATION : tu remplis correctement les sections structurees ci-dessus ; le score /20 et les notes par categorie (travaux, procedures, finances, diags_privatifs, diags_communs) sont recalcules de maniere deterministe cote serveur a partir de ces sections. Donc l ESSENTIEL est que chaque donnee soit dans sa bonne case avec ses bons champs (notamment perimetre pour les diagnostics). Renseigne aussi le bloc "categories" au mieux de maniere coherente.
 
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres. Le JSON doit avoir EXACTEMENT la meme structure que le rapport existant.`;
 }
@@ -1495,7 +1423,7 @@ REGLES IMPORTANTES :
 - diagnostics PLOMB parties communes : NE PAS inclure si annee_construction >= 1949.
 - diagnostics AMIANTE parties communes : NE PAS inclure si annee_construction >= 1997.
 - diagnostics TERMITES : mettre presence="absence" UNIQUEMENT si le document dit explicitement que l immeuble n est pas concerne.
-- procedures : message doit reprendre les faits concrets de la procédure (parties en présence, objet du litige, montant en jeu si chiffré, stade ou issue) PUIS expliquer clairement en langage simple l origine et les implications pour l acheteur. Ne pas rester vague : si un détail figure dans les documents, le restituer dans le message.
+- procedures : message doit expliquer clairement en langage simple l origine et les implications
 - documents_analyses : lister TOUS les documents avec leur type detecte
 - En cas de contexte tres long, priorise : PV AG > DDT > diagnostics > appels charges > RCP articles 1-30
 - lot_achete.parties_privatives : lister TOUS les elements privatifs du lot avec leur numero et tantiemes si mentionnes.
@@ -1577,7 +1505,7 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
 
 - RÈGLE CHAUFFAGE / EAU CHAUDE INDIVIDUEL : dans finances, remplir chauffage_individuel (true/false/null) et eau_chaude_individuelle (true/false/null) selon les documents. Un chauffage individuel signifie que l acheteur paiera en plus de ses charges de copropriete — c est une donnee importante a signaler. Sources : carnet d entretien, fiche synthetique, DPE, pre-etat date (section equipements), ou par deduction si les charges de chauffage n apparaissent pas dans le budget copro. Si non determinable : null.
 
-- negociation : applicable=true UNIQUEMENT si score < 17. En dessous de ce seuil, il y a toujours au moins un levier de negociation possible. RÈGLE CRITIQUE : ne JAMAIS inclure dans negociation.elements des items deja a la charge du vendeur (travaux votes avant la vente, fonds ALUR a rembourser, honoraires syndic pre-etat date) — ces items ne sont PAS des leviers de negociation pour l acheteur. Les leviers valides sont : travaux evoques non votes avec risque acheteur, DPE defavorable (E/F/G seulement), equipements vetustes non remplaces (chaudiere > 20 ans par ex), anomalies techniques majeures detectees, procedures en cours, impayes copro eleves (>15% du budget), gouvernance defaillante (quitus refuse). Si un item mentionne "charge vendeur", "deja vote", "fonds ALUR" ou "honoraires pre-etat date" : NE PAS l inclure dans negociation.elements. Si aucun levier valide, mettre applicable=false et elements=[]. PRECISION OBLIGATOIRE : chaque element de negociation.elements doit etre CONCRET et CHIFFRE — nommer le poste precis concerne (le chantier, le diagnostic, l equipement), citer le montant estime en euros (ou une fourchette si approximatif), la source (AG du JJ/MM/AAAA, devis, DPE, pre-etat date) et l impact concret pour l acheteur. INTERDIT les formulations vagues sans nom ni chiffre du type "un chantier majeur", "des travaux importants", "pourrait generer un appel de fonds significatif" : si tu evoques un chantier, tu DOIS le nommer et donner son montant (ex : "L etancheite des rampes de parking, devis ~62 400 EUR evoque en AG sans vote, generera un appel de fonds proportionnel a vos tantiemes lors de son vote"). Si le montant exact est inconnu, donne un ordre de grandeur en precisant que c est une estimation, mais ne reste jamais vague.
+- negociation : applicable=true UNIQUEMENT si score < 17. En dessous de ce seuil, il y a toujours au moins un levier de negociation possible. RÈGLE CRITIQUE : ne JAMAIS inclure dans negociation.elements des items deja a la charge du vendeur (travaux votes avant la vente, fonds ALUR a rembourser, honoraires syndic pre-etat date) — ces items ne sont PAS des leviers de negociation pour l acheteur. Les leviers valides sont : travaux evoques non votes avec risque acheteur, DPE defavorable (E/F/G seulement), equipements vetustes non remplaces (chaudiere > 20 ans par ex), anomalies techniques majeures detectees, procedures en cours, impayes copro eleves (>15% du budget), gouvernance defaillante (quitus refuse). Si un item mentionne "charge vendeur", "deja vote", "fonds ALUR" ou "honoraires pre-etat date" : NE PAS l inclure dans negociation.elements. Si aucun levier valide, mettre applicable=false et elements=[].
 
 - RÈGLE APPELS DE FONDS EXCEPTIONNELS : chaque entree de vie_copropriete.appels_fonds_exceptionnels[] DOIT avoir la structure suivante : { motif: "sujet precis de l appel (ex: 'Ravalement facade', 'Reparation ascenseur', 'Travaux toiture')", detail: "1 phrase courte expliquant pourquoi cet appel (contexte des travaux ou de la situation)", montant_total: nombre ou null, date_ag: "date du vote en AG (si connue)", echeance: "date de paiement attendue (si connue)" }. NE JAMAIS mettre "Appel de fonds exceptionnel" comme motif generique — toujours preciser l objet reel de l appel. Si l objet n est pas identifiable dans les PV, ne PAS creer l entree plutot que de mettre un motif vague.
 - RÈGLE CRITIQUE — VOTES EN DEUX TOURS : En copropriété française, si une résolution ne recueille pas la majorité art. 25 au 1er tour mais obtient au moins 1/3 des voix, un 2ème tour à la majorité art. 24 est organisé immédiatement. Si le 2ème tour adopte la résolution, elle EST ADOPTÉE. Ne jamais la marquer comme refusée. Indices : "second tour", "art. 24", "adoptée à la majorité art. 24". Un vrai refus = résolution rejetée sans 2ème tour ou 2ème tour également rejeté. S applique à toutes les résolutions : fonds travaux, travaux, contrat syndic, etc.
@@ -1728,20 +1656,6 @@ REGLE ANTI-DOUBLON avec points_forts et points_vigilance :
 - Les enumerations "ce qui va / ce qui cloche" sont deja dans points_forts et points_vigilance.
 - L avis_verimo ne refait PAS ces listes. Il synthetise en une lecture globale (verdict) + cadrage (contexte) + pistes pour approfondir (demarches).
 
-REGLE COHERENCE TRAVAUX (points_forts vs points_vigilance) :
-- Un MEME travaux ne doit JAMAIS apparaitre a la fois dans points_forts et dans points_vigilance. Choisis UN seul cote selon son etat reel.
-- Ne compte comme POINT FORT que les travaux REELLEMENT REALISES (executes/termines), meme s ils ne sont pas integralement payes (le solde restant est en principe a la charge du vendeur selon la date d exigibilite). Exemple valide en point fort : "Chaudiere collective renovee en 2021".
-- Un travaux simplement VOTE mais NON ENCORE EXECUTE, ou SUSPENDU / BLOQUE / ANNULE / CONTESTE (decision de justice, procedure en cours, execution gelee), n est PAS un point fort : il va UNIQUEMENT dans points_vigilance. Raison : le cout retombera potentiellement sur le futur acheteur. Ne le presente jamais comme un atout, meme si le montant est eleve ou s il s agit de renovation energetique.
-- Avant de placer un travaux en point fort, verifie qu aucun document ne mentionne sa suspension, son annulation, un litige ou un report. Au moindre doute sur son execution effective, classe-le en vigilance.
-
-REGLE GRAVITE DES PROCEDURES (champ procedures[].gravite) :
-La gravite se juge UNIQUEMENT a l aune de l impact concret sur le FUTUR ACHETEUR (cout, risque juridique, blocage), y compris a long terme. Ce n est PAS la gravite "en soi" du litige, mais ce qu il peut couter ou impliquer pour l acheteur du lot.
-- "elevee" : impact financier ou juridique DIRECT et POTENTIELLEMENT LOURD pour l acheteur. Exemples : appel de fonds exceptionnel important vote ou a venir, contentieux qui bloque un chantier majeur dont le cout retombera sur les coproprietaires, procedure portant sur le lot vendu lui-meme (titre, surface, servitude), litige pouvant generer des charges significatives reparties sur la copropriete, procedure susceptible de peser durablement sur les finances de la copropriete.
-- "moderee" : procedure REELLE mais a impact INCERTAIN, INDIRECT ou limite pour l acheteur. Exemples : contentieux en cours dont l issue et les montants ne sont pas connus, procedure collective sans chiffrage clair, tension avec un prestataire ou un copropietaire sans cout etabli.
-- "faible" : mention de procedure SANS impact financier ou juridique identifie pour l acheteur, OU procedure deja RESOLUE / CLOTUREE, OU litige n impliquant pas la copropriete de maniere significative (ex : litige entre tiers seulement mentionne).
-- En cas de doute entre deux niveaux, retiens le PLUS ELEVE (precaution pour l acheteur).
-- Le champ "message" (2-3 phrases) doit expliquer concretement POURQUOI cette gravite, en termes d impact pour l acheteur.
-
 
 {"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"parkings":null,"caves":null,"commerces":null},"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]},"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
 }
@@ -1766,353 +1680,7 @@ async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiK
   console.warn(`[analyser-run] Timeout 120s sans files_ready — abandon`);
 }
 
-// ══════════════════════════════════════════════════════════════
-// 🆕 MAP-REDUCE V3 — Analyse complète en DEUX INVOCATIONS (03 juin 2026)
-// ──────────────────────────────────────────────────────────────
-// Pourquoi deux invocations : une edge function Supabase est coupée
-// (reason "WallClockTime") au-delà de sa durée maximale. Le MAP (un appel
-// IA par document) + le REDUCE (un gros appel de consolidation) enchaînés
-// dans UNE seule invocation dépassaient cette limite. On découpe donc :
-//
-//   INVOCATION 1 — PHASE MAP (runPhaseMap)
-//     • lit chaque document (paquets de 3) → résumé TEXTE LIBRE cadré
-//     • stocke les résumés dans analyses.map_resultats (colonne jsonb)
-//     • supprime les PDF (RGPD)
-//     • se ré-invoque elle-même avec { phase: 'reduce' } puis se termine
-//
-//   INVOCATION 2 — PHASE REDUCE (runPhaseReduce)
-//     • relit analyses.map_resultats
-//     • UN appel IA avec le PROMPT COMPLET (buildSystemPrompt('complete'))
-//     • post-traitement déterministe inchangé (recalculerCategories +
-//       validateDiagsManquants), puis écrit le rapport final.
-//
-// Chaque invocation repart avec son propre chrono → plus de WallClockTime.
-// Les modes 'document' (analyse simple) et 'complement' ne passent PAS
-// par ici : ils restent sur le chemin historique (un seul appel), INCHANGÉS.
-// ══════════════════════════════════════════════════════════════
-
-interface MapDocSummary {
-  index: number;
-  name: string;
-  ok: boolean;
-  error?: string;
-  summary: string; // compte rendu textuel libre du document (vide si échec)
-}
-
-// ──────────────────────────────────────────────────────────────
-// Prompt du MAP : compte rendu TEXTUEL LIBRE mais CADRÉ sur le fond.
-// Pas de schéma JSON imposé : l'IA restitue en texte tout ce qui compte
-// pour un acheteur. Le cadrage garantit que les infos à croiser au REDUCE
-// (dates, montants, quitus, travaux votés/évoqués, etc.) sont présentes.
-// ──────────────────────────────────────────────────────────────
-function buildMapSummaryPrompt(profil: string): string {
-  const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
-  return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
-Tu n utilises jamais les mots Claude, Anthropic ou IA.
-
-On te fournit UN SEUL document immobilier (PV d AG, appel de charges, DDT/diagnostics, pré-état daté, RCP, carnet d entretien, compromis, taxe foncière, fiche synthétique, modificatif RCP, etc.).
-
-Ta mission : produire un COMPTE RENDU TEXTUEL FIDÈLE et EXHAUSTIF de CE document, qui servira ensuite de source unique pour rédiger un rapport global (le document original ne sera plus relu). Tu écris en texte libre (pas de JSON), structuré par petits paragraphes ou tirets clairs.
-
-RÈGLES DE FOND (impératives) :
-- Commence par identifier le TYPE de document et sa DATE (ou l année concernée).
-- N invente RIEN. Ne rapporte que ce qui figure dans le document. Si une donnée est absente, ne la mentionne pas (ne suppose pas).
-- Sois EXHAUSTIF sur les éléments à enjeu pour un acheteur. Selon le type de document, veille à faire ressortir notamment, QUAND ils sont présents :
-  * Montants chiffrés EXACTS (budgets, charges, fonds de travaux, impayés, honoraires, prix) — recopie les chiffres tels quels avec leur unité et l année de référence.
-  * Gouvernance (syndic : nom, statut reconduit/nouveau, dates de mandat ; conseil syndical).
-  * QUITUS du syndic : précise s il a été soumis au vote et s il a été APPROUVÉ ou REFUSÉ, et pour quel exercice.
-  * Travaux VOTÉS (physiques réels, avec montant et échéance) ET travaux ÉVOQUÉS/non encore votés à coût potentiellement significatif.
-  * Procédures, litiges et contentieux : pour CHAQUE procédure mentionnée, restitue le MAXIMUM de détails plutôt que de juste signaler son existence — nature/objet du litige, parties en présence (copropriété vs syndic, copropriété vs copropriétaire, copropriété vs tiers/entreprise, copropriétaire vs copropriétaire...), montant en jeu si chiffré, stade ou juridiction (mise en demeure, injonction, assignation, expertise judiciaire, jugement, appel), date ou AG d'origine, et issue ou état d'avancement si connu (en cours, gagnée, perdue, transaction).
-  * Diagnostics et leurs résultats (DPE : classe + valeurs ; amiante, plomb, électricité, gaz, termites, Carrez avec détail des pièces si présent).
-  * Pour un pré-état daté/état daté : impayés du vendeur, fonds ALUR et fonds de roulement rattachés au lot, historique des charges N-1/N-2.
-  * Tout autre élément à enjeu (servitudes, clauses particulières, mesures administratives, etc.).
-- Reste FACTUEL : tu décris ce que dit le document, tu n évalues pas et tu ne notes pas (le scoring est fait à une autre étape).
-- Pas de mention commerciale, pas de conclusion type "je recommande".
-
-Réponds UNIQUEMENT par le compte rendu textuel de ce document. Pas de préambule, pas de balises, pas de JSON.`;
-}
-
-// ══════════════════════════════════════════════════════════════
-// PHASE MAP (invocation 1) — lit chaque doc → résumé texte libre,
-// stocke dans analyses.map_resultats, puis déclenche la phase REDUCE.
-// ══════════════════════════════════════════════════════════════
-async function runPhaseMap(
-  analyseId: string,
-  files: Array<{ id: string; name: string }>,
-  profil: string,
-  supabaseAdmin: SupabaseClient,
-  apiKey: string,
-  supabaseUrl: string,
-  serviceKey: string,
-  typeBienDeclare?: string | null,
-  mapOffset: number = 0, // 🆕 index du 1er doc à traiter dans cette invocation
-): Promise<void> {
-  const MAP_TRANCHE = 3; // nb de docs traités par invocation (chacun en parallèle) — borne le temps d'exécution
-  const total = files.length;
-  const start = mapOffset;
-  const end = Math.min(start + MAP_TRANCHE, total);
-  const tranche = files.slice(start, end);
-
-  // Helper : relancer la fonction (tranche MAP suivante OU phase REDUCE)
-  const selfInvoke = async (body: Record<string, unknown>, label: string): Promise<boolean> => {
-    try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/analyser-run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const t = await res.text();
-        console.error(`[analyser-run/map] Echec ${label} HTTP ${res.status}:`, t.slice(0, 200));
-        return false;
-      }
-      return true;
-    } catch (e) {
-      console.error(`[analyser-run/map] Exception ${label}:`, e);
-      return false;
-    }
-  };
-
-  try {
-    console.log(`[analyser-run/map] MAP tranche docs ${start + 1}\u2013${end}/${total} | profil:${profil} | typeDeclare:${typeBienDeclare || 'null'}`);
-
-    // Au tout début (1re tranche), initialiser la progression.
-    if (start === 0) {
-      await supabaseAdmin.from('analyses').update({ progress_total: total, progress_current: 0 }).eq('id', analyseId);
-    }
-
-    // Relire les résumés déjà accumulés par les tranches précédentes.
-    let accSummaries: MapDocSummary[] = [];
-    if (start > 0) {
-      const { data: prev } = await supabaseAdmin.from('analyses').select('map_resultats').eq('id', analyseId).single();
-      const prevData = prev?.map_resultats as { summaries?: MapDocSummary[] } | null;
-      accSummaries = (prevData?.summaries as MapDocSummary[]) || [];
-    }
-
-    await supabaseAdmin.from('analyses').update({
-      progress_message: total > 1 ? `Lecture document ${start + 1}\u2013${end} sur ${total}...` : 'Lecture du document...',
-    }).eq('id', analyseId);
-
-    const systemPrompt = buildMapSummaryPrompt(profil);
-
-    // Traiter la tranche (les docs de la tranche en parallèle).
-    const trancheResults = await Promise.all(tranche.map(async (file, i) => {
-      const index = start + i;
-      const userContent: unknown[] = [
-        { type: 'document', source: { type: 'file', file_id: file.id } },
-        { type: 'text', text: 'Rédige le compte rendu textuel fidèle et exhaustif de ce document.' },
-      ];
-      let r = await callAI({ system: systemPrompt, userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
-      if (!r.error && (!r.text || !r.text.trim())) {
-        await sleep(3000);
-        r = await callAI({ system: systemPrompt, userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
-      }
-      const ok = !r.error && !!(r.text && r.text.trim());
-      console.log(`[MAP] doc ${index + 1}/${total} "${file.name}" -> ${ok ? 'OK (' + r.text.trim().length + ' car.)' : 'ECHEC (' + (r.error || 'reponse_vide') + ')'}`);
-      // Suppression RGPD du PDF dès qu'il est résumé (au fil de l'eau).
-      await deleteFromFilesAPI(file.id, apiKey);
-      return { index, name: file.name, ok, error: r.error, summary: ok ? r.text.trim() : '' } as MapDocSummary;
-    }));
-
-    // Fusionner avec l'accumulé et trier par index.
-    const summaries = [...accSummaries, ...trancheResults].sort((a, b) => a.index - b.index);
-
-    // Sauvegarder l'état + faire avancer la barre.
-    const { error: storeErr } = await supabaseAdmin.from('analyses').update({
-      map_resultats: { summaries, profil, typeBienDeclare: typeBienDeclare || null, doc_count: total },
-      progress_current: end,
-      progress_total: total,
-    }).eq('id', analyseId);
-
-    if (storeErr) {
-      console.error('[analyser-run/map] ERREUR stockage map_resultats:', storeErr.message);
-      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la préparation du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur stockage MAP');
-      return;
-    }
-
-    // ── Reste-t-il des docs à traiter ? ──
-    if (end < total) {
-      console.log(`[analyser-run/map] Tranche ${start + 1}\u2013${end} OK — relance MAP à l'offset ${end}`);
-      const ok = await selfInvoke(
-        { analyseId, phase: 'map', mapOffset: end, fileIds: files, profil, typeBienDeclare },
-        'relance MAP',
-      );
-      if (!ok) {
-        await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la lecture des documents. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Echec relance MAP');
-      }
-      return;
-    }
-
-    // ── Toutes les tranches sont faites : on finalise le MAP ──
-    const okCount = summaries.filter(s => s.ok).length;
-    console.log(`[analyser-run/map] MAP terminé — ${okCount} OK / ${summaries.length - okCount} échec(s)`);
-
-    if (okCount === 0) {
-      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la lecture des documents. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec MAP — aucun document lu');
-      return;
-    }
-
-    await supabaseAdmin.from('analyses').update({ progress_message: 'Consolidation et rédaction du rapport...' }).eq('id', analyseId);
-
-    // ── Déclenche la PHASE REDUCE (nouvelle invocation, chrono à zéro). ──
-    console.log(`[analyser-run/map] Déclenchement phase REDUCE pour ${analyseId}`);
-    const ok = await selfInvoke({ analyseId, phase: 'reduce' }, 'déclenchement REDUCE');
-    if (!ok) {
-      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération du rapport. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Echec déclenchement REDUCE');
-    }
-  } catch (err) {
-    console.error('[analyser-run/map] Erreur:', err);
-    // En cas d'erreur, supprimer les PDF restants de cette tranche (RGPD).
-    await Promise.all(tranche.map(f => deleteFromFilesAPI(f.id, apiKey).catch(() => {})));
-    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Erreur inattendue. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur inattendue MAP');
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// PHASE REDUCE (invocation 2) — relit les résumés stockés, consolide
-// avec le PROMPT COMPLET, applique le post-traitement déterministe.
-// ══════════════════════════════════════════════════════════════
-async function runPhaseReduce(
-  analyseId: string,
-  supabaseAdmin: SupabaseClient,
-  apiKey: string,
-): Promise<void> {
-  try {
-    // Relit les résumés du MAP stockés en base.
-    const { data: row, error: readErr } = await supabaseAdmin
-      .from('analyses')
-      .select('map_resultats')
-      .eq('id', analyseId)
-      .single();
-
-    if (readErr || !row?.map_resultats) {
-      console.error('[analyser-run/reduce] map_resultats introuvable:', readErr?.message);
-      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération du rapport. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'REDUCE — map_resultats manquant');
-      return;
-    }
-
-    const mapData = row.map_resultats as {
-      summaries: MapDocSummary[];
-      profil: string;
-      typeBienDeclare: string | null;
-      doc_count: number;
-    };
-    const summaries = (mapData.summaries || []).filter(s => s.ok && s.summary);
-    const profil = mapData.profil || 'rp';
-    const typeBienDeclare = mapData.typeBienDeclare || null;
-
-    if (summaries.length === 0) {
-      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la lecture des documents. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'REDUCE — aucun résumé exploitable');
-      return;
-    }
-
-    console.log(`[analyser-run/reduce] REDUCE — ${summaries.length} résumé(s) | profil:${profil} | typeDeclare:${typeBienDeclare || 'null'}`);
-
-    // userContent = intro + comptes rendus textuels empilés.
-    let userText = `Voici les comptes rendus de ${summaries.length} document(s) du dossier. Chaque document a déjà été lu individuellement ; ces comptes rendus textuels sont ta SOURCE DE VÉRITÉ (les documents originaux ne sont plus disponibles). Consolide-les en UN seul rapport, en appliquant STRICTEMENT toutes les règles ci-dessus (priorités de croisement entre documents, cascade des sources financières, tri et déduplication des travaux, quitus, statut du syndic sur plusieurs AG, scoring, structure du résumé et de l avis_verimo, sélection des points de vigilance). N invente aucune donnée absente des comptes rendus.\n\n`;
-    for (const s of summaries) {
-      userText += `\n===== DOCUMENT ${s.index + 1} — ${s.name} =====\n${s.summary}\n`;
-    }
-
-    const userContent: unknown[] = [{ type: 'text', text: userText }];
-    const systemPrompt = buildSystemPrompt('complete', profil, typeBienDeclare);
-
-    let result = await callAI({ system: systemPrompt, userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
-    let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
-
-    // 1 retry si JSON invalide.
-    if (!result.error && !report) {
-      console.warn('[analyser-run/reduce] JSON invalide — retry 5s');
-      await sleep(5000);
-      result = await callAI({ system: systemPrompt, userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
-      report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
-    }
-
-    if (result.error || !report) {
-      if (result.error === 'api_billing') {
-        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_billing', 'Notre service rencontre un problème technique. Notre équipe est informée. Votre crédit a été remboursé automatiquement.', 'Solde API épuisé — analyses bloquées', 'critical');
-      } else if (result.error === 'rate_limit') {
-        await handleAnalyseFailure(supabaseAdmin, analyseId, 'rate_limit', 'Notre outil est momentanément surchargé. Votre crédit a été remboursé automatiquement. Réessayez dans 2 à 3 minutes.', 'Rate limit atteint (REDUCE)');
-      } else if (result.error === 'overload') {
-        await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé (REDUCE)');
-      } else if (result.error && result.error.startsWith('api_error_5')) {
-        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API (REDUCE)');
-      } else if (result.error === 'timeout') {
-        await handleAnalyseFailure(supabaseAdmin, analyseId, 'timeout', 'La génération du rapport a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Timeout REDUCE (appel moteur trop long)');
-      } else {
-        await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec génération rapport (REDUCE)');
-      }
-      return;
-    }
-
-    // ── Post-traitement déterministe (IDENTIQUE au flux d'origine) ──
-    try {
-      report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
-    } catch (e) {
-      console.error('[analyser-run/reduce] recalculerCategories (non bloquant):', e);
-    }
-    try {
-      report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
-    } catch (e) {
-      console.error('[analyser-run/reduce] validateDiagsManquants (non bloquant):', e);
-    }
-
-    // ── SCORE = somme des 5 catégories recalculées (cohérence garantie) ──
-    // On n'utilise PAS le score que l'IA a écrit de son côté : il pouvait diverger
-    // de la somme des catégories (ex : 18 affiché alors que les catégories font 10.5).
-    // Le score déterministe découle directement des règles de scoring par catégorie.
-    try {
-      const cats = (report.categories as Record<string, { note: number; note_max: number }>) || {};
-      const scoreTotal = Object.values(cats).reduce((s, c) => s + (c?.note || 0), 0);
-      const scoreArrondi = Math.round(scoreTotal * 2) / 2;
-      report.score = scoreArrondi;
-      report.score_niveau =
-        scoreArrondi >= 17 ? 'Bien irréprochable' :
-        scoreArrondi >= 14 ? 'Bien sain' :
-        scoreArrondi >= 10 ? 'Bien correct avec réserves' :
-        scoreArrondi >= 7 ? 'Bien risqué' : 'Bien à éviter';
-    } catch (e) {
-      console.error('[analyser-run/reduce] calcul score (non bloquant):', e);
-    }
-
-    // avis_verimo pour la colonne DB (string) = verdict si objet, sinon la string.
-    let avisVerimoForDb: string | null = null;
-    const av = report.avis_verimo as Record<string, unknown> | string | null;
-    if (typeof av === 'string') avisVerimoForDb = av || null;
-    else if (av && typeof av === 'object') avisVerimoForDb = typeof av.verdict === 'string' ? av.verdict : null;
-
-    const docCount = Array.isArray(report.documents_analyses) ? (report.documents_analyses as unknown[]).length : summaries.length;
-    console.log(`[analyser-run/reduce] REDUCE terminé — score ${(report.score as number) ?? '?'}/20 | ${docCount} docs`);
-
-    const dl = new Date(); dl.setDate(dl.getDate() + 7);
-    const { error: updateError } = await supabaseAdmin.from('analyses').update({
-      status: 'completed',
-      progress_current: mapData.doc_count || summaries.length,
-      progress_total: mapData.doc_count || summaries.length,
-      progress_message: 'Rapport prêt !',
-      file_ids: [],
-      map_resultats: null, // nettoyage : résumés intermédiaires effacés après le rapport final
-      title: (report.titre as string) || 'Analyse immobilière',
-      score: (report.score as number) ?? null,
-      avis_verimo: avisVerimoForDb,
-      result: report,
-      paid: true,
-      regeneration_deadline: dl.toISOString(),
-    }).eq('id', analyseId);
-
-    if (updateError) {
-      console.error('[analyser-run/reduce] ERREUR UPDATE:', updateError.message);
-      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde REDUCE');
-    } else {
-      console.log(`[analyser-run/reduce] ${analyseId} terminée avec succès.`);
-      await notifyAnalysisReady(supabaseAdmin, analyseId);
-    }
-  } catch (err) {
-    console.error('[analyser-run/reduce] Erreur:', err);
-    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Erreur inattendue. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur inattendue REDUCE');
-  }
-}
-
+// Version directe avec fileIds passés en paramètre (pas de lecture Supabase)
 async function runAnalyseWithData(
   analyseId: string,
   files: Array<{ id: string; name: string }>,
@@ -2128,18 +1696,6 @@ async function runAnalyseWithData(
   const fileIds = files.map(f => f.id);
   try {
     console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode} | typeDeclare:${typeBienDeclare || 'null'}`);
-
-    // ══════════════════════════════════════════════════════════
-    // 🆕 MAP-REDUCE V2 — UNIQUEMENT le mode complet.
-    // Les modes 'document' (analyse simple) et 'complement' restent
-    // sur le chemin historique ci-dessous, STRICTEMENT INCHANGÉS.
-    // ══════════════════════════════════════════════════════════
-    if (mode !== 'document' && mode !== 'complement') {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      await runPhaseMap(analyseId, files, profil, supabaseAdmin, apiKey, supabaseUrl, serviceKey, typeBienDeclare);
-      return;
-    }
 
     const userContent: unknown[] = [];
 
@@ -2247,6 +1803,8 @@ async function runAnalyseWithData(
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé');
       } else if (result.error && result.error.startsWith('api_error_5')) {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API');
+      } else if (result.error === 'timeout') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'timeout', 'La génération du rapport a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Timeout (appel moteur trop long)');
       } else {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec génération rapport');
       }
@@ -2272,24 +1830,6 @@ async function runAnalyseWithData(
         report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
       } catch (e) {
         console.error('[analyser-run] validateDiagsManquants erreur (non bloquant):', e);
-      }
-
-      // 🆕 SCORE TOTAL = somme des 5 categories recalculees (coherence garantie).
-      // Sans ce recalcul, le complement conservait le score ecrit par le moteur,
-      // qui pouvait diverger des notes par section (sections corrigees mais /20 fige).
-      // Meme logique que la phase REDUCE de l'analyse complete.
-      try {
-        const cats = (report.categories as Record<string, { note: number; note_max: number }>) || {};
-        const scoreTotal = Object.values(cats).reduce((s, c) => s + (c?.note || 0), 0);
-        const scoreArrondi = Math.round(scoreTotal * 2) / 2;
-        report.score = scoreArrondi;
-        report.score_niveau =
-          scoreArrondi >= 17 ? 'Bien irréprochable' :
-          scoreArrondi >= 14 ? 'Bien sain' :
-          scoreArrondi >= 10 ? 'Bien correct avec réserves' :
-          scoreArrondi >= 7 ? 'Bien risqué' : 'Bien à éviter';
-      } catch (e) {
-        console.error('[analyser-run] calcul score total complement (non bloquant):', e);
       }
     }
 
@@ -2339,7 +1879,7 @@ async function runAnalyseWithData(
       console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s (mode: ${mode}).`);
       // 🆕 Livraison 2 : Notification cloche systématique en fin d'analyse réussie
       // (Le mail est envoyé uniquement aux particuliers — voir notifyAnalysisReady)
-      await notifyAnalysisReady(supabaseAdmin, analyseId, mode);
+      await notifyAnalysisReady(supabaseAdmin, analyseId);
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
@@ -2438,6 +1978,8 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé');
       } else if (result.error && result.error.startsWith('api_error_5')) {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API');
+      } else if (result.error === 'timeout') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'timeout', 'La génération du rapport a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Timeout (appel moteur trop long)');
       } else {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec génération rapport');
       }
@@ -2521,34 +2063,6 @@ Deno.serve(async (req) => {
     if (isWebhook) {
       console.log(`[analyser-run] Webhook ignore`);
       return new Response(JSON.stringify({ skipped: 'webhook' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // 🆕 PHASE REDUCE — appel que la fonction s'envoie à elle-même
-    // après le MAP. Nouvelle invocation = chrono remis à zéro.
-    // (pas de fileIds ici : les résumés sont déjà stockés en base)
-    // ══════════════════════════════════════════════════════════
-    if (body?.phase === 'reduce') {
-      console.log(`[analyser-run] Phase REDUCE reçue pour ${analyseId}`);
-      EdgeRuntime.waitUntil(runPhaseReduce(analyseId, supabaseAdmin, apiKey));
-      return new Response(JSON.stringify({ success: true, phase: 'reduce', analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // 🆕 RELANCE MAP — tranche suivante du MAP (self-invoke).
-    // Le MAP traite 3 docs par invocation puis se relance avec un
-    // mapOffset croissant. Nouvelle invocation = chrono remis à zéro.
-    // ══════════════════════════════════════════════════════════
-    if (body?.phase === 'map') {
-      const mapFiles = body?.fileIds as Array<{ id: string; name: string }> || [];
-      const mapProfil = body?.profil as string || 'rp';
-      const mapTypeBien = (body?.typeBienDeclare as string) || null;
-      const mapOffset = typeof body?.mapOffset === 'number' ? body.mapOffset : 0;
-      const supabaseUrlMap = Deno.env.get('SUPABASE_URL')!;
-      const serviceKeyMap = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      console.log(`[analyser-run] Relance MAP reçue pour ${analyseId} — offset ${mapOffset}`);
-      EdgeRuntime.waitUntil(runPhaseMap(analyseId, mapFiles, mapProfil, supabaseAdmin, apiKey, supabaseUrlMap, serviceKeyMap, mapTypeBien, mapOffset));
-      return new Response(JSON.stringify({ success: true, phase: 'map', analyseId, mapOffset }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
     const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
