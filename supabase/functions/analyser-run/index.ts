@@ -76,6 +76,164 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🏠 SCORING MAISON HORS COPRO (et maison en ASL)
+// 5 categories /20 adaptees a une maison individuelle :
+//   1. Performance energetique (5)  2. Diagnostics & securite (5)
+//   3. Assainissement & risques (4) 4. Travaux & bati (3)  5. Juridique / ASL (3)
+// Recalcule AUSSI le score global = somme des 5 categories (coherence).
+// N'est appelee QUE pour un bien hors copropriete. Le scoring copro est intact.
+// ══════════════════════════════════════════════════════════════════════
+function recalculerCategoriesMaison(rapport: RapportShape, _profil: string, anneeNum: number | null): RapportShape {
+  const r = rapport as Record<string, unknown>;
+  const diags = (rapport.diagnostics || []) as DiagItem[];
+  const lower = (s: unknown) => String(s ?? '').toLowerCase();
+  const docsAnalyses = Array.isArray(r.documents_analyses) ? (r.documents_analyses as Array<Record<string, unknown>>) : [];
+  const hasDocType = (t: string) => docsAnalyses.some(d => String(d.type || '').toUpperCase() === t);
+
+  // ─── 1. PERFORMANCE ENERGETIQUE (/5) — classe DPE + audit obligatoire ───
+  const dpe = diags.find(d => String(d.type || '').toUpperCase() === 'DPE');
+  let notePerf: number;
+  if (!dpe) {
+    notePerf = 0;
+  } else {
+    const cl = (lower(dpe.resultat).match(/classe\s*([a-g])/) || [])[1] || '';
+    const map: Record<string, number> = { a: 5, b: 5, c: 4.5, d: 4, e: 3, f: 2, g: 1 };
+    notePerf = map[cl] ?? 3;
+    if (['e', 'f', 'g'].includes(cl)) {
+      const auditPresent = hasDocType('AUDIT_ENERGETIQUE') || diags.some(d => String(d.type || '').toUpperCase() === 'AUDIT_ENERGETIQUE');
+      if (!auditPresent) notePerf -= 1; // audit obligatoire E/F/G manquant
+    }
+    notePerf = clamp(notePerf, 0, 5);
+  }
+
+  // ─── 2. DIAGNOSTICS & SECURITE (/5) — elec, gaz, amiante, plomb, termites ───
+  const secTypes = ['ELECTRICITE', 'GAZ', 'AMIANTE', 'PLOMB', 'TERMITES'];
+  const secDiags = diags.filter(d => secTypes.includes(String(d.type || '').toUpperCase()));
+  let noteDiags: number;
+  if (secDiags.length === 0 && !dpe) {
+    noteDiags = 0; // aucun diagnostic du tout
+  } else {
+    noteDiags = 5;
+    const requis: string[] = [];
+    if (!anneeNum || anneeNum < 2010) requis.push('ELECTRICITE');
+    if (anneeNum && anneeNum < 1997) requis.push('AMIANTE');
+    if (anneeNum && anneeNum < 1949) requis.push('PLOMB');
+    if (secDiags.some(d => String(d.type || '').toUpperCase() === 'GAZ')) requis.push('GAZ');
+    if (secDiags.some(d => String(d.type || '').toUpperCase() === 'TERMITES')) requis.push('TERMITES');
+    const presents = new Set(secDiags.map(d => String(d.type || '').toUpperCase()));
+    const manquants = requis.filter(t => !presents.has(t));
+    noteDiags -= manquants.length * 0.75;
+    for (const d of secDiags) {
+      const t = String(d.type || '').toUpperCase();
+      const detail = `${lower(d.resultat)} ${lower(d.alerte)} ${lower(d.label)}`;
+      if (t === 'ELECTRICITE') {
+        const electroOk = /aucune anomali|sans anomali|pas d.anomali|aucun d[ée]faut|conforme|\bras\b/.test(detail);
+        if (!electroOk) {
+          if (/majeur|danger|risque/.test(detail) && /anomali/.test(detail)) noteDiags -= 2;
+          else if (/anomali/.test(detail)) noteDiags -= 0.5;
+        }
+      } else if (t === 'GAZ') {
+        if (/\ba2\b/.test(detail)) noteDiags -= 2;
+        else if (/\ba1\b/.test(detail)) noteDiags -= 0.5;
+      } else if (t === 'AMIANTE') {
+        if (/d[ée]grad|positif|pr[ée]sent/.test(detail) && !/\bnon\b|absence/.test(detail)) noteDiags -= 2;
+        else if (/suspect|[ée]valuation p[ée]riodique/.test(detail)) noteDiags -= 0.5;
+      } else if (t === 'PLOMB') {
+        if (/d[ée]grad|positif/.test(detail)) noteDiags -= 2;
+      } else if (t === 'TERMITES') {
+        if (/pr[ée]sence|d[ée]tect|positif/.test(detail) && !/absence|\bnon\b/.test(detail)) noteDiags -= 3;
+      }
+    }
+    noteDiags = clamp(noteDiags, 1, 5);
+  }
+
+  // ─── 3. ASSAINISSEMENT & RISQUES (/4) — assainissement non collectif + ERP ───
+  let noteAssain = 4;
+  const assain = r.assainissement as { present?: boolean; type_reseau?: string; conforme?: boolean | null } | undefined;
+  if (assain && assain.type_reseau === 'non_collectif') {
+    if (assain.conforme === false) noteAssain -= 1.5;        // non conforme : mise aux normes obligatoire
+    else if (assain.present === false) noteAssain -= 0.5;    // non raccorde mais controle absent
+  }
+  const erp = diags.find(d => String(d.type || '').toUpperCase() === 'ERP');
+  if (erp) {
+    const detail = `${lower(erp.resultat)} ${lower(erp.alerte)} ${lower(erp.label)}`;
+    if (/prescription|travaux prescrits|obligation de travaux|prescrit/.test(detail)) noteAssain -= 0.5;
+  }
+  const hasAssainData = !!(assain && assain.present) || !!erp;
+  noteAssain = hasAssainData ? clamp(noteAssain, 1, 4) : 2; // pas de donnee = neutre
+
+  // ─── 4. TRAVAUX & BATI (/3) — recompense l entretien documente ───
+  let noteTravaux = 2; // base neutre
+  const hist = r.historique_travaux as { present?: boolean; travaux?: Array<{ poste?: string; description?: string }>; garantie_decennale_possible?: boolean } | undefined;
+  const realises = (rapport.travaux?.realises || []) as TravauxItem[];
+  const histTravaux = (hist?.travaux || []) as Array<{ poste?: string; description?: string }>;
+  const hasHistory = !!hist?.present || realises.length > 0 || histTravaux.length > 0;
+  if (hasHistory) {
+    const labels = [
+      ...realises.map(t => lower(t.label)),
+      ...histTravaux.map(t => `${lower(t.poste)} ${lower(t.description)}`),
+    ].join(' | ');
+    const majeurs = /toiture|chauffage|chaudi|isolation|[ée]lectr|fen[êe]tre|ravalement|fa[çc]ade|menuiserie|charpente|[ée]tanch/.test(labels);
+    noteTravaux += majeurs ? 1 : 0.5;
+    if (hist?.garantie_decennale_possible) noteTravaux += 0.5;
+  }
+  const compromisObj = (r.lot_achete as Record<string, unknown> | undefined)?.compromis as Record<string, unknown> | undefined;
+  const bienObj = compromisObj?.bien as Record<string, unknown> | undefined;
+  const etatDeclare = `${lower(bienObj?.etat_general_declare)} ${lower(r.etat_general_declare)}`;
+  if (/d[ée]grad|mauvais [ée]tat|v[ée]tuste|gros travaux|insalubre|ruine/.test(etatDeclare)) noteTravaux -= 1;
+  noteTravaux = clamp(noteTravaux, 0, 3);
+
+  // ─── 5. JURIDIQUE (/3) — ou ASL & LOTISSEMENT si le bien est en ASL ───
+  let noteJur = 3;
+  const vieAsl = r.vie_asl as { present?: boolean; structures?: Array<Record<string, unknown>> } | undefined;
+  const hasAsl = !!vieAsl?.present && Array.isArray(vieAsl.structures) && vieAsl.structures.length > 0;
+  if (hasAsl) {
+    for (const s of vieAsl!.structures!) {
+      const conf = s.conformite_2004 as { statuts_publies?: boolean | null } | undefined;
+      if (conf && conf.statuts_publies === false) noteJur -= 1; // non conforme 2004
+      const voirie = s.voirie_retrocession;
+      if (voirie === false || /non r[ée]troc[ée]d/.test(lower(voirie))) noteJur -= 1; // voirie a charge
+      const cahier = s.cahier_charges as { contraintes_urbanisme?: unknown[] } | undefined;
+      if (cahier && Array.isArray(cahier.contraintes_urbanisme) && cahier.contraintes_urbanisme.length > 0) noteJur -= 0.5;
+      // cotisation : affichee comme charge reelle, jamais penalisee par son montant
+    }
+  } else {
+    const servitudes = ((compromisObj?.servitudes as unknown[]) || (r.servitudes as unknown[]) || []);
+    const nbServ = Array.isArray(servitudes) ? servitudes.length : 0;
+    noteJur -= Math.min(1.5, nbServ * 0.5);
+    const urbaText = `${lower(JSON.stringify(servitudes))} ${lower(JSON.stringify(r.points_vigilance))}`;
+    if (/abf|architecte des b[âa]timents|b[âa]timents de france|zone prot[ée]g[ée]e|monument historique|secteur sauvegard[ée]|site class[ée]/.test(urbaText)) noteJur -= 0.5;
+    const procs = (rapport.procedures || []) as ProcedureItem[];
+    for (const p of procs) {
+      if (p.gravite === 'elevee') noteJur -= 2;
+      else if (p.gravite === 'moderee') noteJur -= 1;
+      else if (p.gravite === 'faible') noteJur -= 0.5;
+    }
+  }
+  noteJur = clamp(noteJur, 0, 3);
+
+  const round = (n: number) => Math.round(n * 2) / 2;
+  const categoriesRecalculees = {
+    perf_energetique: { note: round(notePerf), note_max: 5 },
+    diags_securite: { note: round(noteDiags), note_max: 5 },
+    assainissement_risques: { note: round(noteAssain), note_max: 4 },
+    travaux_bati: { note: round(noteTravaux), note_max: 3 },
+    juridique: { note: round(noteJur), note_max: 3 },
+  };
+  // Score global maison = somme des 5 categories (coherent avec l affichage)
+  const scoreMaison = round(
+    categoriesRecalculees.perf_energetique.note +
+    categoriesRecalculees.diags_securite.note +
+    categoriesRecalculees.assainissement_risques.note +
+    categoriesRecalculees.travaux_bati.note +
+    categoriesRecalculees.juridique.note
+  );
+
+  console.log('[analyser-run] Categories MAISON recalculees:', JSON.stringify(categoriesRecalculees), '| score:', scoreMaison, '| ASL:', hasAsl);
+  return { ...rapport, score: scoreMaison, categories: categoriesRecalculees };
+}
+
 function recalculerCategories(rapport: RapportShape, profil: string): RapportShape {
   const diagnostics = rapport.diagnostics || [];
   const diagsPrivatifs = diagnostics.filter(d => d.perimetre === 'lot_privatif');
@@ -84,6 +242,12 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
   const anneeNum = rapport.annee_construction ? Number(String(rapport.annee_construction).replace(/[^0-9]/g, '')) : null;
   const typeBien = rapport.type_bien || 'appartement';
   const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
+
+  // 🏠 MAISON HORS COPRO : scoring dedie (5 categories specifiques + recalcul du score).
+  // Le chemin COPRO ci-dessous reste strictement inchange.
+  if (!isCopro) {
+    return recalculerCategoriesMaison(rapport, profil, anneeNum);
+  }
 
   // ═══ TRAVAUX (note_max = 5) ═══
   let noteTravaux = 5;
@@ -963,9 +1127,10 @@ function buildDocumentPrompt(p: string): string {
   const parts: string[] = [];
   parts.push('Tu es le moteur d analyse de documents immobiliers de Verimo. Profil : ' + p + '. Tu n utilises jamais les mots Claude, Anthropic ou IA.');
   parts.push('');
-  parts.push('Detecte le type de document parmi : DDT, PV_AG, APPEL_CHARGES, RCP, DTG_PPT, CARNET_ENTRETIEN, PRE_ETAT_DATE, ETAT_DATE, TAXE_FONCIERE, COMPROMIS, DIAGNOSTIC_PARTIES_COMMUNES, MODIFICATIF_RCP, FICHE_SYNTHETIQUE, ASL_CHIFFRES, ASL_REGLES, AUTRE.');
+  parts.push('Detecte le type de document parmi : DDT, PV_AG, APPEL_CHARGES, RCP, DTG_PPT, CARNET_ENTRETIEN, PRE_ETAT_DATE, ETAT_DATE, TAXE_FONCIERE, COMPROMIS, DIAGNOSTIC_PARTIES_COMMUNES, MODIFICATIF_RCP, FICHE_SYNTHETIQUE, ASL_CHIFFRES, ASL_REGLES, HISTORIQUE_TRAVAUX, AUTRE.');
   parts.push('ASL_CHIFFRES : document FINANCIER d une structure de gestion d ensemble HORS copropriete — ASL (Association Syndicale Libre), AFUL ou Union. Indices : "association syndicale libre", "ASL", "AFUL", lotissement, ensemble immobilier, avec contenu financier (PV d assemblee, appel de cotisations, budget, etat des cotisations). NE PAS confondre avec une copropriete (loi 1965, syndic, tantiemes) : l ASL/AFUL releve de l ordonnance de 2004, a un president et un syndicat, repartit en quotes-parts.');
   parts.push('ASL_REGLES : document de REGLES d une ASL/AFUL/Union — statuts, cahier des charges du lotissement, ou reglement de lotissement. Indices : regles d urbanisme privees (hauteurs, clotures, extensions), servitudes, voirie, retrocession. Ce sont des REGLES, pas des chiffres.');
+  parts.push('HISTORIQUE_TRAVAUX : devis, facture, ou attestation de travaux emis par une entreprise/un artisan pour le bien (souvent une MAISON). Indices : en-tete d une entreprise (nom, SIRET, assurance decennale), libelles de travaux (toiture, chauffage, isolation, electricite, fenetres, ravalement...), montants HT/TTC, date d intervention. Sert a documenter l entretien et la renovation deja realises sur le bien.');
   parts.push('FICHE_SYNTHETIQUE : fiche synthetique de copropriete (document standardise loi ALUR). Indices : titre contient "fiche synthetique" ou "synthese copropriete" ; sections standardisees "Identification", "Caracteristiques techniques", "Donnees financieres" ; tenue obligatoire par le syndic et remise a jour annuellement.');
   parts.push('MODIFICATIF_RCP : document notarié portant modification de l etat descriptif de division et/ou du règlement de copropriété. Indices : mots-clés "modificatif", "état descriptif de division", "règlement de copropriété" + notaire + création/suppression/modification de lot ou de tantièmes.');
   parts.push('');
@@ -1180,6 +1345,8 @@ function buildDocumentPrompt(p: string): string {
   parts.push('REGLES ASL_CHIFFRES : nature_structure = asl/aful/union (type EXACT, nom complet dans nom_structure, ne jamais appeler une AFUL une ASL). VOCABULAIRE : jamais syndic/tantiemes/fonds ALUR — utiliser president/gestionnaire, quotes-parts, cotisations. gestion = benevole (vigilance : gestion moins rigoureuse) ou professionnel (cabinet mandate). cotisation_annuelle = charge REELLE en plus des charges copro. solde_vendeur > 0 = dette a apurer avant signature (remplir alerte_impaye).');
   parts.push('ASL_REGLES : {"document_type":"ASL_REGLES","sous_type":"statuts|cahier_charges|reglement_lotissement","titre":"...","resume":"...","nature_structure":"asl|aful|union","nom_structure":null,"objet":null,"perimetre_gere":[],"cle_repartition":null,"nb_membres":null,"conformite_2004":{"date_creation":null,"statuts_publies":null,"conforme":null},"contraintes_urbanisme":[{"label":"...","detail":"..."}],"voirie_retrocession":null,"servitudes":[{"type":"...","description":"..."}],"equipements_lourds":[],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('REGLES ASL_REGLES : conformite_2004 = une ASL/AFUL d avant 2004 devait mettre ses statuts en conformite ET les publier ; si non publies/non conformes, le recouvrement des cotisations et l action en justice sont fragilises (vigilance majeure). contraintes_urbanisme = regles privees du cahier des charges qui s imposent a l acheteur MEME au-dela du PLU (hauteurs, clotures, extensions). voirie_retrocession = voirie a charge des colotis a perpetuite si non retrocedee a la commune (gros poste cache). equipements_lourds = assainissement collectif, bassin... (mises aux normes couteuses).');
+  parts.push('HISTORIQUE_TRAVAUX : {"document_type":"HISTORIQUE_TRAVAUX","nature_document":"devis|facture|attestation|autre","titre":"...","resume":"...","entreprise":{"nom":null,"siret":null,"adresse":null,"contact":null,"assurance_decennale":null,"numero_police":null},"travaux":[{"poste":"...","description":"...","montant":null,"date":null}],"montant_total":null,"date_plus_recente":null,"garantie_decennale_possible":null,"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
+  parts.push('REGLES HISTORIQUE_TRAVAUX : poste = categorie courte du travail (toiture, chauffage, isolation, electricite, fenetres, ravalement, plomberie...). entreprise.assurance_decennale = nom de l assureur si une attestation decennale figure sur le document. garantie_decennale_possible = true UNIQUEMENT si la date_plus_recente des travaux est a moins de 10 ans de l annee courante ET qu il s agit de gros oeuvre ou d elements d equipement indissociables (toiture, charpente, gros oeuvre, etancheite, chauffage central) — sinon null. Ne JAMAIS affirmer que la garantie est active : c est une possibilite a confirmer aupres de l entreprise. avis_verimo : rappeler que des travaux recents documentes rassurent sur l entretien et que la garantie decennale eventuelle se transmet a l acheteur (a confirmer).');
     parts.push('AUTRE : {"document_type":"AUTRE","titre":"...","resume":"...","infos_cles":[{"label":"...","valeur":"..."}],"contenu":[{"section":"...","detail":"..."}],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('');
   parts.push('REGLES GENERALES : resume = 3-4 phrases factuelles. avis_verimo = 2-4 paragraphes courts en langage naturel, séparés par double saut de ligne. NE PAS terminer par une mention promotionnelle ou commerciale. NE PAS suggérer de service ou produit. NE PAS inventer des donnees absentes - mettre null si absent.');
@@ -1580,6 +1747,9 @@ REGLES DOCUMENTS SPECIFIQUES MAISON (type_bien = "maison" uniquement) :
 - Si type_bien = "maison" ET aucun ASSAINISSEMENT detecte ET aucune mention d assainissement collectif (tout-a-l-egout) dans les documents : ajouter "Diagnostic assainissement (SPANC si fosse septique, ou controle communal selon arrete municipal)" dans documents_manquants.
 - Si type_bien = "maison" ET aucun TAXE_FONCIERE detecte : ajouter "Taxe fonciere (avis d imposition)" dans documents_manquants.
 - Si type_bien = "maison" ET aucun DDT, DPE ou DIAGNOSTIC detecte : ajouter "DDT — Dossier de Diagnostic Technique (DPE, ERP, amiante, plomb, electricite, gaz, termites)" dans documents_manquants.
+- historique_travaux : si un document HISTORIQUE_TRAVAUX (devis, facture, attestation d entreprise) est detecte, remplir present=true et extraire entreprise (nom, siret, contact, assurance_decennale), travaux[] (poste, description, montant, date), montant_total, date_plus_recente (la plus recente). garantie_decennale_possible = true UNIQUEMENT si date_plus_recente a moins de 10 ans ET gros oeuvre/equipement indissociable (toiture, charpente, etancheite, chauffage central) — sinon null ; ne JAMAIS affirmer qu elle est active. Reporter AUSSI ces travaux dans travaux.realises[] (label, annee, montant_estime, justificatif=true) pour qu ils soient pris en compte. Si aucun document de travaux : present=false.
+- assainissement : remplir present=true si un document ASSAINISSEMENT (SPANC) est fourni. type_reseau = "non_collectif" si fosse/micro-station/SPANC, "collectif" si raccordement au tout-a-l-egout mentionne, null si inconnu. conforme = true/false selon les conclusions du controle (false si non-conformite ou travaux de mise aux normes prescrits). observations = phrase courte. Si raccorde au tout-a-l-egout (collectif), conforme reste null (non applicable).
+- servitudes (maison) : extraire les servitudes mentionnees dans le COMPROMIS ou l acte (passage, vue, reseau, urbanisme...) dans lot_achete.compromis.servitudes[]. Une servitude contraignante (droit de passage sur le terrain, ligne electrique, canalisation) est un point a signaler a l acheteur. Mentionner toute contrainte d urbanisme forte (zone protegee, ABF/Architecte des Batiments de France, monument historique, secteur sauvegarde) dans points_vigilance.
 
 RÈGLE ASL / AFUL (structures HORS copropriete) :
 - Si un document ASL_CHIFFRES ou ASL_REGLES est detecte, remplir vie_asl.present=true et vie_asl.structures[] (un objet par association). Chaque structure : {"nature_structure":"asl|aful|union","nom_affiche":"nom exact","objet":"ce qu elle gere","gouvernance":{"president":null,"gestion":"benevole|professionnel|null","gestionnaire":null},"cle_repartition":null,"nb_membres":null,"conformite_2004":{"date_creation":null,"statuts_publies":null,"conforme":null},"finances":{"cotisation_annuelle_lot":null,"periodicite":null,"budget_global":null,"fonds_reserve":null,"solde_vendeur":null},"travaux":[{"label":null,"montant":null,"echeance":null,"charge":null}],"voirie_retrocession":null,"cahier_charges":{"present":false,"contraintes_urbanisme":[],"servitudes":[]},"equipements_lourds":[],"points_vigilance":[],"autres_notables":[]}.
@@ -1669,7 +1839,7 @@ REGLE ANTI-DOUBLON avec points_forts et points_vigilance :
 - L avis_verimo ne refait PAS ces listes. Il synthetise en une lecture globale (verdict) + cadrage (contexte) + pistes pour approfondir (demarches).
 
 
-{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"asl_mentionnee":{"detectee":false,"statut":null,"source":null},"vie_asl":{"present":false,"structures":[]},"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"parkings":null,"caves":null,"commerces":null},"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]},"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
+{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|HISTORIQUE_TRAVAUX|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"asl_mentionnee":{"detectee":false,"statut":null,"source":null},"vie_asl":{"present":false,"structures":[]},"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"parkings":null,"caves":null,"commerces":null},"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]},"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}},"historique_travaux":{"present":false,"entreprise":{"nom":null,"siret":null,"contact":null,"assurance_decennale":null},"travaux":[{"poste":null,"description":null,"montant":null,"date":null}],"montant_total":null,"date_plus_recente":null,"garantie_decennale_possible":null},"assainissement":{"present":false,"type_reseau":"collectif|non_collectif|null","conforme":null,"date_controle":null,"observations":null},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
 }
 
 // Attend que le status soit files_ready puis lance l'analyse
