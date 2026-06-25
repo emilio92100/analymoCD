@@ -274,7 +274,7 @@ function DiagRow({ d }: { d: any }) {
     : hasAlert ? { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' }
     : isConforme ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a' }
     : { bg: '#fff7ed', border: '#fed7aa', text: '#d97706' };
-  const presenceLabel = isAbsence ? '✓ Non détecté' : isNonRealise ? 'Non réalisé' : isERP ? 'Informatif' : hasAlert ? 'Anomalies' : isConforme ? '✓ Conforme' : 'Détecté';
+  const presenceLabel = isAbsence ? '✓ Aucune anomalie' : isNonRealise ? 'Non réalisé' : isERP ? 'Informatif' : hasAlert ? 'Anomalies' : isConforme ? '✓ Conforme' : 'Détecté';
 
   const dpeClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
   const gesClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/GES[:\s]+Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
@@ -2607,8 +2607,8 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
   const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
   const chargesMensuellesLot = chargesLotNum > 0 ? Math.round(chargesLotNum / 12) : 0;
 
-  // Taxe foncière depuis rapport.finances ou documents_analyses
-  const taxeFonciereRaw = (rapport as Record<string, unknown>).taxe_fonciere as TaxeT | number | string | null;
+  // Taxe foncière : priorité à finances.taxe_fonciere_annuelle (mode complet), repli sur l'objet taxe_fonciere (analyse simple) ou le champ legacy top-level
+  const taxeFonciereRaw = (fin?.taxe_fonciere ?? fin?.taxe_fonciere_annuelle ?? (rapport as Record<string, unknown>).taxe_fonciere) as TaxeT | number | string | null;
   const taxeAnnuelle = typeof taxeFonciereRaw === 'number' ? taxeFonciereRaw
     : typeof taxeFonciereRaw === 'object' && taxeFonciereRaw !== null ? (taxeFonciereRaw as TaxeT).montant_total ?? null
     : typeof taxeFonciereRaw === 'string' ? parseFloat(taxeFonciereRaw.replace(/[^0-9.]/g, '')) || null : null;
@@ -3623,6 +3623,16 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           );
         })()}
 
+        {/* Incitation pré-état daté — section enrichissable (copro uniquement) */}
+        {hasAnyContent && !hasPed && (rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro') && (
+          <div style={{ marginTop: 4, padding: '11px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 12.5, color: '#075985', lineHeight: 1.55, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💡</span>
+            <span>
+              <strong>Cette section peut être plus complète.</strong> Avec un <strong>pré-état daté</strong>, vous obtiendrez les charges futures à prévoir, les fonds à rembourser au vendeur à la signature et l'historique des charges N-1 / N-2. Vous pouvez l'ajouter via « Compléter mon dossier ».
+            </span>
+          </div>
+        )}
+
         {/* Empty state */}
         {!hasAnyContent && (
           <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -4139,6 +4149,12 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
   const docsAnalysesTypes = docsAnalyses.map(d => safeStr(d.type));
   const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
   const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
+  // PV d'AG : la loi en impose 3. On compte combien sont fournis pour signaler ceux qui manquent.
+  const nbPvAg = docsAnalysesTypes.filter(t => t === 'PV_AG').length;
+  const pvAgManquants = Math.max(0, 3 - nbPvAg);
+  const pvAgLabel = nbPvAg === 0
+    ? '3 derniers PV d\'Assemblée Générale'
+    : `Il manque ${pvAgManquants} PV d'Assemblée Générale (sur les 3 obligatoires)`;
   // Diagnostics essentiels manquants : liste précise du moteur (DPE, ERP, électrique, amiante…),
   // avec repli générique. Source unique : getDiagsEssentielsManquants (pas de duplication de règles).
   const diagsManquantsEssentiels = getDiagsEssentielsManquants(rapport as Record<string, unknown>)
@@ -4156,7 +4172,7 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
 
   // Docs essentiels
   const docsEssentiels = isCopro ? [
-    { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null },
+    { label: pvAgLabel, present: nbPvAg >= 3, tooltip: nbPvAg >= 1 && nbPvAg < 3 ? 'Le vendeur doit fournir les PV des 3 dernières assemblées générales. Ils permettent de retracer les décisions, travaux votés et finances de la copropriété.' : null },
     { label: 'Règlement de copropriété', present: hasDoc(['REGLEMENT_COPRO']), tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' },
     { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' },
     ...diagsManquantsEssentiels,
@@ -4407,11 +4423,16 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backU
 
   const typeBien = safeStr(rapport.type_bien);
   const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
+  const nbPvAg = docsAnalysesTypes.filter(t => t === 'PV_AG').length;
+  const pvAgManquants = Math.max(0, 3 - nbPvAg);
+  const pvAgLabel = nbPvAg === 0
+    ? '3 derniers PV d\'Assemblée Générale'
+    : `Il manque ${pvAgManquants} PV d'Assemblée Générale (sur les 3 obligatoires)`;
   const diagsManquantsModal = getDiagsEssentielsManquants(rapport).map(d => ({ emoji: '🗂', label: d.label, tooltip: d.tooltip }));
 
   // Identiques à TabDocuments (diagnostics = liste précise du moteur via getDiagsEssentielsManquants)
   const docsEssentielsManquants = isCopro ? [
-    !hasDoc(['PV_AG']) ? { emoji: '📋', label: '3 derniers PV d\'Assemblée Générale', tooltip: null } : null,
+    nbPvAg < 3 ? { emoji: '📋', label: pvAgLabel, tooltip: null } : null,
     !hasDoc(['REGLEMENT_COPRO']) ? { emoji: '📜', label: 'Règlement de copropriété', tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' } : null,
     !hasDoc(['CARNET_ENTRETIEN']) ? { emoji: '📓', label: 'Carnet d\'entretien de l\'immeuble', tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' } : null,
     ...diagsManquantsModal,
@@ -5062,7 +5083,7 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   const typeBien = safeStr(rapport.type_bien);
   const isCoproForMissing = typeBien === 'appartement' || typeBien === 'maison_copro';
   const baseEssentielsManquants = isCoproForMissing
-    ? [!hasDocType(['PV_AG']), !hasDocType(['REGLEMENT_COPRO']), !hasDocType(['CARNET_ENTRETIEN']), !hasDocType(['APPEL_CHARGES'])].filter(Boolean).length
+    ? [(docsAnalysesTypes.filter(t => t === 'PV_AG').length < 3), !hasDocType(['REGLEMENT_COPRO']), !hasDocType(['CARNET_ENTRETIEN']), !hasDocType(['APPEL_CHARGES'])].filter(Boolean).length
     : [!hasDocType(['TAXE_FONCIERE'])].filter(Boolean).length;
   const missingEssentielsCount = baseEssentielsManquants + getDiagsEssentielsManquants(rapport as Record<string, unknown>).length;
 
