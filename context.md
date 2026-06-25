@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 23 juin 2026
+# VERIMO — Contexte projet — 25 juin 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -128,7 +128,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 | Nom | Rôle | Version |
 |-----|------|---------|
 | `analyser` | Lance une analyse — gère la queue Anthropic 503 | v8 |
-| `analyser-run` | Worker qui traite l'analyse en background. **Mode complet refondu en MAP-REDUCE multi-invocations (03 juin)** — voir section dédiée. Modes `document` (simple) et `complement` inchangés (single appel). | **v18** (03 juin — MAP-REDUCE découpé) |
+| `analyser-run` | Worker qui traite l'analyse en background. **PROD = SINGLE-CALL v7** (le MAP-REDUCE v18 a été retiré du repo le 25 juin — voir section MAP-REDUCE conservée en historique). 🆕 **Support ASL/AFUL** : types `ASL_CHIFFRES`/`ASL_REGLES` en mode `document` + `vie_asl`/`asl_mentionnee` en mode `complete` (25 juin). Modes `document` (simple) et `complement` toujours single appel. | **v7 single-call + ASL** (25 juin) |
 | `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) | — |
 | `comparer` | Compare 2 ou 3 rapports | — |
 | `admin-user-management` | Actions admin (create, invite, delete, reset password, create_pro_demo enrichi, activate_pro_demo, unlock_agence_subscription, grant_agence_credits, 🆕 **set_agence_users_max** 23 juin) — **modifié 28 mai pour création auto entité agence** | **v4** (23 juin) |
@@ -390,7 +390,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 🎯 MAP-REDUCE analyse complète — ✅ RÉALISÉ ET DÉPLOYÉ (03 juin 2026) ⭐⭐⭐
 
-> ⚠️ **MISE À JOUR 04 juin 2026 — RETOUR AU SINGLE CALL.** Le MAP-REDUCE reste dans le repo (`analyser-run` ~2575 lignes) mais **n'est plus le mode actif en prod** : Alex a recollé manuellement l'ancien `analyser-run` **SINGLE CALL (v7)** dans Supabase. Raison : sur de vrais dossiers, le MAP-REDUCE s'est révélé **plus lent** que le single call. Le REDUCE empile des résumés MAP « exhaustifs » (jusqu'à 64000 tokens/doc, prompt « compte rendu fidèle et exhaustif ») souvent **plus lourds que les docs d'origine** → il **dilate** l'info au lieu de la compresser, et la génération du rapport final reste de toute façon aussi longue. Le single call suffit pour les dossiers normaux (contexte Sonnet 4.6 = **1M tokens**). Le vrai problème de fond (**timeout 400 s** sur très gros dossiers) est traité dans la section dédiée « ⏱️ CHANTIER 400 SECONDES » (prochaine session). La section ci-dessous décrit le MAP-REDUCE tel qu'il est codé dans le repo — conservée comme **référence / historique**.
+> ⚠️ **MISE À JOUR 04 juin 2026 — RETOUR AU SINGLE CALL** *(complétée le 25 juin : le MAP-REDUCE a été retiré du repo)*. Le MAP-REDUCE **a été retiré du repo le 25 juin** (le repo contient désormais le single-call v7, ~2100 lignes avec ASL) et **n'est plus le mode actif en prod** : Alex a recollé manuellement l'ancien `analyser-run` **SINGLE CALL (v7)** dans Supabase. Raison : sur de vrais dossiers, le MAP-REDUCE s'est révélé **plus lent** que le single call. Le REDUCE empile des résumés MAP « exhaustifs » (jusqu'à 64000 tokens/doc, prompt « compte rendu fidèle et exhaustif ») souvent **plus lourds que les docs d'origine** → il **dilate** l'info au lieu de la compresser, et la génération du rapport final reste de toute façon aussi longue. Le single call suffit pour les dossiers normaux (contexte Sonnet 4.6 = **1M tokens**). Le vrai problème de fond (**timeout 400 s** sur très gros dossiers) est traité dans la section dédiée « ⏱️ CHANTIER 400 SECONDES » (prochaine session). La section ci-dessous décrit le MAP-REDUCE tel qu'il est codé dans le repo — conservée comme **référence / historique**.
 
 > Le chantier cadré le 02 juin a été réalisé le 03 juin, **mais avec une architecture différente de celle initialement prévue** (raison ci-dessous). Le mode complet fonctionne désormais en MAP-REDUCE découpé en plusieurs invocations. Modes `document` (analyse simple 1 doc) et `complement` (compléter dossier) **strictement inchangés** (toujours single appel).
 
@@ -442,7 +442,7 @@ alter table analyses add column if not exists map_resultats jsonb;
 - Pendant le debug, le nettoyage `map_resultats = null` était commenté pour inspecter les résumés MAP en base. **Réactivé en fin de session.** Inspection pendant une analyse en cours : `select map_resultats from analyses order by created_at desc limit 1;`
 
 ### État des renderers (inchangé)
-- **14 types détectés** ; **12 fiches dédiées** dans `DocumentRenderer.tsx` + 1 générique (AUTRE). ⚠️ **GAP : FICHE_SYNTHETIQUE** détectée + JSON mais pas de fiche dédiée (tombe sur RendererAutre) → à créer.
+- **16 types détectés** ; **14 fiches dédiées** dans `DocumentRenderer.tsx` + 1 générique (AUTRE). 🆕 Ajout des fiches **ASL_CHIFFRES** + **ASL_REGLES** (25 juin). ⚠️ **GAP toujours présent : FICHE_SYNTHETIQUE** détectée + JSON mais pas de fiche dédiée (tombe sur RendererAutre) → à créer.
 
 ### À fiabiliser plus tard (discuté, plan validé, NON codé)
 - **Heartbeat watchdog** (pour rattraper vite une mort brutale d'invocation) : (1) SQL `alter table analyses add column if not exists last_heartbeat timestamptz;` (2) `analyser-run` écrit `last_heartbeat=now()` à chaque progression (3) watchdog détecte les `processing` dont `last_heartbeat` > ~7-8 min (mort) au lieu de `created_at` > 60 min (4) passer le cron watchdog à ~3 min. Objectif : annulation en ~10 min max sans tuer une analyse vivante.
@@ -451,6 +451,34 @@ alter table analyses add column if not exists map_resultats jsonb;
 
 ---
 
+
+
+## 🏘️ Support ASL / AFUL / Union d'ASL — LIVRÉ (25 juin 2026) ⭐⭐
+
+> Structures de gestion d'ensemble **hors copropriété** (ordonnance de 2004, et non la loi de 1965) : ASL (Association Syndicale Libre), AFUL (Association Foncière Urbaine Libre), Union d'ASL. Présentes dans les lotissements (maisons) et grands ensembles. Un bien peut être : **copro seule**, **ASL seule** (maison de lotissement), ou **copro + ASL**. Gouvernance propre (président + syndicat collégial, gestion bénévole OU professionnelle), répartition en **quotes-parts** (pas tantièmes), **PAS de fonds ALUR**. Vocabulaire à ne jamais confondre avec la copro. AFUL/Union détectées et ventilées comme l'ASL, mais avec leur **libellé EXACT** (ne jamais écrire « ASL » pour une AFUL).
+
+### Modélisation (zéro SQL — tout vit dans le JSON résultat)
+- **Mode `document` (analyse simple)** : 2 nouveaux types détectables — `ASL_CHIFFRES` (PV d'AG ASL, cotisations, budget, état des cotisations) et `ASL_REGLES` (statuts, cahier des charges, règlement de lotissement). Schémas JSON + règles d'extraction ajoutés dans `buildDocumentPrompt`.
+- **Mode `complete` (analyse complète)** : 2 champs ajoutés au JSON — `vie_asl { present, structures[] }` (une structure par association, forme fusionnée chiffres + règles) et `asl_mentionnee { detectee, statut: en_place|en_creation, source }` (cas d'une ASL citée dans un doc copro sans qu'aucun document ASL ne soit fourni).
+- Champs clés extraits : **conformité 2004** (statuts publiés O/N — fragilise le recouvrement des cotisations si non), **voirie/rétrocession** (coût caché à vie si non rétrocédée à la commune), **contraintes d'urbanisme** du cahier des charges (s'imposent au-delà du PLU : clôtures, extensions…), **équipements lourds**, gestion bénévole/pro, **cotisation annuelle** (= charge réelle EN PLUS de la copro). Le score copro (`recalculerCategories`) reste **inchangé** — aucune régression.
+
+### Les 3 Lots
+- **Lot 1 — `analyser-run/index.ts`** (Edge Function) : 5 ajouts **additifs** au prompt single-call v7 (taxonomie + 2 schémas ASL en mode document ; enum `documents_analyses` + blocs `vie_asl`/`asl_mentionnee` + bloc de règles ASL en mode complete). 2089 → 2100 lignes, 100 % additif. ✅ poussé GitHub — ⚠️ **redéploiement Supabase Studio requis (manuel)**.
+- **Lot 2 — `DocumentRenderer.tsx`** (frontend) : 2 fiches riches `RendererAslChiffres` + `RendererAslRegles` (KPI cotisation/budget/fonds, gouvernance, bloc conformité 2004 vert/rouge, alertes voirie & solde vendeur, contraintes, servitudes, équipements) + 2 cas dans le `switch`. Sert l'analyse simple + la visionneuse admin. Badge au type EXACT (ASL/AFUL/Union). ✅ poussé.
+- **Lot 3 — `RapportPage.tsx`** (frontend) : onglet **ASL** conditionnel (icône `Landmark`) — n'apparaît QUE si `vie_asl.present` (avec structures) OU `asl_mentionnee.detectee` ; sinon le rapport est **identique à avant**. Composant `TabAsl` (une carte riche par structure, helpers `KpiBand`/`SectionTitle`) + **mode dégradé** « documents ASL manquants » (bandeau orange + liste à réclamer au vendeur). Ajouté dans les **2 vues** (`RapportViewExemple` + vue principale). 100 % additif. ✅ **LIVRÉ — à pousser sur GitHub.**
+
+### 3 configurations d'affichage (analyse complète)
+- **Copro seule** → onglet Copropriété, pas d'onglet ASL.
+- **Copro + ASL** → les deux onglets.
+- **Maison/lotissement en ASL seule** → onglet ASL, pas d'onglet Copropriété.
+- ⚠️ **Indépendance** : l'onglet Copropriété reste piloté par `type_bien` (via `isCoproType`), pas par la présence de docs → un appartement avec ASL mais peu de docs copro **garde** son onglet Copropriété (mode dégradé « docs manquants »). L'onglet ASL est calculé séparément (`hasAsl`), jamais lié à `hasCopro`.
+
+### Reste à faire
+- **Pousser `RapportPage.tsx`** sur GitHub (Lot 3) + **redéployer `analyser-run`** dans Supabase (Lot 1).
+- **Test E2E** : analyse simple sur doc ASL → fiche remplie (pas « AUTRE ») ; analyse complète avec doc ASL → onglet ASL ; analyse complète SANS ASL → rapport **identique** à avant (aucun onglet ASL).
+- Optionnel plus tard : scoring fin de l'ASL sur le volet Finances (différé, non codé).
+
+---
 
 
 ## ⏳ Backlog — En attente
@@ -463,7 +491,7 @@ alter table analyses add column if not exists map_resultats jsonb;
 2. **Étape C2 — Permissions fines DossierDetail** : bloquer ajout vendeur / nouvelle analyse / modif titre pour non-créateurs ; garder ajout acheteur + envoi rapport accessibles à tous
 3. **🔴 Régénérer service_role key** (compromise screenshots 11 mai) + recréer le cron avec nouvelle clé — **SEUL must-do certain restant avant onboarding de vraies agences** (confirmé par l'audit sécu du 23 juin). Reste ouvert.
 4. ~~**Mettre à jour CGV Pro article 4.5** pour V2 multi-utilisateurs~~ ✅ **FAIT 23 juin** (`CGVProPage.tsx`, version gardée v2.3)
-4b. **🟠 Durcir l'auth `analyser` / `analyser-run`** (audit 23 juin) — `analyser` : ajouter `getUser()` + contrôle de propriété de l'analyseId ; `analyser-run` : secret interne partagé. Non bloquant pour démarchage. ⚠️ Prod = single-call v7 hors repo → récupérer le vrai code prod avant.
+4b. **🟠 Durcir l'auth `analyser` / `analyser-run`** (audit 23 juin) — `analyser` : ajouter `getUser()` + contrôle de propriété de l'analyseId ; `analyser-run` : secret interne partagé. Non bloquant pour démarchage. ✅ Le single-call v7 est désormais **dans le repo** (depuis le 25 juin) → durcir directement la version du repo (plus besoin de récupérer le code prod à part).
 5. **Test E2E pro complet** : souscription Découverte → upgrade Starter → upgrade Power → downgrade → achat unitaire → remboursement
 6. **Test E2E agence complet** : Création responsable → activation → souscription Stripe → invitation 2 agents → acceptation → dossiers partagés → analyse créée par agent → rapport envoyé
 7. **Custom text Stripe Dashboard** → Settings → Branding (mention CGV Pro au checkout)
@@ -525,6 +553,11 @@ alter table analyses add column if not exists map_resultats jsonb;
 ## 📜 Historique condensé des sessions
 
 ### Sessions récentes (mai-juin 2026)
+
+- **Session 25 juin 2026 ⭐⭐ : Support ASL / AFUL / Union d'ASL (Lots 1-3) + constat repo single-call**
+  - **Feature ASL complète** — voir la section dédiée « 🏘️ Support ASL / AFUL / Union d'ASL ». Lot 1 (`analyser-run` : détection + extraction en modes document & complete, 5 ajouts additifs au prompt v7) ✅ poussé GitHub, **à redéployer Supabase** ; Lot 2 (`DocumentRenderer` : 2 fiches riches ASL_CHIFFRES/ASL_REGLES + 2 cas switch) ✅ poussé ; Lot 3 (`RapportPage` : onglet ASL conditionnel + `TabAsl` + mode dégradé, dans les 2 vues) ✅ livré, **à pousser**. **100 % additif** : un rapport sans ASL reste strictement identique à avant (aucun onglet ASL, aucun champ visible).
+  - **Décisions de conception** : types dédiés (pas un flag perimetre) pour auto-exclure l'ASL du comptage/scoring copro ; AFUL & Union via le même cadre mais **libellé exact** ; onglet ASL indépendant de l'onglet Copropriété (3 configs : copro seule / copro+ASL / ASL seule) ; tout dans le JSON (zéro SQL).
+  - **Constat repo** : le `analyser-run` du repo est bien le **single-call v7** (2100 lignes avec ASL) — le **MAP-REDUCE v18 n'est plus dans le repo**. Le tableau Edge Functions, la section MAP-REDUCE et le backlog ont été mis à jour en conséquence.
 
 - **Session 23 juin 2026 ⭐⭐ : Fiche membre agence RÉPARÉE (SQL) + AUDIT SÉCURITÉ COMPLET + CGV Pro 4.5 + UX complément + fix layout Mon équipe**
   - **🔒 FICHE MEMBRE « Mon équipe » — RÉPARÉE (100 % SQL, zéro frontend).** Symptôme : depuis le compte responsable, cliquer sur un membre affichait « 0 analyse » pour tout le monde (KPIs + liste vides). **Diagnostic vérifié par requêtes prod** : la fiche filtre sur `analyses.agence_id` + `created_by_user_id`, or `agence_id` était rempli sur **0 / 38** analyses (et `created_by_user_id` sur 16 = vieux backfill historique, **aucun trigger actif**). `createAnalyse` ne posait ni l'un ni l'autre. **Fix livré et testé OK en prod :**
@@ -677,7 +710,7 @@ alter table analyses add column if not exists map_resultats jsonb;
 - **Watchdog** : réduire le seuil `files_ready` de **30 min → ~10-12 min** (plus réactif, sans risque de tuer une analyse vivante puisque < 400 s).
 - `beforeunload` Supabase = **pas fiable** (Supabase dit de ne pas s'y reposer) → ne pas compter dessus pour basculer en échec.
 
-**État repo vs prod sur ce point :** le repo contient encore le MAP-REDUCE (`analyser-run` ~2575 lignes) ; la PROD tourne sur le **SINGLE CALL v7** recollé manuellement. Repartir du single call pour ce chantier.
+**État repo vs prod sur ce point :** depuis le 25 juin, le repo contient le **single-call v7** (`analyser-run` ~2100 lignes, désormais avec le support ASL) — le MAP-REDUCE n'est **plus** dans le repo. Prod = single-call v7. Repartir du single call pour ce chantier.
 
 ---
 
