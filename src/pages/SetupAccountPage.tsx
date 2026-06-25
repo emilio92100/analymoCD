@@ -15,6 +15,8 @@ export default function SetupAccountPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [alreadyActive, setAlreadyActive] = useState(false);
+  const [activeEmail, setActiveEmail] = useState('');
 
   useSEO({ title: 'Activer votre compte — Verimo Pro', description: 'Définissez votre mot de passe pour accéder à votre espace Verimo Pro.' });
 
@@ -29,6 +31,12 @@ export default function SetupAccountPage() {
           body: JSON.stringify({ action: 'verify_pro_token', token }),
         });
         const data = await res.json();
+        if (data.already_active) {
+          setActiveEmail(data.email || '');
+          setAlreadyActive(true);
+          setLoading(false);
+          return;
+        }
         if (data.error || !data.valid) {
           setError('Ce lien est invalide ou a déjà été utilisé.');
           setLoading(false);
@@ -96,6 +104,34 @@ export default function SetupAccountPage() {
             <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Lien expiré ou invalide</h1>
             <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 24 }}>{error}</p>
             <p style={{ fontSize: 13, color: '#94a3b8' }}>Contactez votre interlocuteur Verimo pour recevoir un nouveau lien.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (alreadyActive) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f4f7f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <div style={{ maxWidth: 440, width: '100%', padding: '0 20px' }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 36, textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.06)' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔓</div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Votre compte est déjà actif</h1>
+            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 24 }}>
+              Ce compte{activeEmail ? ` (${activeEmail})` : ''} a déjà été activé. Connectez-vous avec votre mot de passe pour accéder à votre espace pro.
+            </p>
+            <button
+              onClick={() => navigate('/connexion')}
+              style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: "'DM Sans', system-ui, sans-serif" }}
+            >
+              Se connecter
+            </button>
+            <button
+              onClick={() => navigate('/mot-de-passe-oublie')}
+              style={{ marginTop: 14, background: 'none', border: 'none', color: '#2a7d9c', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Mot de passe oublié ?
+            </button>
           </div>
         </div>
       </div>
