@@ -3172,6 +3172,194 @@ function RendererModificatifRCP({ r, isShared, hideVerimoBranding }: { r: any; i
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// ══════════════════════════════════════════════════════════════
+// FICHES ASL / AFUL / UNION (structures HORS copropriete)
+// ASL_CHIFFRES : donnees financieres (PV d'AG ASL, cotisations, budget)
+// ASL_REGLES   : regles (statuts, cahier des charges, reglement lotissement)
+// AFUL et Union utilisent les memes fiches, avec le LIBELLE EXACT du type.
+// ══════════════════════════════════════════════════════════════
+
+function aslNatureLabel(n: string | null | undefined): string {
+  return n === 'aful' ? 'AFUL' : n === 'union' ? "Union d'ASL" : 'ASL';
+}
+function aslNatureLong(n: string | null | undefined): string {
+  return n === 'aful' ? 'Association Foncière Urbaine Libre' : n === 'union' ? "Union d'associations syndicales" : 'Association Syndicale Libre';
+}
+function aslGestionLabel(g: string | null | undefined): string | null {
+  return g === 'professionnel' ? 'Professionnelle' : g === 'benevole' ? 'Bénévole' : null;
+}
+function aslEur(v: unknown): string | null {
+  if (v == null || v === '' || isNaN(Number(v))) return null;
+  return `${Number(v).toLocaleString('fr-FR')} €`;
+}
+function aslAvisText(av: unknown): string {
+  if (typeof av === 'string') return av;
+  if (av && typeof av === 'object') {
+    const verdict = (av as Record<string, unknown>).verdict;
+    return typeof verdict === 'string' ? verdict : '';
+  }
+  return '';
+}
+
+function RendererAslChiffres({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
+  const nat = (r.nature_structure || 'asl') as string;
+  const gestion = aslGestionLabel(r.gouvernance?.gestion);
+  const periodLabel = r.periodicite && r.periodicite !== 'null' ? String(r.periodicite) : null;
+  const subParts = [
+    r.nom_structure || null,
+    r.date_assemblee ? `AG du ${formatDate(r.date_assemblee) || r.date_assemblee}` : null,
+    aslNatureLong(nat),
+    gestion ? `Gestion ${gestion.toLowerCase()}` : null,
+  ].filter(Boolean);
+
+  const hasKpi = r.cotisation_annuelle != null || r.budget_global != null || r.fonds_reserve != null;
+  const travaux = Array.isArray(r.travaux) ? r.travaux : [];
+  const showAlerte = !!r.alerte_impaye || (r.solde_vendeur != null && Number(r.solde_vendeur) > 0);
+
+  return (
+    <div>
+      <Header type={`${aslNatureLabel(nat)} · Données financières`} titre={r.titre || `${aslNatureLabel(nat)} ${r.nom_structure || ''}`.trim()} sub={subParts.join(' · ') || undefined} />
+      {r.resume && <Resume text={r.resume} />}
+
+      {hasKpi && (
+        <KpiGrid>
+          {r.cotisation_annuelle != null && <Kpi label="Cotisation annuelle" value={aslEur(r.cotisation_annuelle) || '—'} sub={periodLabel ? `par lot · ${periodLabel}` : 'par lot'} />}
+          {r.budget_global != null && <Kpi label="Budget global ASL" value={aslEur(r.budget_global) || '—'} />}
+          {r.fonds_reserve != null && <Kpi label="Fonds de réserve" value={aslEur(r.fonds_reserve) || '—'} />}
+        </KpiGrid>
+      )}
+
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <SectionKpi icon="🤝" label="Gouvernance">
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.gouvernance?.president && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.gouvernance.president}</span></div>}
+            {gestion && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🗂</span><span>Gestion {gestion.toLowerCase()}</span></div>}
+            {r.gouvernance?.gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.gouvernance.gestionnaire}</span></div>}
+            {!r.gouvernance?.president && !gestion && !r.gouvernance?.gestionnaire && <div style={{ fontSize: 13, color: C.textSec }}>Non précisé dans le document</div>}
+          </div>
+        </SectionKpi>
+        <SectionKpi icon="⚖️" label="Répartition">
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.cle_repartition && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🔑</span><span style={{ fontWeight: 600 }}>{r.cle_repartition}</span></div>}
+            {periodLabel && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Cotisation {periodLabel}</span></div>}
+            {!r.cle_repartition && !periodLabel && <div style={{ fontSize: 13, color: C.textSec }}>Non précisé dans le document</div>}
+          </div>
+        </SectionKpi>
+      </div>
+
+      {showAlerte && (
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: C.orange.text, display: 'flex', gap: 10 }}>
+          <span style={{ flexShrink: 0 }}>⚠</span>
+          <span>{r.alerte_impaye || `Solde vendeur de ${aslEur(r.solde_vendeur)} à apurer avant la signature de l'acte authentique.`}</span>
+        </div>
+      )}
+
+      {travaux.length > 0 && (
+        <Card>
+          <CardHeader label="Travaux votés" color={C.blue.dot} />
+          {travaux.map((t: any, i: number) => {
+            const chargeLabel = t.charge === 'vendeur' ? 'vendeur' : t.charge === 'acquereur' ? 'acquéreur' : null;
+            const chargeColor = t.charge === 'acquereur' ? C.red.text : t.charge === 'vendeur' ? C.green.text : C.textSec;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < travaux.length - 1 ? `0.5px solid ${C.border}` : 'none', gap: 12, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                <span style={{ fontSize: 14, color: C.text }}>{t.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>
+                  {aslEur(t.montant) && <span>{aslEur(t.montant)}</span>}
+                  {t.echeance && <span style={{ color: C.textSec }}> · {t.echeance}</span>}
+                  {chargeLabel && <span style={{ color: chargeColor }}> · {chargeLabel}</span>}
+                </span>
+              </div>
+            );
+          })}
+        </Card>
+      )}
+
+      <PointsFortsVigilances forts={r.points_forts || []} vigilances={r.points_vigilance || []} />
+      {r.avis_verimo && <AvisVerimo text={aslAvisText(r.avis_verimo)} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />}
+    </div>
+  );
+}
+
+function RendererAslRegles({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
+  const nat = (r.nature_structure || 'asl') as string;
+  const conf = r.conformite_2004 || {};
+  const conforme = conf.conforme;
+  const ok = conforme === true;
+  const ko = conforme === false;
+  const confColor = ok ? C.green : ko ? C.red : C.gray;
+  const ouiNon = (v: unknown): string | null => v === true ? 'Oui' : v === false ? 'Non' : null;
+
+  const contraintes = Array.isArray(r.contraintes_urbanisme) ? r.contraintes_urbanisme : [];
+  const servitudes = Array.isArray(r.servitudes) ? r.servitudes : [];
+  const equipements = Array.isArray(r.equipements_lourds) ? r.equipements_lourds : [];
+  const perimetre = Array.isArray(r.perimetre_gere) ? r.perimetre_gere : [];
+
+  return (
+    <div>
+      <Header type={`${aslNatureLabel(nat)} · Règles`} titre={r.titre || `Cahier des charges — ${r.nom_structure || ''}`.trim()} sub={[r.nom_structure, aslNatureLong(nat)].filter(Boolean).join(' · ') || undefined} />
+      {r.resume && <Resume text={r.resume} />}
+
+      <Card>
+        <CardHeader label="Identité" color={C.blue.dot} />
+        {r.objet && <InfoRow label="Objet" value={r.objet} />}
+        {perimetre.length > 0 && <InfoRow label="Périmètre géré" value={perimetre.join(', ')} alt />}
+        {r.nb_membres != null && <InfoRow label="Membres" value={`${r.nb_membres} colotis`} />}
+        {r.cle_repartition && <InfoRow label="Clé de répartition" value={r.cle_repartition} alt />}
+        {!r.objet && perimetre.length === 0 && r.nb_membres == null && !r.cle_repartition && <div style={{ padding: '11px 16px', fontSize: 13, color: C.textSec }}>Aucune donnée d'identité extraite du document.</div>}
+      </Card>
+
+      <div style={{ background: confColor.bg, border: `0.5px solid ${confColor.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ padding: '12px 16px', borderBottom: `0.5px solid ${confColor.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>{ok ? '✅' : ko ? '⚠' : 'ℹ️'}</span>
+          <div style={{ fontSize: 12, fontWeight: 700, color: confColor.text, letterSpacing: '0.06em' }}>CONFORMITÉ ORDONNANCE DE 2004</div>
+        </div>
+        {conf.date_creation && <InfoRow label="Date de création" value={String(conf.date_creation)} />}
+        {ouiNon(conf.statuts_publies) && <InfoRow label="Statuts publiés" value={ouiNon(conf.statuts_publies)!} alt valueColor={conf.statuts_publies ? C.green.text : C.red.text} />}
+        {conforme != null && <InfoRow label="Conforme" value={ok ? 'Oui — recouvrement des cotisations sécurisé' : 'Non — recouvrement des cotisations fragilisé'} valueColor={ok ? C.green.text : C.red.text} />}
+        {conforme == null && !conf.date_creation && <div style={{ padding: '11px 16px', fontSize: 13, color: C.textSec }}>Conformité non déterminable d'après le document.</div>}
+      </div>
+
+      {r.voirie_retrocession && (
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: C.orange.text, display: 'flex', gap: 10 }}>
+          <span style={{ flexShrink: 0 }}>🛣️</span>
+          <span>{r.voirie_retrocession}</span>
+        </div>
+      )}
+
+      {contraintes.length > 0 && (
+        <Card>
+          <CardHeader label="Contraintes d'urbanisme (au-delà du PLU)" color={C.blue.dot} />
+          {contraintes.map((c: any, i: number) => (
+            <div key={i} style={{ padding: '12px 16px', borderBottom: i < contraintes.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+              {c.label && <span style={{ fontWeight: 600 }}>{c.label}</span>}{c.label && c.detail ? ' — ' : ''}{c.detail && <span>{c.detail}</span>}
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {servitudes.length > 0 && (
+        <Card>
+          <CardHeader label="Servitudes" color={C.blue.dot} />
+          {servitudes.map((s: any, i: number) => (
+            <InfoRow key={i} label={s.type || 'Servitude'} value={s.description || '—'} alt={i % 2 === 1} />
+          ))}
+        </Card>
+      )}
+
+      {equipements.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 16 }}>
+          {equipements.map((e: any, i: number) => (
+            <span key={i} style={{ fontSize: 12, background: C.bgSecondary, color: C.textSec, border: `0.5px solid ${C.border}`, padding: '5px 12px', borderRadius: 99 }}>{typeof e === 'string' ? e : (e.label || e.type || '')}</span>
+          ))}
+        </div>
+      )}
+
+      <PointsFortsVigilances forts={r.points_forts || []} vigilances={r.points_vigilance || []} />
+      {r.avis_verimo && <AvisVerimo text={aslAvisText(r.avis_verimo)} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />}
+    </div>
+  );
+}
+
 function RendererAutre({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   return (
     <div>
@@ -3221,6 +3409,8 @@ function SafeRenderer({ result, isShared, hideVerimoBranding }: { result: any; i
       case 'COMPROMIS': return <RendererCompromis r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'ASL_CHIFFRES': return <RendererAslChiffres r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'ASL_REGLES': return <RendererAslRegles r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       default: return <RendererAutre r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
     }
   } catch {
