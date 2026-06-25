@@ -407,7 +407,7 @@ function DiagnosticCardRow({ d }: { d: any }) {
   const badgeBg = isOk ? C.green.bg : isAnomalie ? C.red.bg : C.gray.bg;
   const badgeBorder = isOk ? C.green.border : isAnomalie ? C.red.border : C.gray.border;
   const badgeLabel = isOk
-    ? (d.presence === 'conforme' ? '✓ Conforme' : d.presence === 'non_applicable' ? 'Non applicable' : '✓ Non détecté')
+    ? (d.presence === 'conforme' ? '✓ Conforme' : d.presence === 'non_applicable' ? 'Non applicable' : '✓ Aucune anomalie')
     : isAnomalie ? '⚠ Anomalie détectée'
     : 'Informatif';
 
@@ -651,7 +651,7 @@ function RendererDDT({ r, isShared, hideVerimoBranding }: { r: any; isShared?: b
             <div>
               <div style={{ background: C.green.dot, borderRadius: '8px 8px 0 0', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>Conformes / Non détectés</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>Conformes / Aucune anomalie</span>
               </div>
               <div style={{ borderRadius: '0 0 10px 10px', overflow: 'hidden', border: `0.5px solid ${C.green.border}`, borderTop: 'none', borderLeft: `4px solid ${C.green.dot}` }}>
                 {diagsOk.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
