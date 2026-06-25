@@ -416,7 +416,7 @@ export default function RapportPrintPage() {
                       <span style={{ fontSize: 11, color: '#64748b', width: 130, flexShrink: 0, fontWeight: 600 }}>{d.label || d.type}</span>
                       <div style={{ flex: 1 }}>
                         {isAbsence
-                          ? <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>✓ Non détecté</span>
+                          ? <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>✓ Aucune anomalie</span>
                           : <span style={{ fontSize: 11, color: hasAlert ? '#dc2626' : '#374151', fontWeight: hasAlert ? 600 : 400 }}>{d.resultat || ''}</span>
                         }
                         {d.alerte && <div style={{ fontSize: 10, color: '#dc2626', marginTop: 3, fontWeight: 600 }}>⚠️ {d.alerte}</div>}
@@ -439,7 +439,7 @@ export default function RapportPrintPage() {
                   return (
                     <div key={i} style={{ display: 'flex', gap: 12, padding: '7px 10px', borderBottom: '1px solid #f1f5f9', background: hasAlert ? '#fef9f9' : '#fff', borderLeft: `3px solid ${hasAlert ? '#fecaca' : '#e2e8f0'}` }}>
                       <span style={{ fontSize: 11, color: '#64748b', width: 130, flexShrink: 0, fontWeight: 600 }}>{d.label || d.type}</span>
-                      <span style={{ fontSize: 11, color: hasAlert ? '#dc2626' : isAbsence ? '#16a34a' : '#374151' }}>{isAbsence ? '✓ Non détecté' : (d.resultat || '—')}</span>
+                      <span style={{ fontSize: 11, color: hasAlert ? '#dc2626' : isAbsence ? '#16a34a' : '#374151' }}>{isAbsence ? '✓ Aucune anomalie' : (d.resultat || '—')}</span>
                       {d.alerte && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600 }}>⚠️ {d.alerte}</span>}
                     </div>
                   );
