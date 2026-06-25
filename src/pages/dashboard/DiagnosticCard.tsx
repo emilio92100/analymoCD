@@ -72,7 +72,7 @@ function DiagAmiante({ d }: { d: any }) {
     <CardShell presence={d.presence}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</span>
-        <Badge label={ok ? '✓ Non détecté' : d.presence === 'anomalie' ? 'Présence détectée' : 'Non réalisé'} color={ok ? C.green.text : C.red.text} bg={ok ? C.green.bg : C.red.bg} border={ok ? C.green.border : C.red.border} />
+        <Badge label={ok ? '✓ Aucune anomalie' : d.presence === 'anomalie' ? 'Présence détectée' : 'Non réalisé'} color={ok ? C.green.text : C.red.text} bg={ok ? C.green.bg : C.red.bg} border={ok ? C.green.border : C.red.border} />
       </div>
       <div style={{ fontSize: 13, color: C.textSec }}>
         {ok ? 'Aucun matériau amianté détecté sur listes A et B.' : 'Présence de matériaux amiantés détectée.'}
@@ -91,7 +91,7 @@ function DiagTermites({ d }: { d: any }) {
     <CardShell presence={d.presence}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</span>
-        <Badge label={ok ? '✓ Non détecté' : 'Présence détectée'} color={ok ? C.green.text : C.red.text} bg={ok ? C.green.bg : C.red.bg} border={ok ? C.green.border : C.red.border} />
+        <Badge label={ok ? '✓ Aucune anomalie' : 'Présence détectée'} color={ok ? C.green.text : C.red.text} bg={ok ? C.green.bg : C.red.bg} border={ok ? C.green.border : C.red.border} />
       </div>
       <div style={{ fontSize: 13, color: C.textSec }}>
         {ok ? 'Aucun indice d\'infestation détecté.' : 'Présence de termites détectée.'}
@@ -157,7 +157,7 @@ function DiagPlomb({ d }: { d: any }) {
     <CardShell presence={d.presence}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</span>
-        <Badge label={na ? 'Non applicable' : ok ? '✓ Non détecté' : '⚠ Détecté'} color={na ? C.gray.text : ok ? C.green.text : C.red.text} bg={na ? C.gray.bg : ok ? C.green.bg : C.red.bg} border={na ? C.gray.border : ok ? C.green.border : C.red.border} />
+        <Badge label={na ? 'Non applicable' : ok ? '✓ Aucune anomalie' : '⚠ Détecté'} color={na ? C.gray.text : ok ? C.green.text : C.red.text} bg={na ? C.gray.bg : ok ? C.green.bg : C.red.bg} border={na ? C.gray.border : ok ? C.green.border : C.red.border} />
       </div>
       <div style={{ fontSize: 13, color: C.textSec }}>
         {na ? 'Immeuble construit après 1949 — diagnostic non requis.' : ok ? 'Aucune concentration en plomb détectée.' : 'Présence de plomb détectée.'}
@@ -352,7 +352,7 @@ function DiagDetailParser({ text, type }: { text: string; type: 'DPE' | 'AMIANTE
 function DiagGenerique({ d }: { d: any }) {
   const s = d.presence === 'anomalie' ? { badge: '⚠ Anomalie', color: C.red.text, bg: C.red.bg, border: C.red.border }
     : d.presence === 'conforme' ? { badge: '✓ Conforme', color: C.green.text, bg: C.green.bg, border: C.green.border }
-    : d.presence === 'non_detecte' || d.presence === 'absence' ? { badge: '✓ Non détecté', color: C.green.text, bg: C.green.bg, border: C.green.border }
+    : d.presence === 'non_detecte' || d.presence === 'absence' ? { badge: '✓ Aucune anomalie', color: C.green.text, bg: C.green.bg, border: C.green.border }
     : d.presence === 'non_applicable' ? { badge: 'Non applicable', color: C.gray.text, bg: C.gray.bg, border: C.gray.border }
     : { badge: 'Informatif', color: C.gray.text, bg: C.gray.bg, border: C.gray.border };
   return (
