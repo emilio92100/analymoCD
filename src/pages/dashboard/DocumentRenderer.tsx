@@ -3360,6 +3360,68 @@ function RendererAslRegles({ r, isShared, hideVerimoBranding }: { r: any; isShar
   );
 }
 
+function RendererHistoriqueTravaux({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
+  const ent = r.entreprise || {};
+  const travaux = Array.isArray(r.travaux) ? r.travaux : [];
+  const nat = (r.nature_document || '').toString().toLowerCase();
+  const natLabel = nat === 'facture' ? 'Facture' : nat === 'devis' ? 'Devis' : nat === 'attestation' ? 'Attestation' : 'Travaux';
+  const hasEnt = ent.nom || ent.siret || ent.contact || ent.assurance_decennale || ent.adresse || ent.numero_police;
+
+  return (
+    <div>
+      <Header type={`${natLabel} · Travaux`} titre={r.titre || 'Historique de travaux'} sub={ent.nom || undefined} />
+      {r.resume && <Resume text={r.resume} />}
+
+      {hasEnt && (
+        <Card>
+          <CardHeader label="Entreprise" color={C.blue.dot} />
+          {ent.nom && <InfoRow label="Nom" value={ent.nom} />}
+          {ent.siret && <InfoRow label="SIRET" value={ent.siret} alt />}
+          {ent.adresse && <InfoRow label="Adresse" value={ent.adresse} />}
+          {ent.contact && <InfoRow label="Contact" value={ent.contact} alt />}
+          {ent.assurance_decennale && <InfoRow label="Assurance décennale" value={ent.assurance_decennale} valueColor={C.green.text} />}
+          {ent.numero_police && <InfoRow label="N° de police" value={ent.numero_police} alt />}
+        </Card>
+      )}
+
+      {travaux.length > 0 && (
+        <Card>
+          <CardHeader label="Travaux" color={C.blue.dot} />
+          {travaux.map((t: any, i: number) => (
+            <div key={i} style={{ padding: '12px 16px', borderBottom: i < travaux.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, textTransform: 'capitalize' as const }}>{t.poste || 'Travaux'}</div>
+                {t.description && <div style={{ fontSize: 12.5, color: C.textSec, marginTop: 2, lineHeight: 1.45 }}>{t.description}</div>}
+                {t.date && <div style={{ fontSize: 11.5, color: C.textSec, marginTop: 3, opacity: 0.8 }}>{t.date}</div>}
+              </div>
+              {typeof t.montant === 'number' && t.montant > 0 && (
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.blue.text, whiteSpace: 'nowrap' as const }}>{t.montant.toLocaleString('fr-FR')} €</div>
+              )}
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {typeof r.montant_total === 'number' && r.montant_total > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 12, marginBottom: 16 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: C.blue.text }}>Montant total</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: C.blue.text }}>{r.montant_total.toLocaleString('fr-FR')} €</span>
+        </div>
+      )}
+
+      {r.garantie_decennale_possible && (
+        <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: C.green.text, display: 'flex', gap: 10 }}>
+          <span style={{ flexShrink: 0 }}>🛡️</span>
+          <span>Travaux datant de moins de 10 ans : une <strong>garantie décennale peut encore courir</strong> et se transmettre à l'acheteur. À confirmer auprès de l'entreprise (attestation d'assurance).</span>
+        </div>
+      )}
+
+      <PointsFortsVigilances forts={r.points_forts || []} vigilances={r.points_vigilance || []} />
+      {typeof r.avis_verimo === 'string' && r.avis_verimo && <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />}
+    </div>
+  );
+}
+
 function RendererAutre({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   return (
     <div>
@@ -3411,6 +3473,7 @@ function SafeRenderer({ result, isShared, hideVerimoBranding }: { result: any; i
       case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'ASL_CHIFFRES': return <RendererAslChiffres r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'ASL_REGLES': return <RendererAslRegles r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'HISTORIQUE_TRAVAUX': return <RendererHistoriqueTravaux r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       default: return <RendererAutre r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
     }
   } catch {
