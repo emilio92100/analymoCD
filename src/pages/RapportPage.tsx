@@ -839,8 +839,17 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
   const nbProcedures = rapport.procedures.length;
   const nbLots = (finances?.nombre_lots as number | null) || ((rapport as Record<string, unknown>).nombre_lots as number | null);
   const categories = rapport.categories as Record<string, { note: number; note_max: number }>;
-  const catLabels: Record<string, string> = { travaux: 'État des travaux', procedures: 'Risques juridiques', finances: 'Santé financière', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
-  const catIcons: Record<string, string> = { travaux: '🏗', procedures: '⚖️', finances: '💰', diags_privatifs: '🔍', diags_communs: '🏢' };
+  const aslPresentSynth = ((rapport as Record<string, unknown>).vie_asl as { present?: boolean } | undefined)?.present === true;
+  const catLabels: Record<string, string> = {
+    // Copropriété
+    travaux: 'État des travaux', procedures: 'Risques juridiques', finances: 'Santé financière', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs',
+    // Maison hors copro
+    perf_energetique: 'Performance énergétique', diags_securite: 'Diagnostics & sécurité', assainissement_risques: 'Assainissement & risques', travaux_bati: 'Travaux & bâti', juridique: aslPresentSynth ? 'ASL & lotissement' : 'Juridique',
+  };
+  const catIcons: Record<string, string> = {
+    travaux: '🏗', procedures: '⚖️', finances: '💰', diags_privatifs: '🔍', diags_communs: '🏢',
+    perf_energetique: '⚡', diags_securite: '🔍', assainissement_risques: '💧', travaux_bati: '🏗', juridique: aslPresentSynth ? '🏘' : '⚖️',
+  };
   const getCatColor = (pct: number) => pct >= 80 ? '#1D9E75' : pct >= 60 ? '#BA7517' : '#E24B4A';
   const getCatBg = (pct: number) => pct >= 80 ? '#EAF3DE' : pct >= 60 ? '#FAEEDA' : '#FCEBEB';
 
@@ -925,9 +934,11 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
                 const diagsCommunsPresent = rapport.diagnostics && rapport.diagnostics.some(
                   (d: Record<string, unknown>) => d.perimetre === 'parties_communes'
                 );
+                const anyDiagPresent = rapport.diagnostics && rapport.diagnostics.length > 0;
                 const isFauxZero =
                   (key === 'diags_privatifs' && isZero && diagsPrivatifsPresent) ||
-                  (key === 'diags_communs' && isZero && diagsCommunsPresent);
+                  (key === 'diags_communs' && isZero && diagsCommunsPresent) ||
+                  (key === 'diags_securite' && isZero && anyDiagPresent);
                 const pct = Math.round((c.note / c.note_max) * 100);
                 const color = isFauxZero ? '#64748b' : (isZero ? '#94a3b8' : getCatColor(pct));
                 const bg = isFauxZero ? '#f1f5f9' : (isZero ? '#f8fafc' : getCatBg(pct));
@@ -3643,6 +3654,124 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         );
       })()}
 
+      {/* ════════ SECTIONS MAISON (hors copro) ════════ */}
+
+      {/* ── Assainissement (maison) ── */}
+      {rapport.type_bien === 'maison' && (() => {
+        const assain = (rapport as Record<string, unknown>).assainissement as { present?: boolean; type_reseau?: string; conforme?: boolean | null; observations?: string } | undefined;
+        if (!assain?.present) return null;
+        const collectif = assain.type_reseau === 'collectif';
+        const nonConforme = assain.conforme === false;
+        return (
+          <AccordionSection
+            title="Assainissement" sub="Réseau · conformité" icon="💧"
+            status={nonConforme ? 'alert' : 'neutral'}
+            badge={collectif ? "Tout-à-l'égout" : nonConforme ? 'Non conforme' : assain.conforme === true ? 'Conforme' : 'Non collectif'}
+            defaultOpen={allOpen || nonConforme}>
+            <AslRow label="Type de réseau" value={collectif ? "Collectif (tout-à-l'égout)" : assain.type_reseau === 'non_collectif' ? 'Non collectif (fosse / micro-station)' : '—'} />
+            {!collectif && (
+              <AslRow label="Conformité" value={nonConforme ? 'Non conforme' : assain.conforme === true ? 'Conforme' : 'Non précisée'} valueColor={nonConforme ? '#dc2626' : assain.conforme === true ? '#16a34a' : undefined} />
+            )}
+            {assain.observations && <AslRow label="Observations" value={safeStr(assain.observations)} alt />}
+            {nonConforme && (
+              <div style={{ marginTop: 10, padding: '11px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, fontSize: 12.5, color: '#991b1b', lineHeight: 1.55 }}>
+                ⚠️ Une installation d'assainissement non conforme doit généralement être mise aux normes <strong>sous 1 an après la vente</strong>. Le coût (plusieurs milliers d'euros) peut être un levier de négociation — à chiffrer avec le vendeur.
+              </div>
+            )}
+          </AccordionSection>
+        );
+      })()}
+
+      {/* ── Servitudes & urbanisme ── */}
+      {(() => {
+        const serv = (((compromis as Record<string, unknown> | null)?.servitudes) as Array<Record<string, unknown>>) || [];
+        if (!Array.isArray(serv) || serv.length === 0) return null;
+        return (
+          <AccordionSection
+            title="Servitudes & urbanisme" sub="Droits et contraintes grevant le bien" icon="🔗"
+            status="neutral" badge={`${serv.length} servitude${serv.length > 1 ? 's' : ''}`}
+            defaultOpen={allOpen}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {serv.map((sv, i) => (
+                <div key={i} style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 3, textTransform: 'capitalize' as const }}>{safeStr(sv.type) || 'Servitude'}</div>
+                  {!!sv.description && <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{safeStr(sv.description)}</div>}
+                  {!!sv.impact_acheteur && <div style={{ fontSize: 12.5, color: '#b45309', marginTop: 5 }}>👉 {safeStr(sv.impact_acheteur)}</div>}
+                </div>
+              ))}
+            </div>
+          </AccordionSection>
+        );
+      })()}
+
+      {/* ── Travaux réalisés (historique entreprise) ── */}
+      {rapport.type_bien === 'maison' && (() => {
+        type HistT = { present?: boolean; entreprise?: { nom?: string; siret?: string; contact?: string; assurance_decennale?: string }; travaux?: Array<{ poste?: string; description?: string; montant?: number | null; date?: string }>; montant_total?: number | null; date_plus_recente?: string; garantie_decennale_possible?: boolean };
+        const hist = (rapport as Record<string, unknown>).historique_travaux as HistT | undefined;
+        // Pas d'historique : encart d'invitation (uniquement maison)
+        if (!hist?.present) {
+          return (
+            <div style={{ padding: '14px 16px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 12, fontSize: 13, color: '#075985', lineHeight: 1.6, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>🛠</span>
+              <span>Aucun document de travaux détecté. N'hésitez pas à demander au propriétaire si des travaux d'entretien ou de rénovation ont été réalisés (toiture, chauffage, isolation, électricité…). S'ils sont documentés (devis, factures), ils peuvent <strong>améliorer la note</strong>.</span>
+            </div>
+          );
+        }
+        const ent = hist.entreprise || {};
+        const travaux = Array.isArray(hist.travaux) ? hist.travaux : [];
+        return (
+          <AccordionSection
+            title="Travaux réalisés" sub="Entreprise · travaux · garantie décennale" icon="🛠"
+            status="neutral" badge={hist.date_plus_recente ? `Depuis ${safeStr(hist.date_plus_recente)}` : 'Documenté'}
+            defaultOpen={allOpen}>
+            {/* Fiche entreprise */}
+            {(ent.nom || ent.siret || ent.contact || ent.assurance_decennale) && (
+              <>
+                <SectionTitle emoji="🏢" text="Entreprise" />
+                <div style={{ border: '0.5px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                  {ent.nom && <AslRow label="Nom" value={safeStr(ent.nom)} />}
+                  {ent.siret && <AslRow label="SIRET" value={safeStr(ent.siret)} alt />}
+                  {ent.contact && <AslRow label="Contact" value={safeStr(ent.contact)} />}
+                  {ent.assurance_decennale && <AslRow label="Assurance décennale" value={safeStr(ent.assurance_decennale)} alt />}
+                </div>
+              </>
+            )}
+            {/* Liste des travaux */}
+            {travaux.length > 0 && (
+              <>
+                <SectionTitle emoji="🔧" text="Travaux" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {travaux.map((t, i) => (
+                    <div key={i} style={{ padding: '11px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', textTransform: 'capitalize' as const }}>{safeStr(t.poste) || 'Travaux'}</div>
+                        {t.description && <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2, lineHeight: 1.45 }}>{safeStr(t.description)}</div>}
+                        {t.date && <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 3 }}>{safeStr(t.date)}</div>}
+                      </div>
+                      {typeof t.montant === 'number' && t.montant > 0 && (
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af', whiteSpace: 'nowrap' as const }}>{t.montant.toLocaleString('fr-FR')} €</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {typeof hist.montant_total === 'number' && hist.montant_total > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: 10, marginTop: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#1e3a5f' }}>Montant total des travaux</span>
+                <span style={{ fontSize: 17, fontWeight: 700, color: '#1e40af' }}>{hist.montant_total.toLocaleString('fr-FR')} €</span>
+              </div>
+            )}
+            {/* Garantie décennale */}
+            {hist.garantie_decennale_possible && (
+              <div style={{ marginTop: 10, padding: '12px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, fontSize: 12.5, color: '#166534', lineHeight: 1.55 }}>
+                🛡️ Ces travaux datant de moins de 10 ans, une <strong>garantie décennale peut encore courir</strong> et se transmettre à vous en tant qu'acheteur. <strong>À confirmer auprès de l'entreprise ou de l'artisan</strong> (attestation d'assurance).
+              </div>
+            )}
+          </AccordionSection>
+        );
+      })()}
+
       {/* ── COMPROMIS ── */}
       {(compromisDoc || compromis) && (
         <AccordionSection
@@ -3895,7 +4024,7 @@ function getDiagsEssentielsManquants(rapport: Record<string, unknown>): { label:
   const docsManquants = Array.isArray(rapport.documents_manquants) ? (rapport.documents_manquants as string[]) : [];
   const diagItems = docsManquants
     .filter(s => typeof s === 'string' && /DPE|ERP|risques|carrez|électr|electr|amiante|plomb|crep|audit|assainiss/i.test(s))
-    .map(s => ({ label: s, tooltip: null as string | null }));
+    .map(s => ({ label: s, tooltip: /audit/i.test(s) ? "L'audit énergétique est obligatoire pour vendre une maison classée F ou G depuis avril 2023, et classée E depuis janvier 2025. Il détaille les travaux de rénovation à prévoir et leur coût estimé." : null as string | null }));
   if (diagItems.length > 0) return diagItems;
 
   const diags = Array.isArray(rapport.diagnostics) ? (rapport.diagnostics as Array<Record<string, unknown>>) : [];
