@@ -1342,10 +1342,31 @@ function MesDossiersPro() {
 
   const totalAnalyses = folders.reduce((sum, f) => sum + (f.analyses_count || 0), 0);
 
+  // Permissions dossier : créateur OU responsable/co-responsable. Solo (hors agence) = tous ses dossiers.
+  const myRole = agenceMembers.find(m => m.user_id === currentUserId)?.role || null;
+  const isManager = myRole === 'responsable' || myRole === 'co_responsable';
+  const canManageFolder = (folder: ProFolder) => {
+    if (!agenceId) return true; // pro solo : tous les dossiers sont les siens
+    return folder.user_id === currentUserId || isManager;
+  };
+
   async function handleDelete(folder: ProFolder) {
+    if (!canManageFolder(folder)) {
+      setArchiveToast({ message: 'Ce dossier a été créé par un autre membre, vous ne pouvez pas le supprimer.', type: 'error' });
+      setTimeout(() => setArchiveToast(null), 4000);
+      setFolderToDelete(null);
+      return;
+    }
     try {
-      const { error } = await supabase.from('pro_folders').delete().eq('id', folder.id);
+      const { data, error } = await supabase.from('pro_folders').delete().eq('id', folder.id).select('id');
       if (error) throw error;
+      // Filet de sécurité : la RLS peut filtrer la ligne sans renvoyer d'erreur (0 ligne touchée)
+      if (!data || data.length === 0) {
+        setArchiveToast({ message: 'Suppression impossible : ce dossier ne vous appartient pas.', type: 'error' });
+        setTimeout(() => setArchiveToast(null), 4000);
+        setFolderToDelete(null);
+        return;
+      }
       setFolderToDelete(null);
       await loadFolders();
     } catch (e: any) {
@@ -1354,13 +1375,27 @@ function MesDossiersPro() {
   }
 
   async function handleArchiveToggle(folder: ProFolder) {
+    if (!canManageFolder(folder)) {
+      setArchiveToast({ message: 'Ce dossier a été créé par un autre membre, vous ne pouvez pas l\'archiver.', type: 'error' });
+      setTimeout(() => setArchiveToast(null), 4000);
+      setFolderToArchive(null);
+      throw new Error('forbidden');
+    }
     const willArchive = !folder.archived_at;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('pro_folders')
         .update({ archived_at: willArchive ? new Date().toISOString() : null })
-        .eq('id', folder.id);
+        .eq('id', folder.id)
+        .select('id');
       if (error) throw error;
+      // Filet de sécurité : la RLS peut filtrer la ligne sans renvoyer d'erreur (0 ligne touchée)
+      if (!data || data.length === 0) {
+        setArchiveToast({ message: 'Action impossible : ce dossier ne vous appartient pas.', type: 'error' });
+        setTimeout(() => setArchiveToast(null), 4000);
+        setFolderToArchive(null);
+        throw new Error('no-rows');
+      }
       await loadFolders();
       setFolderToArchive(null);
       setArchiveToast({
@@ -1369,8 +1404,10 @@ function MesDossiersPro() {
       });
       setTimeout(() => setArchiveToast(null), 3000);
     } catch (e: any) {
-      setArchiveToast({ message: 'Erreur : ' + (e.message || 'inconnue'), type: 'error' });
-      setTimeout(() => setArchiveToast(null), 4000);
+      if (e?.message !== 'forbidden' && e?.message !== 'no-rows') {
+        setArchiveToast({ message: 'Erreur : ' + (e.message || 'inconnue'), type: 'error' });
+        setTimeout(() => setArchiveToast(null), 4000);
+      }
       throw e; // remonte l'erreur pour que le modal sache
     }
   }
@@ -1567,6 +1604,7 @@ function MesDossiersPro() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}>
                 <FolderCard folder={f}
+                  canManage={canManageFolder(f)}
                   onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
                   onDelete={() => setFolderToDelete(f)}
                   onArchiveToggle={() => setFolderToArchive(f)} />
@@ -1684,7 +1722,7 @@ function MesDossiersPro() {
 /* ══════════════════════════════════════════
    FOLDER CARD — Carte d'un dossier dans la liste
 ══════════════════════════════════════════ */
-function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: ProFolder; onClick: () => void; onDelete: () => void; onArchiveToggle: () => void }) {
+function FolderCard({ folder, onClick, onDelete, onArchiveToggle, canManage = true }: { folder: ProFolder; onClick: () => void; onDelete: () => void; onArchiveToggle: () => void; canManage?: boolean }) {
   const hasAddress = folder.property_address || folder.property_city;
   const isArchived = !!folder.archived_at;
   const analysesCount = folder.analyses_count || 0;
@@ -1717,7 +1755,8 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
         el.style.transform = 'translateY(0)';
       }}>
 
-      {/* Boutons d'action (apparaissent au hover) */}
+      {/* Boutons d'action (apparaissent au hover) — uniquement si l'utilisateur peut gérer ce dossier */}
+      {canManage && (
       <div style={{ position: 'absolute' as const, top: 10, right: 10, display: 'flex', gap: 6, opacity: 0, transition: 'opacity 0.15s', zIndex: 2 }} className="folder-actions-btns">
         <button onClick={e => { e.stopPropagation(); onArchiveToggle(); }} title={isArchived ? 'Restaurer' : 'Archiver ce dossier'}
           style={{ width: 28, height: 28, borderRadius: 7, background: isArchived ? '#f0fdf4' : '#fff7ed', border: `1px solid ${isArchived ? '#bbf7d0' : '#fed7aa'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1728,6 +1767,7 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
           <Trash2 size={13} style={{ color: '#dc2626' }} />
         </button>
       </div>
+      )}
 
       <style>{`
         div:hover > .folder-actions-btns { opacity: 1 !important; }
