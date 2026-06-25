@@ -275,7 +275,10 @@ export default function RapportPrintPage() {
                   {Object.entries(rapport.categories).map(([key, cat]) => {
                     const pct = (cat.note / cat.note_max) * 100;
                     const c = pct >= 80 ? '#16a34a' : pct >= 55 ? '#d97706' : '#dc2626';
-                    const labels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diag. privatifs', diags_communs: 'Diag. communs' };
+                    const labels: Record<string, string> = {
+                      travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diag. privatifs', diags_communs: 'Diag. communs',
+                      perf_energetique: 'Perf. énergétique', diags_securite: 'Diag. & sécurité', assainissement_risques: 'Assainissement', travaux_bati: 'Travaux & bâti', juridique: 'Juridique',
+                    };
                     return (
                       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 11, color: '#64748b', width: 150, flexShrink: 0 }}>{labels[key] || key}</span>
