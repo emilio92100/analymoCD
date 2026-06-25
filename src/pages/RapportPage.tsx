@@ -11,7 +11,7 @@ import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
   Shield, FileText, FileSignature, Gavel, Info, Star, Paperclip,
   RefreshCw, ChevronDown, Copy, Check,
-  Home, TrendingDown, Upload, X, Clock,
+  Home, TrendingDown, Upload, X, Clock, Landmark,
 } from 'lucide-react';
 
 /* ══════════════════════════════════
@@ -3904,6 +3904,219 @@ function getDiagsEssentielsManquants(rapport: Record<string, unknown>): { label:
 /* ══════════════════════════════════
    ONGLET DOCUMENTS
 ══════════════════════════════════ */
+/* ══════════════════════════════════
+   ONGLET ASL / AFUL (analyse complète)
+   Affiche vie_asl.structures[] (une carte par association) ou,
+   si une ASL est seulement mentionnée sans document, un mode dégradé.
+══════════════════════════════════ */
+function AslRow({ label, value, alt, valueColor }: { label: string; value: string; alt?: boolean; valueColor?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 16px', background: alt ? '#f8fafc' : '#fff', borderBottom: '1px solid #f1f5f9' }}>
+      <span style={{ fontSize: 13, color: '#64748b', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: valueColor || '#0f2d3d', textAlign: 'right' as const, wordBreak: 'break-word' as const }}>{value}</span>
+    </div>
+  );
+}
+
+function AslBandeau({ emoji, bg, border, color, text }: { emoji: string; bg: string; border: string; color: string; text: string }) {
+  return (
+    <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: '12px 16px', display: 'flex', gap: 10, fontSize: 13, color, lineHeight: 1.6 }}>
+      <span style={{ flexShrink: 0 }}>{emoji}</span><span>{text}</span>
+    </div>
+  );
+}
+
+function TabAsl({ rapport }: { rapport: RapportData }) {
+  const r = rapport as Record<string, unknown>;
+  const vieAsl = (r.vie_asl as Record<string, unknown>) || null;
+  const aslMention = (r.asl_mentionnee as Record<string, unknown>) || null;
+  const structures = (vieAsl && Array.isArray(vieAsl.structures)) ? (vieAsl.structures as Record<string, unknown>[]) : [];
+  const present = !!(vieAsl && vieAsl.present) && structures.length > 0;
+  const mentionnee = !!(aslMention && aslMention.detectee);
+
+  const natureLabel = (n: unknown): string => n === 'aful' ? 'AFUL' : n === 'union' ? "Union d'ASL" : 'ASL';
+  const natureLong = (n: unknown): string => n === 'aful' ? 'Association Foncière Urbaine Libre' : n === 'union' ? "Union d'associations syndicales" : 'Association Syndicale Libre';
+  const gestionLabel = (g: unknown): string | null => g === 'professionnel' ? 'Professionnelle' : g === 'benevole' ? 'Bénévole' : null;
+  const eur = (v: unknown): string | null => (v == null || v === '' || isNaN(Number(v))) ? null : `${Number(v).toLocaleString('fr-FR')} €`;
+  const ouiNon = (v: unknown): string | null => v === true ? 'Oui' : v === false ? 'Non' : null;
+
+  if (!present && mentionnee) {
+    const statut = String(aslMention?.statut || '');
+    const enCreation = statut === 'en_creation';
+    return (
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px' }}>
+        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '16px 18px', display: 'flex', gap: 12 }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>{enCreation ? '🏗️' : '⚠️'}</span>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#9a3412', marginBottom: 6 }}>
+              {enCreation ? "Création d'une ASL votée en assemblée" : "Une ASL / AFUL est mentionnée, mais aucun document n'a été fourni"}
+            </div>
+            <div style={{ fontSize: 14, color: '#7c2d12', lineHeight: 1.7 }}>
+              {enCreation
+                ? "Les documents évoquent la création prochaine d'une association (ASL / AFUL). Anticipez de futures cotisations et des règles d'urbanisme propres au lotissement, encore à définir."
+                : "Le bien dépend d'une association syndicale (gestion de voirie, espaces verts, équipements communs) en plus de la copropriété. Les documents de cette association n'ont pas été analysés."}
+            </div>
+            {!enCreation && (
+              <div style={{ marginTop: 12, fontSize: 13, color: '#7c2d12' }}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>À réclamer au vendeur :</div>
+                <div style={{ lineHeight: 1.9 }}>• Statuts de l'ASL / AFUL et leur date de publication<br />• Cahier des charges ou règlement de lotissement<br />• PV des dernières assemblées et appels de cotisations<br />• Montant de la cotisation annuelle rattachée au lot</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!present) {
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>🏘️</div>
+        <p style={{ fontSize: 14 }}>Aucune association syndicale (ASL / AFUL) détectée dans cette analyse.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {structures.map((s, idx) => {
+        const nat = s.nature_structure;
+        const fin = (s.finances as Record<string, unknown>) || {};
+        const gouv = (s.gouvernance as Record<string, unknown>) || {};
+        const conf = (s.conformite_2004 as Record<string, unknown>) || {};
+        const cahier = (s.cahier_charges as Record<string, unknown>) || {};
+        const contraintes = Array.isArray(cahier.contraintes_urbanisme) ? cahier.contraintes_urbanisme as Record<string, unknown>[] : [];
+        const servitudes = Array.isArray(cahier.servitudes) ? cahier.servitudes as Record<string, unknown>[] : [];
+        const equipements = Array.isArray(s.equipements_lourds) ? s.equipements_lourds as unknown[] : [];
+        const travaux = Array.isArray(s.travaux) ? s.travaux as Record<string, unknown>[] : [];
+        const vigilances = Array.isArray(s.points_vigilance) ? s.points_vigilance as unknown[] : [];
+        const autres = Array.isArray(s.autres_notables) ? s.autres_notables as unknown[] : [];
+        const gestion = gestionLabel(gouv.gestion);
+        const conforme = conf.conforme;
+        const confOk = conforme === true;
+        const confKo = conforme === false;
+        const confBg = confOk ? '#f0fdf4' : confKo ? '#fef2f2' : '#f8fafc';
+        const confBorder = confOk ? '#bbf7d0' : confKo ? '#fecaca' : '#e2e8f0';
+        const confText = confOk ? '#166534' : confKo ? '#991b1b' : '#64748b';
+        const hasGouv = gouv.president || gestion || gouv.gestionnaire || s.cle_repartition || s.nb_membres != null;
+        const allVigilances = [...vigilances, ...autres];
+
+        const kpis: { label: string; value: string; sub?: string; emoji?: string }[] = [];
+        if (fin.cotisation_annuelle_lot != null) kpis.push({ label: 'Cotisation annuelle', value: eur(fin.cotisation_annuelle_lot) || '—', sub: fin.periodicite ? `par lot · ${fin.periodicite}` : 'par lot', emoji: '💶' });
+        if (fin.budget_global != null) kpis.push({ label: 'Budget global', value: eur(fin.budget_global) || '—', emoji: '📊' });
+        if (fin.fonds_reserve != null) kpis.push({ label: 'Fonds de réserve', value: eur(fin.fonds_reserve) || '—', emoji: '🏦' });
+
+        return (
+          <div key={idx} style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: '#0f2d3d', borderRadius: 12, padding: '14px 18px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 5 }}>🏘️ {natureLabel(nat).toUpperCase()}</div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>{(s.nom_affiche as string) || natureLong(nat)}</div>
+              {s.objet ? <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>{String(s.objet)}</div> : null}
+            </div>
+
+            {kpis.length > 0 && <KpiBand items={kpis} />}
+
+            {hasGouv && (
+              <div>
+                <SectionTitle emoji="🤝" text="Gouvernance & répartition" />
+                <div style={{ border: '1px solid #edf2f7', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                  {gouv.president ? <AslRow label="Président" value={String(gouv.president)} /> : null}
+                  {gestion ? <AslRow label="Gestion" value={gestion} alt /> : null}
+                  {gouv.gestionnaire ? <AslRow label="Gestionnaire" value={String(gouv.gestionnaire)} /> : null}
+                  {s.cle_repartition ? <AslRow label="Clé de répartition" value={String(s.cle_repartition)} alt /> : null}
+                  {s.nb_membres != null ? <AslRow label="Nombre de membres" value={`${s.nb_membres} colotis`} /> : null}
+                </div>
+              </div>
+            )}
+
+            {(conforme != null || conf.date_creation || conf.statuts_publies != null) && (
+              <div style={{ background: confBg, border: `1px solid ${confBorder}`, borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '11px 16px', borderBottom: `1px solid ${confBorder}`, fontSize: 13, fontWeight: 600, color: confText, display: 'flex', gap: 8 }}>
+                  <span>{confOk ? '✅' : confKo ? '⚠️' : 'ℹ️'}</span><span>Conformité à l'ordonnance de 2004</span>
+                </div>
+                {conf.date_creation ? <AslRow label="Date de création" value={String(conf.date_creation)} /> : null}
+                {ouiNon(conf.statuts_publies) ? <AslRow label="Statuts publiés" value={ouiNon(conf.statuts_publies)!} alt valueColor={conf.statuts_publies ? '#166534' : '#991b1b'} /> : null}
+                {conforme != null ? <AslRow label="Conforme" value={confOk ? 'Oui — recouvrement des cotisations sécurisé' : 'Non — recouvrement des cotisations fragilisé'} valueColor={confOk ? '#166534' : '#991b1b'} /> : null}
+              </div>
+            )}
+
+            {(fin.solde_vendeur != null && Number(fin.solde_vendeur) > 0) ? (
+              <AslBandeau emoji="⚠️" bg="#fff7ed" border="#fed7aa" color="#9a3412" text={`Solde vendeur de ${eur(fin.solde_vendeur)} à apurer avant la signature de l'acte authentique.`} />
+            ) : null}
+
+            {s.voirie_retrocession ? (
+              <AslBandeau emoji="🛣️" bg="#fff7ed" border="#fed7aa" color="#9a3412" text={String(s.voirie_retrocession)} />
+            ) : null}
+
+            {travaux.length > 0 && (
+              <div>
+                <SectionTitle emoji="🔧" text="Travaux votés" />
+                <div style={{ border: '1px solid #edf2f7', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                  {travaux.map((t, i) => {
+                    const cl = t.charge === 'acquereur' ? 'acquéreur' : t.charge === 'vendeur' ? 'vendeur' : null;
+                    const cc = t.charge === 'acquereur' ? '#dc2626' : t.charge === 'vendeur' ? '#16a34a' : '#64748b';
+                    return (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 16px', borderBottom: i < travaux.length - 1 ? '1px solid #f1f5f9' : 'none', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                        <span style={{ fontSize: 13, color: '#0f2d3d' }}>{String(t.label || '')}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0f2d3d', whiteSpace: 'nowrap' as const }}>
+                          {eur(t.montant) || ''}{t.echeance ? <span style={{ color: '#64748b' }}> · {String(t.echeance)}</span> : null}{cl ? <span style={{ color: cc }}> · {cl}</span> : null}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {contraintes.length > 0 && (
+              <div>
+                <SectionTitle emoji="📐" text="Contraintes d'urbanisme (au-delà du PLU)" />
+                <div style={{ border: '1px solid #edf2f7', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                  {contraintes.map((c, i) => (
+                    <div key={i} style={{ padding: '11px 16px', borderBottom: i < contraintes.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 13, color: '#0f2d3d', background: i % 2 === 0 ? '#fff' : '#f8fafc', lineHeight: 1.6 }}>
+                      {c.label ? <span style={{ fontWeight: 600 }}>{String(c.label)}</span> : null}{c.label && c.detail ? ' — ' : ''}{c.detail ? String(c.detail) : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {servitudes.length > 0 && (
+              <div>
+                <SectionTitle emoji="🔗" text="Servitudes" />
+                <div style={{ border: '1px solid #edf2f7', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                  {servitudes.map((sv, i) => (
+                    <AslRow key={i} label={String(sv.type || 'Servitude')} value={String(sv.description || '—')} alt={i % 2 === 1} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {equipements.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                {equipements.map((e, i) => (
+                  <span key={i} style={{ fontSize: 12, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', padding: '5px 12px', borderRadius: 99 }}>{typeof e === 'string' ? e : String((e as Record<string, unknown>).label || (e as Record<string, unknown>).type || '')}</span>
+                ))}
+              </div>
+            )}
+
+            {allVigilances.length > 0 && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 16px', borderBottom: '1px solid #fecaca', fontSize: 12, fontWeight: 600, color: '#991b1b', letterSpacing: '0.04em' }}>POINTS DE VIGILANCE</div>
+                {allVigilances.map((p, i) => (
+                  <div key={i} style={{ padding: '11px 16px', borderBottom: i < allVigilances.length - 1 ? '1px solid #fecaca' : 'none', fontSize: 13, color: '#0f2d3d', display: 'flex', gap: 9, lineHeight: 1.6 }}>
+                    <span style={{ color: '#dc2626', fontWeight: 700, flexShrink: 0 }}>⚠</span><span>{String(p)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportData; onComplement?: () => void; isShared?: boolean }) {
 
   const docTypeLabel: Record<string, string> = {
@@ -4616,13 +4829,15 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
     documents_analyses: (r.documents_analyses as Array<Record<string, unknown>>) || [],
     dpe_recommandations: (r.dpe_recommandations as Record<string, unknown>) ?? null,
     pre_etat_date: (r.pre_etat_date as Record<string, unknown>) ?? null,
+    vie_asl: (r.vie_asl as Record<string, unknown>) ?? null,
+    asl_mentionnee: (r.asl_mentionnee as Record<string, unknown>) ?? null,
   };
 }
 
 /* ══════════════════════════════════
    PAGE PRINCIPALE
 ══════════════════════════════════ */
-export type TabId = 'synthese' | 'copropriete' | 'logement' | 'procedures' | 'compromis' | 'documents';
+export type TabId = 'synthese' | 'copropriete' | 'asl' | 'logement' | 'procedures' | 'compromis' | 'documents';
 
 /* ══════════════════════════════════
    COMPOSANT RÉUTILISABLE — pour ExemplePage
@@ -4642,9 +4857,14 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
   const logementLabel = rapport.type_bien === 'maison' ? 'Ma maison' : 'Logement';
   const logementIcon = rapport.type_bien === 'maison' ? <Home size={14} /> : <Building2 size={14} />;
 
+  const aslDataEx = (rapport as Record<string, unknown>).vie_asl as Record<string, unknown> | null;
+  const aslMentionEx = (rapport as Record<string, unknown>).asl_mentionnee as Record<string, unknown> | null;
+  const hasAslStructEx = !!(aslDataEx && aslDataEx.present && Array.isArray(aslDataEx.structures) && (aslDataEx.structures as unknown[]).length > 0);
+  const hasAslEx = hasAslStructEx || !!(aslMentionEx && aslMentionEx.detectee);
   const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string }[] = [
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
+    ...(hasAslEx ? [{ id: 'asl' as TabId, label: 'ASL', icon: <Landmark size={14} />, dotColor: hasAslStructEx ? '#0f766e' : '#f97316' }] : []),
     { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
     { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
     { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: '#94a3b8' },
@@ -4681,6 +4901,7 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
         <div key={activeTab} className="rapport-tab-content">
           {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'asl' && isComplete && <SafeTabBoundary><TabAsl rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
           {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={onComplement} isShared={true} /></SafeTabBoundary>}
@@ -4856,9 +5077,14 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   );
 
   // Onglets selon type de bien
+  const aslDataMain = (rapport as Record<string, unknown>).vie_asl as Record<string, unknown> | null;
+  const aslMentionMain = (rapport as Record<string, unknown>).asl_mentionnee as Record<string, unknown> | null;
+  const hasAslStructMain = !!(aslDataMain && aslDataMain.present && Array.isArray(aslDataMain.structures) && (aslDataMain.structures as unknown[]).length > 0);
+  const hasAslMain = hasAslStructMain || !!(aslMentionMain && aslMentionMain.detectee);
   const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string; badge?: number }[] = [
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
+    ...(hasAslMain ? [{ id: 'asl' as TabId, label: 'ASL', icon: <Landmark size={14} />, dotColor: hasAslStructMain ? '#0f766e' : '#f97316' }] : []),
     { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
     { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
     ...(hasCompromis ? [{ id: 'compromis' as TabId, label: 'Compromis', icon: <FileSignature size={14} />, dotColor: '#0f2d3d' }] : []),
@@ -4924,6 +5150,7 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
         <div key={activeTab} className="rapport-tab-content">
           {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} isShared={isShared} hideVerimoBranding={hideVerimoBranding} /></SafeTabBoundary>}
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'asl' && isComplete && <SafeTabBoundary><TabAsl rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
           {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'compromis' && isComplete && hasCompromis && <SafeTabBoundary><TabCompromis rapport={rapport} isShared={isShared} hideVerimoBranding={hideVerimoBranding} /></SafeTabBoundary>}
