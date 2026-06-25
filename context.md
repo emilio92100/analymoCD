@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 25 juin 2026
+# VERIMO — Contexte projet — 26 juin 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -377,6 +377,8 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 📐 Règles de notation — Score /20
 
+**Appartement / Copropriété** (`recalculerCategories`, inchangé) :
+
 | Catégorie | Max |
 |-----------|-----|
 | Travaux | 5 pts |
@@ -385,6 +387,19 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 | Diagnostics privatifs | 4 pts |
 | Diagnostics communs | 3 pts |
 | **TOTAL** | **20 pts** |
+
+**Maison hors copro / ASL** (`recalculerCategoriesMaison`, ajouté 26 juin) :
+
+| Catégorie | Max |
+|-----------|-----|
+| Performance énergétique | 5 pts |
+| Diagnostics & sécurité | 5 pts |
+| Assainissement & risques | 4 pts |
+| Travaux & bâti | 3 pts |
+| Juridique (ou « ASL & lotissement » si en ASL) | 3 pts |
+| **TOTAL** | **20 pts** |
+
+> Branche `if (!isCopro) return recalculerCategoriesMaison(...)` en tête de `recalculerCategories`. Le chemin copro est **strictement inchangé**. Différence clé : pour la maison, le **score global est recalculé** = somme des 5 catégories (la copro, elle, conserve le score du LLM). Détail complet dans la section dédiée plus bas.
 
 ---
 
@@ -481,6 +496,47 @@ alter table analyses add column if not exists map_resultats jsonb;
 ---
 
 
+## 🏡 Scoring MAISON hors copro / ASL — LIVRÉ (26 juin 2026) ⭐⭐⭐
+
+> Une maison ne se note plus comme un appartement. Avant, le score /20 était 100 % copro-centré : une maison hors copro plafonnait ~17/20 (Finances copro 2/4 + Diags communs 2/3 par défaut), et l'ASL n'était pas notée. Désormais une **grille dédiée maison** s'applique dès que `type_bien` ≠ copro (`type_bien` ∉ {appartement, maison_copro}). **La copro est 100 % inchangée** (branche `if (!isCopro)` en tête de `recalculerCategories`). Livré en 3 étapes.
+
+### Grille maison — 5 catégories /20 (toutes pénalités finales, jamais de 0,3)
+- **1. Performance énergétique (5)** : note directe de la classe DPE — A/B→5, C→4,5, D→4, E→3, F→2, G→1. Audit énergétique absent si E/F/G → −1. Aucun DPE → 0.
+- **2. Diagnostics & sécurité (5)** : élec/gaz/amiante/plomb/termites. Part de 5. Diag obligatoire manquant −0,75 (selon l'année). Anomalie mineure −0,5, grave −2 (élec dangereuse, gaz A2, amiante/plomb dégradé), **termites −3**. Plancher 1 si ≥1 diag, 0 si aucun. (Garde-fou : « aucune anomalie » sur l'élec ne pénalise pas — guard `electroOk`.)
+- **3. Assainissement & risques (4)** : non collectif non conforme −1,5 ; non collectif sans contrôle SPANC −0,5 ; ERP travaux prescrits −0,5. Collectif (tout-à-l'égout) = aucun malus. Aucune donnée = neutre 2/4.
+- **4. Travaux & bâti (3)** : base neutre 2. Travaux majeurs récents documentés +1 (toiture/chauffage/isolation…), autres +0,5. Garantie décennale possible +0,5 (« à confirmer »). État dégradé déclaré −1. Aucun doc → reste 2 + encart d'invitation.
+- **5. Juridique (3)** — devient **« ASL & lotissement »** si en ASL. Hors ASL : servitude contraignante −0,5 (max −1,5), urbanisme fort (ABF/zone protégée) −0,5, procédure −1 à −2. En ASL : statuts non publiés (conformité 2004) −1, voirie non rétrocédée −1, contraintes cahier des charges −0,5. Cotisation ASL affichée mais **jamais pénalisée** par son montant.
+- **Score global maison = somme des 5 catégories** (arrondi 0,5). ⚠️ C'est la **différence avec la copro**, où le score reste celui du LLM et seules les catégories sont recalculées. Pour la maison, score ET catégories sont recalculés → cohérence garantie.
+
+### Étape 1 — `analyser-run/index.ts` (Edge Function), 100 % additif
+- Nouveau type de doc **`HISTORIQUE_TRAVAUX`** (devis / facture / attestation d'entreprise) : taxonomie de détection + schéma JSON + règles en **mode document** ; ajouté à l'enum `documents_analyses` en **mode complete**.
+- Nouveaux champs au JSON complet : **`historique_travaux { present, entreprise{nom,siret,contact,assurance_decennale}, travaux[], montant_total, date_plus_recente, garantie_decennale_possible }`** et **`assainissement { present, type_reseau:collectif|non_collectif, conforme, date_controle, observations }`** + règles d'extraction maison (assainissement, servitudes du compromis, garantie décennale < 10 ans « à confirmer »).
+- Fonction **`recalculerCategoriesMaison(rapport, _profil, anneeNum)`** insérée avant `recalculerCategories` + branche `if (!isCopro) return …`. Audit détecté via `documents_analyses` (AUDIT_ENERGETIQUE) ; ASSAINISSEMENT/AUDIT déjà dans l'enum docs (pas touché à l'enum `diagnostics[]`).
+- Validé : typecheck full-file 0 erreur (Deno stubbé), scénarios — maison parfaite→20, problèmes→5, ASL→16, mince→15,5.
+- ⚠️ **Redéploiement Supabase Studio manuel requis** (le push GitHub ne déploie pas les Edge Functions).
+
+### Étape 2 — Frontend rapport
+- **`RapportPage.tsx`** : libellés + icônes des 5 catégories maison dans la Synthèse (juridique → « ASL & lotissement » + icône 🏘 si `vie_asl.present`) ; garde-fou faux-zéro étendu à `diags_securite` ; tooltip « i » sur l'audit énergétique (texte E/F/G) ; **3 sections dans l'onglet « Ma maison »** — Assainissement (gated `type_bien==='maison'` + present), Servitudes & urbanisme (gated `compromis.servitudes.length>0`), Travaux réalisés (fiche entreprise + liste + montant total + bloc garantie décennale ; encart d'invitation si vide).
+- **`DocumentRenderer.tsx`** : fiche **`RendererHistoriqueTravaux`** (entreprise, SIRET, assurance décennale, travaux, garantie) + `case 'HISTORIQUE_TRAVAUX'` dans le switch. Sert l'analyse simple + la visionneuse admin (qui ouvre `/dashboard/rapport?id=…`).
+- **`RapportPrintPage.tsx`** : libellés catégories maison dans le PDF/print.
+
+### Étape 3 — Pédagogie
+- **`MethodePage.tsx`** (public, mot « IA » banni — respecté) : nav restructurée en 2 groupes — **Appartement · Copropriété** (contenu existant intact) et **Maison hors copro · ASL** (8 documents, 5 catégories avec pénalités, exemple concret pavillon→18,5). Bannières de groupe, en-têtes dans la nav latérale, scroll-spy adapté (ignore les en-têtes). 2 FAQ maison ajoutées.
+- **`Aide.tsx`** (dashboard, **partagé pro + particulier**) : bloc Notation — **bascule 🏢 Copropriété / 🏡 Maison · ASL** sur les onglets Bonus & Pénalités (données `penaltiesMaison`/`bonusesMaison`). L'onglet Échelle reste commun. Les 3 onglets existants (Échelle/Bonus/Pénalités) sont inchangés.
+
+### ⚠️ Ordre de déploiement (IMPÉRATIF)
+1. **Front d'abord** : pousser `RapportPage.tsx`, `DocumentRenderer.tsx`, `RapportPrintPage.tsx`, `MethodePage.tsx`, `Aide.tsx` sur GitHub → Vercel auto-deploy.
+2. **Ensuite seulement** : redéployer `analyser-run` dans Supabase Studio.
+- Ne JAMAIS déployer l'Edge Function avant le front : sinon une analyse maison produirait des clés de catégories (`perf_energetique`…) que le front ne saurait pas libeller (dégradation gracieuse, mais moche).
+
+### Reste à faire
+- Pousser les 5 fichiers front + redéployer `analyser-run`.
+- **Test E2E maison** : analyse complète d'une maison hors copro → 5 catégories maison + score = somme ; devis seul → fiche `HISTORIQUE_TRAVAUX` (pas « AUTRE ») ; maison en ASL → catégorie « ASL & lotissement » + onglet ASL.
+- Revue éditoriale du contenu public maison sur la page Méthode (formulations).
+
+---
+
+
 ## ⏳ Backlog — En attente
 
 ### 🔥 Priorité haute (avant lancement public Pro)
@@ -553,6 +609,14 @@ alter table analyses add column if not exists map_resultats jsonb;
 ## 📜 Historique condensé des sessions
 
 ### Sessions récentes (mai-juin 2026)
+
+- **Session 26 juin 2026 ⭐⭐⭐ : Scoring MAISON hors copro / ASL (étapes 1-3)**
+  - **Feature complète** — voir la section dédiée « 🏡 Scoring MAISON hors copro / ASL ». Grille maison à 5 catégories /20 (perf énergétique, diagnostics & sécurité, assainissement & risques, travaux & bâti, juridique/ASL), appliquée dès que `type_bien` ≠ copro. **Copro 100 % inchangée** (branche `if (!isCopro)`). Nouveauté vs copro : pour la maison, le **score global est recalculé** (= somme des 5 catégories), pas seulement les catégories.
+  - **Étape 1** (`analyser-run`) : nouveau type doc `HISTORIQUE_TRAVAUX` (devis/facture), champs `historique_travaux` + `assainissement`, fonction `recalculerCategoriesMaison`. 100 % additif, typecheck 0 erreur, scénarios validés (parfaite→20, problèmes→5, ASL→16). **À redéployer Supabase.**
+  - **Étape 2** (front rapport) : `RapportPage` (libellés catégories maison, 3 sections « Ma maison » : assainissement / servitudes / travaux+garantie décennale), `DocumentRenderer` (fiche `RendererHistoriqueTravaux`), `RapportPrintPage` (libellés PDF). **À pousser.**
+  - **Étape 3** (pédagogie) : `MethodePage` (nav en 2 groupes copro/maison + contenu maison complet, « IA » banni respecté), `Aide` (bascule 🏢 Copro / 🏡 Maison sur Bonus & Pénalités). **À pousser.**
+  - **Bug repéré & corrigé en cours de route** : faux positif « aucune anomalie » sur l'électricité (regex `/anomali/`) → guard `electroOk`. Décision : maison hors ASL → catégorie « Juridique » ; maison en ASL → « ASL & lotissement » (même clé `juridique`, libellé dynamique).
+  - ⚠️ **Ordre de déploiement impératif** : front d'abord (Vercel), PUIS `analyser-run` (Supabase). Jamais l'inverse.
 
 - **Session 25 juin 2026 ⭐⭐ : Support ASL / AFUL / Union d'ASL (Lots 1-3) + constat repo single-call**
   - **Feature ASL complète** — voir la section dédiée « 🏘️ Support ASL / AFUL / Union d'ASL ». Lot 1 (`analyser-run` : détection + extraction en modes document & complete, 5 ajouts additifs au prompt v7) ✅ poussé GitHub, **à redéployer Supabase** ; Lot 2 (`DocumentRenderer` : 2 fiches riches ASL_CHIFFRES/ASL_REGLES + 2 cas switch) ✅ poussé ; Lot 3 (`RapportPage` : onglet ASL conditionnel + `TabAsl` + mode dégradé, dans les 2 vues) ✅ livré, **à pousser**. **100 % additif** : un rapport sans ASL reste strictement identique à avant (aucun onglet ASL, aucun champ visible).
@@ -666,6 +730,9 @@ alter table analyses add column if not exists map_resultats jsonb;
 ---
 
 ## 🎯 Prochaine session — Actions prioritaires
+
+### 🚀 À DÉPLOYER — Scoring maison (session 26 juin)
+Ordre **impératif** : **1)** pousser les 5 fichiers front sur GitHub (`RapportPage.tsx`, `DocumentRenderer.tsx`, `RapportPrintPage.tsx`, `MethodePage.tsx`, `Aide.tsx`) → Vercel ; **2)** PUIS redéployer `analyser-run` dans Supabase Studio. Jamais l'inverse (sinon catégories maison non libellées au front). Détail : section « 🏡 Scoring MAISON ».
 
 ### 🔒 ÉTAT SÉCURITÉ (audit complet du 23 juin) ⭐⭐⭐
 **Solide :** RLS activée sur les 34 tables · webhooks Stripe signés · admin verrouillé (token+rôle) · aucun secret exposé (seule clé anon en dur = publique OK) · prix cohérents partout · tarifs pro non publics.
