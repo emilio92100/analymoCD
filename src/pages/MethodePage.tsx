@@ -241,6 +241,147 @@ const categories = [
   },
 ];
 
+// ════════ MAISON HORS COPRO / ASL ════════
+const docTypesMaison = [
+  {
+    id: 'm-dpe', emoji: '⚡', label: 'DPE — Diagnostic de Performance Énergétique',
+    what: "La classe énergétique de la maison (A à G). Pour une maison, c'est un poste de charges majeur et un enjeu réglementaire fort à la revente. La note de performance énergétique en découle directement.",
+    extracts: ['Classe énergétique (A à G) et consommation', "Émissions de gaz à effet de serre", "Estimation des coûts annuels d'énergie"],
+    priority: 'Indispensable', pc: '#16a34a', pb: '#f0fdf4', pb2: '#d1fae5',
+  },
+  {
+    id: 'm-ddt', emoji: '🔍', label: 'Diagnostics (électricité, gaz, amiante, plomb, termites, ERP)',
+    what: "L'ensemble des diagnostics de sécurité et de salubrité de la maison. Chacun couvre un risque précis. Un dossier complet sans anomalie renforce la note.",
+    extracts: ["Conformité de l'installation électrique", "État de l'installation gaz", "Présence d'amiante ou de plomb", 'Présence de termites', 'Risques naturels et technologiques (ERP)'],
+    priority: 'Indispensable', pc: '#16a34a', pb: '#f0fdf4', pb2: '#d1fae5',
+  },
+  {
+    id: 'm-audit', emoji: '📊', label: 'Audit énergétique réglementaire',
+    what: "Obligatoire à la vente d'une maison classée F ou G (depuis avril 2023) et E (depuis janvier 2025). Il détaille les scénarios de travaux de rénovation et leur coût estimé. Distinct du DPE.",
+    extracts: ['Scénarios de travaux (Pack 1 / Pack 2)', 'Gain énergétique estimé', 'Coûts de rénovation', 'Aides mobilisables'],
+    priority: 'Recommandé', pc: '#7c3aed', pb: '#f5f3ff', pb2: '#ddd6fe',
+  },
+  {
+    id: 'm-spanc', emoji: '💧', label: "Contrôle d'assainissement (SPANC)",
+    what: "Si la maison n'est pas raccordée au tout-à-l'égout, son installation autonome (fosse, micro-station) doit être contrôlée par le SPANC. Une installation non conforme implique une mise aux normes souvent obligatoire après la vente.",
+    extracts: ["Type d'installation (fosse, micro-station…)", 'Conformité de l\'installation', 'Travaux de mise aux normes éventuels'],
+    priority: 'Recommandé', pc: '#7c3aed', pb: '#f5f3ff', pb2: '#ddd6fe',
+  },
+  {
+    id: 'm-travaux', emoji: '🛠️', label: 'Devis & factures de travaux',
+    what: "L'historique des travaux réalisés sur la maison (toiture, chauffage, isolation, électricité…). Documentés par devis ou factures, ils rassurent sur l'entretien et peuvent ouvrir droit à une garantie décennale transmissible.",
+    extracts: ["Entreprise (nom, SIRET, assurance décennale)", 'Nature et montant des travaux', 'Date des interventions', 'Garantie décennale éventuelle'],
+    priority: 'Recommandé', pc: '#7c3aed', pb: '#f5f3ff', pb2: '#ddd6fe',
+  },
+  {
+    id: 'm-compromis', emoji: '✍️', label: 'Compromis / promesse de vente',
+    what: "Le contrat qui fixe le prix, les conditions et les particularités du bien. Pour une maison, il révèle notamment les servitudes (passage, réseau) et l'état général déclaré.",
+    extracts: ['Prix, frais et conditions suspensives', 'Servitudes grevant le terrain', 'État général déclaré', "Origine de propriété"],
+    priority: 'Complémentaire', pc: '#2a7d9c', pb: '#f0f7fb', pb2: '#bae3f5',
+  },
+  {
+    id: 'm-taxe', emoji: '🏛️', label: 'Taxe foncière',
+    what: "Le montant annuel de la taxe foncière — une charge fixe importante pour une maison, à intégrer dans votre budget.",
+    extracts: ['Montant annuel', 'Évolution sur les dernières années', 'Décomposition par collectivité'],
+    priority: 'Complémentaire', pc: '#2a7d9c', pb: '#f0f7fb', pb2: '#bae3f5',
+  },
+  {
+    id: 'm-asl', emoji: '🏘️', label: "Documents ASL / lotissement (si concerné)",
+    what: "Si la maison fait partie d'un lotissement géré par une ASL ou une AFUL : statuts, cahier des charges, appels de cotisations. Ils révèlent les règles privées, les charges et la conformité de la structure.",
+    extracts: ['Cotisations annuelles', "Règles d'urbanisme privées (cahier des charges)", 'Conformité (ordonnance de 2004)', 'Voirie et équipements communs'],
+    priority: 'Recommandé', pc: '#7c3aed', pb: '#f5f3ff', pb2: '#ddd6fe',
+  },
+];
+
+const categoriesMaison = [
+  {
+    id: 'm-perf', emoji: '⚡', label: 'Performance énergétique', pts: 5,
+    color: '#f0a500', light: '#fffbeb', border: '#fde68a',
+    desc: "Pour une maison, l'énergie pèse lourd : chauffage, confort et obligations réglementaires à la revente. La note suit directement la classe du DPE.",
+    bad: [
+      { l: 'DPE E', v: '3/5', tip: "Performance moyenne. Un audit énergétique est obligatoire à la vente pour une maison classée E depuis janvier 2025." },
+      { l: 'DPE F', v: '2/5', tip: "Passoire thermique. Audit énergétique obligatoire à la vente depuis avril 2023, restrictions de location en vigueur." },
+      { l: 'DPE G', v: '1/5', tip: "Passoire thermique sévère. Location déjà interdite, rénovation énergétique incontournable." },
+      { l: 'Audit énergétique manquant (E, F ou G)', v: '-1', tip: "Pour une maison classée E, F ou G, l'audit énergétique réglementaire est obligatoire à la vente. Absent, le dossier est incomplet sur un point clé." },
+      { l: 'Aucun DPE fourni', v: '0/5', tip: "Sans DPE, la performance ne peut pas être évaluée — document obligatoire à réclamer au vendeur." },
+    ],
+    good: [
+      { l: 'DPE A ou B', v: '5/5', tip: "Maison très performante : faibles charges de chauffage, aucune contrainte réglementaire, excellente revendabilité." },
+      { l: 'DPE C', v: '4,5/5', tip: "Très bonne performance énergétique, sans contrainte particulière." },
+      { l: 'DPE D', v: '4/5', tip: "Bonne performance, dans la moyenne — pas de contrainte réglementaire immédiate." },
+    ],
+  },
+  {
+    id: 'm-diags', emoji: '🔍', label: 'Diagnostics & sécurité', pts: 5,
+    color: '#7c3aed', light: '#f5f3ff', border: '#ddd6fe',
+    desc: "Électricité, gaz, amiante, plomb, termites : les diagnostics qui touchent à la sécurité et à la salubrité de la maison. On part de 5 et on retire selon les anomalies réelles.",
+    bad: [
+      { l: 'Anomalie grave', v: '-2', tip: "Installation électrique dangereuse, gaz A2, amiante dégradé, plomb dégradé — mise en sécurité à prévoir, par anomalie grave." },
+      { l: 'Termites détectés', v: '-3', tip: "Présence de termites — traitement et parfois consolidation structurelle. Risque majeur pour une maison." },
+      { l: 'Diagnostic obligatoire manquant', v: '-0,75', tip: "Un diagnostic requis selon l'âge de la maison n'a pas été fourni — par diagnostic manquant." },
+      { l: 'Anomalie mineure', v: '-0,5', tip: "Anomalie électrique légère, gaz A1, amiante à surveiller — à corriger sans urgence immédiate." },
+    ],
+    good: [
+      { l: 'Tous les diagnostics présents sans anomalie', v: '5/5', tip: "Dossier complet et conforme, sans aucune anomalie détectée — maison saine côté sécurité." },
+    ],
+    info: [
+      { l: 'Plancher de la catégorie', tip: "La note ne descend jamais sous 1/5 dès qu'au moins un diagnostic est fourni. Elle n'est à 0 que si aucun diagnostic n'est présent." },
+    ],
+  },
+  {
+    id: 'm-assain', emoji: '💧', label: 'Assainissement & risques', pts: 4,
+    color: '#2a7d9c', light: '#f0f7fb', border: '#bae3f5',
+    desc: "Deux postes spécifiques à la maison : l'assainissement (raccordement collectif ou installation autonome) et l'état des risques naturels (ERP).",
+    bad: [
+      { l: 'Assainissement non collectif non conforme', v: '-1,5', tip: "Installation autonome jugée non conforme par le contrôle SPANC — mise aux normes généralement obligatoire sous 1 an après la vente, plusieurs milliers d'euros." },
+      { l: 'Assainissement non collectif sans contrôle', v: '-0,5', tip: "Maison non raccordée au tout-à-l'égout mais sans rapport SPANC fourni — document à réclamer." },
+      { l: 'ERP : travaux prescrits', v: '-0,5', tip: "L'état des risques mentionne des obligations de travaux (zone à risque avec prescriptions) — à chiffrer." },
+    ],
+    good: [
+      { l: "Raccordement au tout-à-l'égout", v: '0', tip: "Maison raccordée au réseau collectif — aucune contrainte d'assainissement autonome, aucune pénalité." },
+    ],
+    info: [
+      { l: 'ERP informatif', tip: "L'état des risques naturels et technologiques est toujours informatif : il ne pénalise pas la note, sauf si des travaux sont prescrits." },
+      { l: 'Aucune donnée', tip: "Sans information d'assainissement ni ERP, la note reste neutre (2/4) en attendant les documents." },
+    ],
+  },
+  {
+    id: 'm-bati', emoji: '🏗️', label: 'Travaux & bâti', pts: 3,
+    color: '#d97706', light: '#fffbeb', border: '#fde68a',
+    desc: "Cette catégorie récompense l'entretien. Une maison dont les travaux récents sont documentés rassure sur son état. On part d'une base neutre (2/3).",
+    bad: [
+      { l: 'Maison en état dégradé déclaré', v: '-1', tip: "Le compromis ou les documents décrivent une maison en mauvais état ou nécessitant de gros travaux." },
+    ],
+    good: [
+      { l: 'Travaux majeurs récents documentés', v: '+1', tip: "Toiture, chauffage, isolation, électricité… réalisés et justifiés par devis ou factures. Signal fort d'entretien." },
+      { l: 'Travaux récents documentés (autres)', v: '+0,5', tip: "Des travaux d'entretien sont documentés, même hors gros œuvre." },
+      { l: 'Garantie décennale possible', v: '+0,5', tip: "Si les travaux datent de moins de 10 ans, la garantie décennale peut encore courir et se transmettre à l'acheteur (à confirmer)." },
+    ],
+    info: [
+      { l: 'Aucun document de travaux', tip: "La note reste neutre (2/3) et un encart vous invite à demander l'historique au vendeur. Aucune pénalité." },
+    ],
+  },
+  {
+    id: 'm-juridique', emoji: '⚖️', label: 'Juridique · ASL & lotissement', pts: 3,
+    color: '#dc2626', light: '#fef2f2', border: '#fecaca',
+    desc: "Servitudes, contraintes d'urbanisme et procédures éventuelles. Et si la maison fait partie d'une ASL (lotissement), on analyse aussi ses règles et sa conformité — la note devient « ASL & lotissement ».",
+    bad: [
+      { l: 'Statuts ASL non publiés (conformité 2004)', v: '-1', tip: "Une ASL/AFUL d'avant 2004 devait publier ses statuts mis en conformité. Sinon, le recouvrement des cotisations et l'action en justice sont fragilisés." },
+      { l: 'Voirie de lotissement non rétrocédée', v: '-1', tip: "La voirie reste à la charge des colotis tant qu'elle n'est pas rétrocédée à la commune — entretien à perpétuité." },
+      { l: 'Procédure en cours', v: '-1 à -2', tip: "Litige affectant le bien — la pénalité dépend de la gravité." },
+      { l: 'Servitude contraignante', v: '-0,5', tip: "Droit de passage, canalisation, ligne électrique grevant le terrain — par servitude, plafonné à -1,5." },
+      { l: 'Contrainte du cahier des charges', v: '-0,5', tip: "Règles privées du lotissement (hauteurs, clôtures, extensions) qui s'imposent au-delà du PLU." },
+      { l: "Contrainte d'urbanisme forte", v: '-0,5', tip: "Zone protégée, secteur Architecte des Bâtiments de France, monument historique — règles strictes sur les travaux." },
+    ],
+    good: [
+      { l: 'Aucune servitude ni procédure', v: '3/3', tip: "Situation juridique saine, terrain libre de contraintes notables." },
+    ],
+    info: [
+      { l: 'Cotisation ASL', tip: "Affichée comme charge réelle à intégrer au budget annuel — mais elle ne pénalise jamais la note par son seul montant." },
+    ],
+  },
+];
+
 const levels = [
   { r: '17 – 20', l: 'Bien irréprochable', c: '#15803d', bar: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', pct: 100, desc: 'Achetez sereinement. Aucun risque majeur détecté.' },
   { r: '14 – 16', l: 'Bien sain', c: '#16a34a', bar: '#22c55e', bg: '#f7fef9', border: '#d1fae5', pct: 80, desc: 'Quelques vigilances mineures, rien de bloquant.' },
@@ -255,14 +396,21 @@ const faqs = [
   { q: 'Peut-on dépasser 20/20 ?', a: "Non. Les bonus s'ajoutent mais la note est plafonnée à 20. Si les points positifs compensent largement les négatifs, vous atteignez le maximum — c'est déjà excellent." },
   { q: 'La note Verimo remplace-t-elle un expert immobilier ?', a: "Non. Verimo est un outil d'aide à la lecture et à la décision. Il détecte les signaux présents dans vos documents — mais ne se substitue pas à une visite physique ou à l'avis d'un professionnel qualifié." },
   { q: 'Que se passe-t-il si mon document n\'est pas reconnu ?', a: "Notre outil l'indique clairement dans le rapport en précisant qu'il ne s'agit pas d'un document immobilier reconnu. Aucune pénalité n'est appliquée pour un document non analysable." },
+  { q: 'Une maison est-elle notée comme un appartement ?', a: "Non. Une maison hors copropriété n'a ni parties communes, ni syndic, ni fonds de travaux. Verimo applique une grille dédiée — performance énergétique, diagnostics & sécurité, assainissement, état du bâti, et le volet juridique. Le score reste sur 20." },
+  { q: 'Et si ma maison fait partie d\'un lotissement (ASL) ?', a: "Si une Association Syndicale Libre (ASL ou AFUL) gère le lotissement, on analyse ses règles, sa conformité (statuts publiés depuis l'ordonnance de 2004), la rétrocession de la voirie et les contraintes du cahier des charges. La catégorie juridique devient « ASL & lotissement ». Les cotisations sont affichées comme charge réelle, sans pénaliser la note par leur seul montant." },
 ];
 
-const navSections = [
+const navSections: Array<{ id: string; label: string } | { group: string }> = [
   { id: 'types-analyses', label: 'Analyse simple vs complète' },
+  { group: 'Appartement · Copropriété' },
   { id: 'documents', label: 'Documents analysés' },
   { id: 'principe', label: 'Le score /20' },
   { id: 'categories', label: 'Les 5 catégories' },
   { id: 'exemple', label: 'Exemple concret' },
+  { group: 'Maison hors copro · ASL' },
+  { id: 'documents-maison', label: 'Documents analysés' },
+  { id: 'categories-maison', label: 'Les 5 catégories' },
+  { id: 'exemple-maison', label: 'Exemple concret' },
   { id: 'echelle', label: "L'échelle des notes" },
   { id: 'faq', label: 'Questions fréquentes' },
 ];
@@ -371,6 +519,7 @@ export default function MethodePage() {
   useEffect(() => {
     const handle = () => {
       for (const s of navSections) {
+        if (!('id' in s)) continue;
         const el = document.getElementById(s.id);
         if (el) {
           const rect = el.getBoundingClientRect();
@@ -447,12 +596,16 @@ export default function MethodePage() {
         <aside style={{ position: 'sticky', top: 96, paddingTop: 44, paddingBottom: 44 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 12, paddingLeft: 4 }}>Sur cette page</div>
           <nav style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
-            {navSections.map((s) => (
-              <button key={s.id} onClick={() => scrollTo(s.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: activeSection === s.id ? '#f0f7fb' : 'transparent', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
-                <div style={{ width: 3, height: 16, borderRadius: 99, background: activeSection === s.id ? '#2a7d9c' : '#e2e8f0', flexShrink: 0, transition: 'all 0.15s' }} />
-                <span style={{ fontSize: 15, fontWeight: activeSection === s.id ? 700 : 400, color: activeSection === s.id ? '#0f172a' : '#64748b', lineHeight: 1.4, transition: 'all 0.15s' }}>{s.label}</span>
-              </button>
+            {navSections.map((s, idx) => (
+              'group' in s ? (
+                <div key={`g-${idx}`} style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.04em', textTransform: 'uppercase' as const, margin: '14px 0 4px', paddingLeft: 14 }}>{s.group}</div>
+              ) : (
+                <button key={s.id} onClick={() => scrollTo(s.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: activeSection === s.id ? '#f0f7fb' : 'transparent', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                  <div style={{ width: 3, height: 16, borderRadius: 99, background: activeSection === s.id ? '#2a7d9c' : '#e2e8f0', flexShrink: 0, transition: 'all 0.15s' }} />
+                  <span style={{ fontSize: 15, fontWeight: activeSection === s.id ? 700 : 400, color: activeSection === s.id ? '#0f172a' : '#64748b', lineHeight: 1.4, transition: 'all 0.15s' }}>{s.label}</span>
+                </button>
+              )
             ))}
           </nav>
           <div style={{ marginTop: 28, padding: '18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
@@ -511,6 +664,17 @@ export default function MethodePage() {
               </Reveal>
             </div>
           </section>
+
+          {/* ════════ GROUPE APPARTEMENT / COPROPRIÉTÉ ════════ */}
+          <Reveal>
+            <div style={{ margin: '8px 0 4px', padding: '18px 22px', borderRadius: 16, background: 'linear-gradient(135deg,#1e3a5f,#2a7d9c)', color: '#fff' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' as const, opacity: 0.75, marginBottom: 4 }}>Appartement · Copropriété</div>
+              <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.35 }}>Le cœur de l'analyse : la copropriété 🏢</div>
+              <div style={{ fontSize: 14.5, opacity: 0.9, marginTop: 6, lineHeight: 1.6, maxWidth: 640 }}>
+                PV d'assemblée générale, finances, travaux votés, diagnostics privatifs et communs : tout ce qui fait la santé d'un appartement en copropriété, noté sur 20.
+              </div>
+            </div>
+          </Reveal>
 
           {/* ── 2. DOCUMENTS ANALYSÉS ─────────────────────────── */}
           <section id="documents">
@@ -760,6 +924,217 @@ export default function MethodePage() {
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Score final</div>
                     <div style={{ fontSize: 14, color: '#94a3b8' }}>Arrondi au 0,5 près</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                      <span style={{ fontSize: 38, fontWeight: 900, color: '#15803d', letterSpacing: '-0.03em' }}>18,5</span>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: '#cbd5e1' }}>/20</span>
+                    </div>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#15803d', background: '#f0fdf4', border: '1px solid #d1fae5', padding: '5px 14px', borderRadius: 10 }}>Bien irréprochable ✓</span>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          </section>
+
+          {/* ════════ GROUPE MAISON HORS COPRO / ASL ════════ */}
+          <Reveal>
+            <div style={{ margin: '8px 0 4px', padding: '18px 22px', borderRadius: 16, background: 'linear-gradient(135deg,#0f2d3d,#2a7d9c)', color: '#fff' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' as const, opacity: 0.75, marginBottom: 4 }}>Maison hors copropriété · ASL</div>
+              <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.35 }}>Une maison ne se note pas comme un appartement 🏡</div>
+              <div style={{ fontSize: 14.5, opacity: 0.9, marginTop: 6, lineHeight: 1.6, maxWidth: 640 }}>
+                Pas de copropriété, pas de parties communes, pas de syndic. À la place : performance énergétique, assainissement, état du bâti, et parfois une ASL de lotissement. Verimo applique une grille dédiée, sur 20 elle aussi.
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── MAISON · Documents ── */}
+          <section id="documents-maison">
+            <Reveal>
+              <SectionHead label="Documents analysés · Maison" title="Ce qu'on lit pour une maison" sub="Cliquez sur un document pour voir ce qu'on en extrait." />
+            </Reveal>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+              {docTypesMaison.map((doc, idx) => (
+                <Reveal key={doc.id} delay={idx * 0.04}>
+                  <div style={{ borderRadius: 14, border: `1.5px solid ${openDoc === doc.id ? doc.pb2 : '#edf2f7'}`, overflow: 'hidden', background: '#fff', transition: 'border-color 0.18s', boxShadow: openDoc === doc.id ? `0 4px 16px ${doc.pc}18` : 'none' }}>
+                    <button onClick={() => setOpenDoc(openDoc === doc.id ? null : doc.id)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: doc.pb, border: `1px solid ${doc.pb2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{doc.emoji}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{doc.label}</div>
+                        <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>{openDoc === doc.id ? "Ce qu'on extrait de ce document" : doc.what.slice(0, 60) + '…'}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Tag color={doc.pc} bg={doc.pb} border={doc.pb2}>{doc.priority}</Tag>
+                        <ChevronDown size={15} color="#cbd5e1" style={{ flexShrink: 0, transform: openDoc === doc.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                      </div>
+                    </button>
+                    <AnimatePresence>
+                      {openDoc === doc.id && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
+                          <div style={{ borderTop: `1px solid ${doc.pb2}`, padding: '18px 20px', background: doc.pb }}>
+                            <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.85, marginBottom: 16 }}>{doc.what}</p>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 10 }}>Ce qu'on en extrait</div>
+                            <div className="extracts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+                              {doc.extracts.map((e, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#fff', border: `1px solid ${doc.pb2}` }}>
+                                  <Check size={12} color={doc.pc} style={{ flexShrink: 0, marginTop: 2 }} />
+                                  <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{e}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </section>
+
+          {/* ── MAISON · Catégories ── */}
+          <section id="categories-maison">
+            <Reveal>
+              <SectionHead label="5 catégories · Maison" title="Ce qu'on analyse pour noter une maison" sub="Cliquez sur une catégorie pour voir le détail des points." />
+            </Reveal>
+            <Reveal delay={0.03}>
+              <div style={{ background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 20px', marginBottom: 18, fontSize: 14.5, color: '#475569', lineHeight: 1.7 }}>
+                Chaque catégorie a sa propre logique. La <strong>performance énergétique</strong> suit directement la classe du DPE. Les <strong>diagnostics</strong> partent de 5 et baissent selon les anomalies. <strong>Assainissement</strong> et <strong>travaux</strong> partent d'une base neutre et peuvent monter comme descendre. Le total fait toujours 20.
+              </div>
+            </Reveal>
+            <Reveal delay={0.05}>
+              <div style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 20 }}>
+                {categoriesMaison.map((c) => (<div key={c.id} style={{ flex: c.pts, background: c.color, opacity: 0.7 }} title={`${c.label} — ${c.pts} pts`} />))}
+              </div>
+              <div style={{ display: 'flex', gap: 14, marginBottom: 22, flexWrap: 'wrap' as const }}>
+                {categoriesMaison.map((c) => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+                    <div style={{ width: 9, height: 9, borderRadius: 2, background: c.color }} /> {c.label} ({c.pts} pts)
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+              {categoriesMaison.map((cat, idx) => (
+                <Reveal key={cat.id} delay={idx * 0.04}>
+                  <div style={{ borderRadius: 13, border: `1.5px solid ${openCat === cat.id ? cat.color : '#edf2f7'}`, overflow: 'hidden', background: '#fff', transition: 'all 0.18s', boxShadow: openCat === cat.id ? `0 4px 18px ${cat.color}18` : 'none' }}>
+                    <button onClick={() => setOpenCat(openCat === cat.id ? null : cat.id)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '15px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 10, background: cat.light, border: `1px solid ${cat.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{cat.emoji}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{cat.label}</div>
+                        <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 1 }}>Sur {cat.pts} points</div>
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 900, color: cat.color, marginRight: 8 }}>{cat.pts} pts</span>
+                      <ChevronDown size={15} color="#cbd5e1" style={{ flexShrink: 0, transform: openCat === cat.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                    </button>
+                    <AnimatePresence>
+                      {openCat === cat.id && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
+                          <div style={{ borderTop: `1px solid ${cat.border}`, padding: '16px 20px', background: cat.light }}>
+                            <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.85, marginBottom: 16 }}>{cat.desc}</p>
+                            <div className="cat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                              <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #fecaca', padding: '14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                                  <TrendingDown size={12} color="#dc2626" />
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Pénalités</span>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                  {cat.bad.map((item, i) => (
+                                    <div key={i}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                        <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                      </div>
+                                      {(item as any).tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{(item as any).tip}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                                <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #d1fae5', padding: '14px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                                    <TrendingUp size={12} color="#16a34a" />
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Bonus</span>
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                    {cat.good.map((item, i) => (
+                                      <div key={i}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                          <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                          <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                        </div>
+                                        {(item as any).tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{(item as any).tip}</div>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                                {(cat as any).info && (cat as any).info.length > 0 && (
+                                  <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #e2e8f0', padding: '14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                                      <Info size={12} color="#64748b" />
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Informatif</span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                      {(cat as any).info.map((item: any, i: number) => (
+                                        <div key={i}>
+                                          <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                          {item.tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{item.tip}</div>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </section>
+
+          {/* ── MAISON · Exemple ── */}
+          <section id="exemple-maison">
+            <Reveal>
+              <SectionHead label="Exemple concret · Maison" title="Un calcul réel, étape par étape" sub="Maison hors copro — Pavillon, périphérie de Nantes" />
+            </Reveal>
+            <div style={{ border: '1.5px solid #edf2f7', borderRadius: 16, overflow: 'hidden' }}>
+              <div style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🏡</span>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Pavillon 1985 — hors copropriété</div>
+                  <div style={{ fontSize: 13, color: '#94a3b8' }}>DPE + diagnostics + contrôle SPANC + devis toiture analysés</div>
+                </div>
+              </div>
+              <div>
+                {[
+                  { label: 'Performance énergétique', note: 'DPE classé D', pts: '4/5', color: '#0f172a', sub: true },
+                  { label: 'Diagnostics & sécurité', note: 'Tous présents, aucune anomalie', pts: '5/5', color: '#16a34a', sub: true },
+                  { label: 'Assainissement & risques', note: 'Fosse toutes eaux conforme · ERP informatif', pts: '4/4', color: '#16a34a', sub: true },
+                  { label: 'Travaux & bâti', note: 'Réfection toiture 2021 documentée (garantie possible)', pts: '3/3', color: '#16a34a', sub: true },
+                  { label: 'Juridique', note: 'Une servitude de passage', pts: '2,5/3', color: '#d97706', sub: true },
+                ].map((row, i) => (
+                  <Reveal key={i} delay={i * 0.05}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '13px 20px', borderBottom: i < 4 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#0f172a' }}>{row.label}</div>
+                        <div style={{ fontSize: 14, color: '#94a3b8', marginTop: 2 }}>{row.note}</div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 900, color: row.color, flexShrink: 0 }}>{row.pts}</span>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+              <Reveal delay={0.3}>
+                <div style={{ borderTop: '2px solid #edf2f7', padding: '16px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Score final</div>
+                    <div style={{ fontSize: 14, color: '#94a3b8' }}>Somme des 5 catégories</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
