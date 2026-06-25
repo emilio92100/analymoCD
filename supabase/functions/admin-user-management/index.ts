@@ -429,7 +429,7 @@ function buildDemoInvitationEmail(prenom: string, token: string, customMessage?:
           <a href="${setupUrl}" class="email-cta" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;text-decoration:none;font-size:15.5px;font-weight:700;padding:15px 36px;border-radius:12px;box-shadow:0 4px 14px rgba(42,125,156,0.3);">
             Activer mon compte et tester →
           </a>
-          <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">Lien valable 30 jours. Aucun engagement, aucune carte bancaire requise.</p>
+          <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">Lien personnel, sans limite de temps. Aucun engagement, aucune carte bancaire requise.</p>
         </td></tr>
 
         <!-- Footer -->
@@ -574,7 +574,7 @@ Deno.serve(async (req) => {
       const { token } = body
 
       const { data: invitation, error: invErr } = await adminClient.from('pro_invitations')
-        .select('*, profiles(full_name, pro_recommended_plan)')
+        .select('*, profiles(full_name, pro_recommended_plan, pro_onboarding_done)')
         .eq('token', token)
         .is('accepted_at', null)
         .order('created_at', { ascending: false })
@@ -583,6 +583,18 @@ Deno.serve(async (req) => {
 
       if (invErr || !invitation) {
         return new Response(JSON.stringify({ valid: false, error: 'Token invalide ou déjà utilisé' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // 🆕 Compte déjà activé via un autre lien (ex : le client a reçu 2 invitations et
+      // en a déjà utilisé une). On NE réaffiche PAS l'écran de choix de mot de passe,
+      // sinon il réinitialiserait silencieusement son mot de passe. On signale
+      // "compte déjà actif" → le front propose de se connecter.
+      if (invitation.profiles?.pro_onboarding_done === true) {
+        return new Response(JSON.stringify({
+          valid: false,
+          already_active: true,
+          email: invitation.email,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
       return new Response(JSON.stringify({
@@ -608,6 +620,13 @@ Deno.serve(async (req) => {
 
       if (!invitation) {
         return new Response(JSON.stringify({ error: 'Lien invalide ou déjà utilisé' }), { status: 400, headers: corsHeaders })
+      }
+
+      // 🆕 Garde-fou : compte déjà activé (via un autre lien) → ne PAS réinitialiser le
+      // mot de passe. Le front affiche déjà l'écran "compte actif" ; ceci protège contre
+      // un appel direct qui contournerait le front.
+      if ((invitation.profiles as { pro_onboarding_done?: boolean } | null)?.pro_onboarding_done === true) {
+        return new Response(JSON.stringify({ error: 'Ce compte est déjà actif. Connectez-vous avec votre mot de passe.', already_active: true }), { status: 400, headers: corsHeaders })
       }
 
       const { error: pwError } = await adminClient.auth.admin.updateUserById(invitation.profile_id, {
