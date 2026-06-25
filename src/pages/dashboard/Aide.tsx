@@ -84,6 +84,55 @@ const bonuses = [
   ]},
 ];
 
+// ════════ MAISON HORS COPRO / ASL ════════
+const penaltiesMaison = [
+  { cat: 'Performance énergétique', items: [
+    { l: 'DPE E / F / G', v: '3 à 1 /5' },
+    { l: 'Audit énergétique manquant (maison E/F/G)', v: '-1' },
+    { l: 'Aucun DPE fourni', v: '0/5' },
+  ]},
+  { cat: 'Diagnostics & sécurité', items: [
+    { l: 'Anomalie grave (élec dangereuse, gaz A2, amiante/plomb dégradé)', v: '-2' },
+    { l: 'Termites détectés', v: '-3' },
+    { l: 'Diagnostic obligatoire manquant', v: '-0,75' },
+    { l: 'Anomalie mineure', v: '-0,5' },
+  ]},
+  { cat: 'Assainissement & risques', items: [
+    { l: 'Assainissement non collectif non conforme', v: '-1,5' },
+    { l: 'Assainissement non collectif sans contrôle SPANC', v: '-0,5' },
+    { l: 'ERP : travaux prescrits', v: '-0,5' },
+  ]},
+  { cat: 'Travaux & bâti', items: [
+    { l: 'Maison en état dégradé déclaré', v: '-1' },
+  ]},
+  { cat: 'Juridique · ASL', items: [
+    { l: 'Statuts ASL non publiés (conformité 2004)', v: '-1' },
+    { l: 'Voirie de lotissement non rétrocédée', v: '-1' },
+    { l: 'Procédure en cours', v: '-1 à -2' },
+    { l: 'Servitude contraignante (max -1,5)', v: '-0,5' },
+    { l: "Contrainte d'urbanisme forte / cahier des charges", v: '-0,5' },
+  ]},
+];
+
+const bonusesMaison = [
+  { cat: 'Performance énergétique', items: [
+    { l: 'DPE A ou B', v: '5/5' },
+    { l: 'DPE C', v: '4,5/5' },
+    { l: 'DPE D', v: '4/5' },
+  ]},
+  { cat: 'Diagnostics & sécurité', items: [
+    { l: 'Tous les diagnostics présents sans anomalie', v: '5/5' },
+  ]},
+  { cat: 'Travaux & bâti', items: [
+    { l: 'Travaux majeurs récents documentés (toiture, chauffage…)', v: '+1' },
+    { l: 'Travaux récents documentés (autres)', v: '+0,5' },
+    { l: 'Garantie décennale encore possible', v: '+0,5' },
+  ]},
+  { cat: 'Assainissement', items: [
+    { l: "Raccordement au tout-à-l'égout", v: 'aucun malus' },
+  ]},
+];
+
 const scale = [
   { r: '17 – 20', l: 'Bien irréprochable', desc: "Aucun point de vigilance majeur détecté.", c: '#15803d', bg: '#f0fdf4', bord: '#bbf7d0' },
   { r: '14 – 16', l: 'Bien sain', desc: "Très peu de risques, le bien est en bon état global.", c: '#16a34a', bg: '#f0fdf4', bord: '#bbf7d0' },
@@ -232,6 +281,7 @@ function GlossaireBlock() {
 
 function NotationBlock() {
   const [activeTab, setActiveTab] = useState<'echelle' | 'bonus' | 'penalites'>('echelle');
+  const [bien, setBien] = useState<'copro' | 'maison'>('copro');
   const tabs = [
     { id: 'echelle' as const, label: 'Échelle de notation', icon: TrendingUp },
     { id: 'bonus' as const, label: 'Bonus', icon: CheckCircle2 },
@@ -272,7 +322,21 @@ function NotationBlock() {
           })}
         </div>
 
-        <div key={activeTab} style={{ animation: 'tabFade 0.35s ease' }}>
+        {activeTab !== 'echelle' && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 12.5, color: '#64748b', fontWeight: 600 }}>Type de bien :</span>
+            <div style={{ display: 'flex', gap: 4, padding: '4px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7' }}>
+              {([['copro', '🏢 Copropriété'], ['maison', '🏡 Maison / ASL']] as const).map(([id, label]) => (
+                <button key={id} onClick={() => setBien(id)}
+                  style={{ padding: '7px 13px', borderRadius: 7, border: 'none', background: bien === id ? '#fff' : 'transparent', color: bien === id ? '#0f172a' : '#94a3b8', fontSize: 12.5, fontWeight: bien === id ? 700 : 600, cursor: 'pointer', boxShadow: bien === id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div key={`${activeTab}-${bien}`} style={{ animation: 'tabFade 0.35s ease' }}>
           {activeTab === 'echelle' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Comment interpréter votre note :</div>
@@ -289,7 +353,7 @@ function NotationBlock() {
           {activeTab === 'bonus' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Ces éléments <strong>ajoutent</strong> des points à la note finale :</div>
-              {bonuses.map((p, i) => (
+              {(bien === 'maison' ? bonusesMaison : bonuses).map((p, i) => (
                 <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
                   <div style={{ padding: '9px 16px', background: '#f0fdf4', fontSize: 11.5, fontWeight: 800, color: '#16a34a', letterSpacing: '0.04em', borderBottom: '1px solid #bbf7d0' }}>{p.cat.toUpperCase()}</div>
                   {p.items.map((item, j) => (
@@ -306,7 +370,7 @@ function NotationBlock() {
           {activeTab === 'penalites' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Ces éléments <strong>retirent</strong> des points à la note finale :</div>
-              {penalties.map((p, i) => (
+              {(bien === 'maison' ? penaltiesMaison : penalties).map((p, i) => (
                 <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
                   <div style={{ padding: '9px 16px', background: '#fef2f2', fontSize: 11.5, fontWeight: 800, color: '#dc2626', letterSpacing: '0.04em', borderBottom: '1px solid #fecaca' }}>{p.cat.toUpperCase()}</div>
                   {p.items.map((item, j) => (
