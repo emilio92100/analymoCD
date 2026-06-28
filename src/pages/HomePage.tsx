@@ -387,15 +387,15 @@ function HeroSection() {
                 draggable={false}
                 className="select-none pointer-events-none absolute"
                 style={{
-                  width: 280,
+                  width: 270,
                   left: -190,
-                  bottom: -10,
-                  zIndex: 1,
+                  bottom: 0,
+                  zIndex: 20,
                   filter: "drop-shadow(0 22px 34px rgba(15,23,42,0.16))",
                   animation: _lowPerf ? undefined : "floatOwl 6.5s ease-in-out 0.7s infinite",
                 }}
               />
-              <div className="relative" style={{ zIndex: 10 }}>
+              <div className="relative" style={{ zIndex: 10, transform: "scale(0.88)", transformOrigin: "bottom center" }}>
                 <PhoneMockup />
               </div>
             </div>
@@ -412,7 +412,7 @@ function HeroSection() {
         @keyframes floatA { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-5px) translateX(2px)} }
         @keyframes floatB { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(6px) translateX(-2px)} }
         @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-        @keyframes floatOwl { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-12px) rotate(-1.2deg)} }
+        @keyframes floatOwl { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
         @media (prefers-reduced-motion: reduce), (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
           .animate-scan-phone { animation-duration: 4s; }
           .animate-spin-slow { animation-duration: 1.5s; }
@@ -472,18 +472,7 @@ function PhoneMockup() {
         ))}
       </AnimatePresence>
 
-      {/* Badge sécurité */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }}
-        style={{ animation: _lowPerf ? undefined : "floatA 4.5s ease-in-out 1.2s infinite", position: 'absolute', left: -130, top: '18%', zIndex: 30 }}
-        className="hidden sm:flex bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[148px]">
-        <div className="w-9 h-9 rounded-xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
-          <ShieldCheck size={17} className="text-[#2a7d9c]" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-[#0f172a]">100% sécurisé</p>
-          <p className="text-[11px] text-slate-400">Chiffré & supprimé</p>
-        </div>
-      </motion.div>
+      {/* Badge sécurité de gauche retiré : la mascotte occupe désormais ce côté */}
 
       {/* Badge score */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.0 }}
