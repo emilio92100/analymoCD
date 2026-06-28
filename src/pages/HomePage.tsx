@@ -244,9 +244,10 @@ function HeroSection() {
               className="select-none pointer-events-none"
               style={{
                 width: 150,
-                marginRight: -10,
+                marginRight: -3,
                 position: "relative",
                 zIndex: 20,
+                transform: "translateY(-20px)",
                 filter: "drop-shadow(0 16px 26px rgba(15,23,42,0.16))",
               }}
             />
@@ -338,7 +339,7 @@ function HeroSection() {
                 style={{
                   width: 255,
                   left: -200,
-                  bottom: 0,
+                  bottom: 30,
                   zIndex: 20,
                   filter: "drop-shadow(0 22px 34px rgba(15,23,42,0.16))",
                 }}
