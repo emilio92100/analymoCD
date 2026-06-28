@@ -238,6 +238,21 @@ function HeroSection() {
           <motion.div variants={up} initial="hidden" animate="show" custom={1}
             className="relative w-full mb-7" style={{ height: 310 }}>
 
+            {/* Mascotte Verimo — accent discret en retrait (mobile). À vérifier sur ton tel, facile à retirer/ajuster. */}
+            <img
+              src="/hibou-verimo.png"
+              alt="Mascotte Verimo"
+              draggable={false}
+              className="select-none pointer-events-none absolute"
+              style={{
+                width: 96,
+                left: 6,
+                bottom: -4,
+                zIndex: 0,
+                filter: "drop-shadow(0 12px 20px rgba(15,23,42,0.14))",
+              }}
+            />
+
             {/* Conteneur centré : badges (≈140px) + gap (8px) + téléphone (150px) = ~298px → centré sur 390px → ~46px de marge chaque côté */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex items-center gap-2">
@@ -364,7 +379,26 @@ function HeroSection() {
           </div>
 
           <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center">
-            <PhoneMockup />
+            <div className="relative">
+              {/* Mascotte Verimo — appuyée à côté du téléphone (knobs faciles à ajuster : width / left / bottom) */}
+              <img
+                src="/hibou-verimo.png"
+                alt="Mascotte Verimo"
+                draggable={false}
+                className="select-none pointer-events-none absolute"
+                style={{
+                  width: 280,
+                  left: -190,
+                  bottom: -10,
+                  zIndex: 1,
+                  filter: "drop-shadow(0 22px 34px rgba(15,23,42,0.16))",
+                  animation: _lowPerf ? undefined : "floatOwl 6.5s ease-in-out 0.7s infinite",
+                }}
+              />
+              <div className="relative" style={{ zIndex: 10 }}>
+                <PhoneMockup />
+              </div>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -378,6 +412,7 @@ function HeroSection() {
         @keyframes floatA { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-5px) translateX(2px)} }
         @keyframes floatB { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(6px) translateX(-2px)} }
         @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @keyframes floatOwl { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-12px) rotate(-1.2deg)} }
         @media (prefers-reduced-motion: reduce), (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
           .animate-scan-phone { animation-duration: 4s; }
           .animate-spin-slow { animation-duration: 1.5s; }
