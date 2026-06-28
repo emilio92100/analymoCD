@@ -234,74 +234,23 @@ function HeroSection() {
             avant de faire une offre.
           </motion.p>
 
-          {/* Téléphone à droite + badges empilés serrés à gauche — centré sur 390px */}
+          {/* Mascotte + mini-téléphone : hibou à gauche appuyé sur le tel (le coude effleure le bord). Hibou STATIQUE — seul le téléphone flotte. */}
           <motion.div variants={up} initial="hidden" animate="show" custom={1}
-            className="relative w-full mb-7" style={{ height: 310 }}>
-
-            {/* Mascotte Verimo — accent discret en retrait (mobile). À vérifier sur ton tel, facile à retirer/ajuster. */}
+            className="relative w-full mb-7 flex items-end justify-center">
             <img
               src="/hibou-verimo.png"
               alt="Mascotte Verimo"
               draggable={false}
-              className="select-none pointer-events-none absolute"
+              className="select-none pointer-events-none"
               style={{
-                width: 96,
-                left: 6,
-                bottom: -4,
-                zIndex: 0,
-                filter: "drop-shadow(0 12px 20px rgba(15,23,42,0.14))",
+                width: 150,
+                marginRight: -10,
+                position: "relative",
+                zIndex: 20,
+                filter: "drop-shadow(0 16px 26px rgba(15,23,42,0.16))",
               }}
             />
-
-            {/* Conteneur centré : badges (≈140px) + gap (8px) + téléphone (150px) = ~298px → centré sur 390px → ~46px de marge chaque côté */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center gap-2">
-
-                {/* Colonne de badges */}
-                <div className="flex flex-col gap-3">
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }}
-                    style={_lowPerf ? {} : { animation: "floatA 4.5s ease-in-out 0.8s infinite" }}
-                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
-                    <div className="w-6 h-6 rounded-lg bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
-                      <ShieldCheck size={12} className="text-[#2a7d9c]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#0f172a]">100% sécurisé</p>
-                      <p className="text-[9px] text-slate-400">Chiffré & supprimé</p>
-                    </div>
-                  </motion.div>
-
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.3 }}
-                    style={_lowPerf ? {} : { animation: "floatB 5s ease-in-out 1.3s infinite" }}
-                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
-                    <div className="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-                      <TrendingUp size={12} className="text-green-500" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#0f172a]">Score 15/20</p>
-                      <p className="text-[9px] text-slate-400">Bien sain ✓</p>
-                    </div>
-                  </motion.div>
-
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.8 }}
-                    style={_lowPerf ? {} : { animation: "floatC 4s ease-in-out 1.8s infinite" }}
-                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
-                    <div className="w-6 h-6 rounded-lg bg-[#f0a500]/10 flex items-center justify-center shrink-0">
-                      <FileText size={12} className="text-[#f0a500]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#0f172a]">3 docs analysés</p>
-                      <p className="text-[9px] text-slate-400">PV, règlement, diag.</p>
-                    </div>
-                  </motion.div>
-                </div>
-
-                {/* Téléphone */}
-                <PhoneMockupMini />
-
-              </div>
-            </div>
-
+            <PhoneMockupMini />
           </motion.div>
 
           <motion.div variants={up} initial="hidden" animate="show" custom={2}
@@ -392,7 +341,6 @@ function HeroSection() {
                   bottom: 0,
                   zIndex: 20,
                   filter: "drop-shadow(0 22px 34px rgba(15,23,42,0.16))",
-                  animation: _lowPerf ? undefined : "floatOwl 6.5s ease-in-out 0.7s infinite",
                 }}
               />
               <div className="relative" style={{ zIndex: 10, transform: "scale(0.88)", transformOrigin: "bottom center" }}>
@@ -412,7 +360,6 @@ function HeroSection() {
         @keyframes floatA { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-5px) translateX(2px)} }
         @keyframes floatB { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(6px) translateX(-2px)} }
         @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-        @keyframes floatOwl { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
         @media (prefers-reduced-motion: reduce), (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
           .animate-scan-phone { animation-duration: 4s; }
           .animate-spin-slow { animation-duration: 1.5s; }
