@@ -243,7 +243,7 @@ function HeroSection() {
               draggable={false}
               className="select-none pointer-events-none"
               style={{
-                width: 150,
+                width: 175,
                 marginRight: -3,
                 position: "relative",
                 zIndex: 20,
