@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 26 juin 2026
+# VERIMO — Contexte projet — 3 juillet 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -22,6 +22,61 @@
   - "IA" / "AI" → utiliser "technologie Verimo", "moteur d'analyse", "nos algorithmes", "analyse experte". AI uniquement autorisé dans admin, edge functions, prompts, logs, context.md.
   - "co-brandé" / "co-branding" → utiliser "à votre image" (banni progressivement sur tout le site)
 - **Tests live avec vraie carte CB d'Alex** (pas Visa 4242)
+
+---
+
+## 🆕 DERNIÈRE SESSION — 2-3 juillet 2026 ⭐⭐⭐
+
+### ✅ Chantiers livrés (à déployer — voir « À DÉPLOYER » plus bas)
+
+**1. Charge des travaux votés (acheteur/vendeur) — CORRECTION LÉGALE**
+- L'app disait à tort « travaux votés = à la charge du vendeur ». Faux : par défaut (art. 6-2 décret 67-223), les appels de fonds exigibles APRÈS la vente sont à la charge de l'**ACHETEUR** ; l'usage notarial les remet au vendeur via une **clause du compromis**.
+- Wording corrigé partout (RapportPage, DocumentRenderer, RapportPrintPage, MethodePage, Aide) : « en principe loi = acheteur, mais en pratique repris par le vendeur via clause — vérifiez la clause ». Bannière rouge → bleue. Bonus scoring +2/+3 gardé (défendable sous « usage »). Prompt : règle « QUI PAIE LES TRAVAUX VOTES » ajoutée dans analyser-run.
+
+**2. Double-comptage tantièmes — CORRECTION PROMPT**
+- Le modèle sommait le tantième du lot + celui de la cave alors que la base « charges communes générales » les incluait déjà → double compte. Règle anti-doublon (lire le tantième PROPRE de chaque ligne, jamais la base « charges communes ») + auto-contrôle (total = base). Front (somme déterministe) inchangé.
+
+**3. Finances du lot : cotisation ALUR + fonds rattachés**
+- Affiche « dont ~X €/an cotisation fonds travaux (ALUR) » sous la charge annuelle + bloc « Fonds rattachés à votre lot » (avance trésorerie + fonds ALUR, à rembourser au vendeur, indicatif). Affiché seulement si présent ET pas de pré-état daté. Complète (RapportPage) + simple (DocumentRenderer fiche appel de charges). Champs ajoutés au prompt.
+
+**4. Badges règles d'usage RCP — CORRECTION FRONT**
+- Ancien : détection naïve (« interdit » seulement) → « Pas d'antenne » passait en vert « ✓ Autorisé » à tort. Nouveau : 4 états (Interdit / Sous conditions / Autorisé / À noter) via négations (« pas de / ne peut pas / aucun »). Plus de faux vert. Front-only.
+
+**5. Redesign points positifs/vigilance — STYLE 1 (validé par Alex)**
+- Design « bandeaux pleins » (vert #2f6b3f / brun #9a4a2c) + **titre gras + détail léger**. Format « **Titre — détail** » : le moteur écrit ce format (règle prompt), le front `RapportPage` le découpe (splitPoint, sépare sur le 1er « — » si titre court, sinon « : », sinon ligne simple). Repli propre anciens rapports. Diagnostics manquants injectés serveur reformatés au même format (« DPE manquant — … »). Backward-compatible.
+
+**6. Timeout analyse 350 → 385 s (PANSEMENT, pas le fix)**
+- `analyser-run` timeoutMs 350000 → 385000. Gain ~1 doc. ⚠️ Marge tombée à ~15 s avant le kill plateforme (~400 s) → sur latence, échec « sale » possible (watchdog au lieu de remboursement propre).
+
+**7. 🔴 Fix crédits : double remboursement + affichage live — VALIDÉ EN LIVE**
+- **Bug A (affichage nav)** : le compteur ne baissait pas au lancement (chaque `useCredits()` = état séparé, nav ≠ page d'analyse). ✅ Fixé via **bus d'événement `verimo:credits-changed`** → nav particulier (`useCredits`) ET pro (`DashboardProPage`) se rafraîchissent en direct. **CONFIRMÉ LIVE : le chiffre baisse au lancement.**
+- **Bug B (double remboursement)** : **3 rembourseurs** (client `NouvelleAnalyse` + `analyser-run` + `watchdog-stuck-analyses`) remboursaient tous → **net +1 crédit gagné à chaque échec**. Particulier ET pro. ✅ Fixé via **verrou idempotent** : SQL `refund_analyse_credit(p_analyse_id)` + colonne `analyses.credit_refunded` (FOR UPDATE + flag → rembourse UNE fois, jamais sur une analyse `completed`). Les 3 rembourseurs appellent cette fonction. Client garde un remboursement direct UNIQUEMENT en pré-lancement (createAnalyse null, aucune analyse créée). **CONFIRMÉ LIVE : +1 exactement, plus de double.**
+
+### 📦 À DÉPLOYER (ordre strict)
+1. **SQL Editor D'ABORD** : `refund_idempotent.sql` (colonne `credit_refunded` + fonction `refund_analyse_credit` + grants authenticated/service_role)
+2. **GitHub** (Vercel auto) : `RapportPage.tsx`, `useCredits.ts`, `NouvelleAnalyse.tsx`, `DashboardProPage.tsx`
+3. **Supabase Studio — redéploiement MANUEL** : `analyser-run` (contient chantiers 1-6 + fix crédit) ET `watchdog-stuck-analyses` (fix crédit)
+
+### 🔬 Diagnostic timeout gros dossiers — CONFIRMÉ (exemple réel : **Dossier Benoist Lucy**)
+- Test **11 docs** (Dossier Benoist Lucy) → timeout à **386 s** (avec 385 s) et **351 s** (avec 350 s). Confirmé aux deux valeurs, à la seconde.
+- Logs shutdown : `reason: EarlyDrop`, **mémoire ~13 Mo**, **CPU ~44** → NI mémoire NI CPU. 100 % du temps = **génération IA en single-call**.
+- **Plafond single-call ≈ 10 docs** (~35 s/doc). 11+ docs = mur, quoi qu'on fasse sur le timeout (collé à la limite plateforme ~400 s).
+- **Mort brutale** (11 docs) : invocation tuée sans passer par `handleAnalyseFailure` → analyse coincée en `processing`, PAS de remboursement propre → seul le **watchdog (1h)** rattrape. Une analyse fantôme (`078a6ff0`) débloquée à la main (SQL `failed` + crédit +1). ⚠️ Piège vécu : mes modifs n'avaient RIEN cassé — un test 2-3 docs marchait ; seuls les gros dossiers meurent. Attention aussi au **fuseau UTC** dans les logs (heure BDD = UTC = heure FR −2).
+
+### 🎯 PROCHAINES SESSIONS (par priorité)
+
+**A. 🔴 Gros dossiers = MAP-REDUCE v2 (chantier le plus lourd, session dédiée)**
+- **Archi = HYBRIDE À SEUIL** : dossiers **≤ ~8 docs** → single-call (rapide, précision max, inchangé) ; **≥ 9 docs** → découpage. Seuil affinable au **nb de pages** plus tard (ex : > 60-70 p).
+- **Le découpage = ressusciter le MAP-REDUCE**, en corrigeant SON SEUL défaut : les fiches MAP étaient trop grosses (« compte rendu exhaustif » jusqu'à 64K tokens → aussi lent que single-call).
+- **Préférence Alex (tranchée)** : fiche par doc = **RÉSUMÉ LIBRE CONCIS** (PAS de grille JSON rigide) — cadré « garde tout ce qui compte pour un acheteur (montants, dates, votes, risques, procédures) mais va à l'essentiel, max ~1 page ». Alex refuse la grille structurée (trop rigide, peur de rater un cas hors-case). ⚠️ Tension assumée : résumé libre court = risque de rater un détail fin ; l'hybride protège (single-call garde la précision max sur les dossiers normaux).
+- **Orchestration** : **self-invoke** pour enchaîner vite (Alex préfère la vitesse à la queue 5 min) + **queue `analyser-retry` en filet** si un maillon casse. ⚠️ POINT CRITIQUE : **sauvegarder la fiche de chaque doc EN BASE avant de supprimer le PDF** (RGPD) — sinon l'invocation suivante cherche un doc déjà supprimé.
+- **Précision** : MAP-REDUCE bien fait ≈ single-call sur l'essentiel, petit risque résiduel sur les recoupements fins entre docs (prix du découpage, acceptable car réservé aux gros dossiers → mieux qu'un timeout à 0 %).
+
+**B. 🟠 Watchdog trop lent — RÉDUIRE LES SEUILS**
+- Actuel : `processing > 1h`, `files_ready > 30 min`, `queued > 1h30`. Trop long (fantôme « en cours » jusqu'à 1h → mauvaise UX, vécu cette session).
+- **Plan** : `processing` 1h → **~10-15 min** (sûr : avec timeout 385 s, aucune analyse vivante ne dépasse ~7 min) + cron watchdog plus fréquent + filet front (« échec » si « en cours » > ~8 min sans réponse).
+
+**C. 🔴 Régénérer la clé service_role** (compromise 11 mai) — TOUJOURS EN ATTENTE, dernier verrou avant onboarding vraies agences.
 
 ---
 
@@ -359,11 +414,17 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 - **Consommation pro** : `consume_pro_credit(p_user_id, p_credit_type)` — agence-aware (pool → bonus → perso)
 - **Consommation particulier** : `consume_particulier_credit(p_user_id, p_credit_type)`
 - **Remboursement crédit interne pro** : `refund_pro_credit(p_user_id, p_credit_type)` — agence-aware (rembourse au pool)
+- **🔒 Remboursement idempotent (3 juillet)** : `refund_analyse_credit(p_analyse_id)` — SECURITY DEFINER. Lock `FOR UPDATE` + flag `analyses.credit_refunded` → rembourse **une seule fois**, jamais sur `completed`, route pro (`refund_pro_credit`) vs particulier (`profiles +1`). Appelée par le **client** (NouvelleAnalyse, post-lancement), **analyser-run** et le **watchdog**. Grants : authenticated + service_role.
 - **Reset cycle abo** : `reset_pro_subscription_credits(p_subscription_id)` — gère le plan `agence` (recharge pool, cumul plafonné 2× = 30/60, bonus intact) depuis le 22 juin
 - **Cumul upgrade** : `upgrade_pro_subscription_credits(p_subscription_id, p_new_plan)`
 - **Incrément promo** : `increment_promo_uses(code_id)`
 
+### 🔄 Affichage crédits en direct (bus d'événement — 3 juillet)
+- Problème : chaque appel `useCredits()` crée un état SÉPARÉ → la nav (DashboardPage) ne voyait pas le débit fait par la page d'analyse (NouvelleAnalyse). Le compteur ne baissait qu'au refresh.
+- Fix : événement global **`window 'verimo:credits-changed'`**. Émis à chaque conso/remboursement (useCredits.deductCredit, conso pro dans NouvelleAnalyse, remboursements). Écouté par `useCredits` (nav particulier) ET `DashboardProPage` (nav pro, refetch `get_pro_credits_balance`) → **rafraîchissement live sans refresh**. Confirmé en prod.
+
 ### Contraintes BDD importantes
+- `analyses.credit_refunded` : BOOLEAN default false — verrou de remboursement idempotent (ajouté 3 juillet)
 - `pro_unit_purchases.type` : CHECK `('document', 'complete')`
 - `credit_grants.credit_type` : CHECK `('complete', 'document')`
 - `pro_unit_purchases` avec `amount=0` = crédits offerts admin → exclus du CA
@@ -743,6 +804,8 @@ Ordre **impératif** : **1)** pousser les 5 fichiers front sur GitHub (`RapportP
 
 ### ⏱️ CHANTIER 400 SECONDES — timeout analyse complète (À CONTINUER) ⭐⭐⭐ NOUVEAU 04 juin
 
+> **MAJ 2-3 juillet** : timeout interne monté à **385 s** (pansement). **Mesure faite** (voir « DERNIÈRE SESSION ») : test réel 11 docs = **386 s**, `EarlyDrop`, **mémoire 13 Mo / CPU bas** → le goulot est bien la **génération IA en single-call** (Hyp. A confirmée), pas la mémoire/CPU. Plafond single-call ≈ **10 docs**. Fix = **MAP-REDUCE v2 hybride à seuil** (détaillé dans « DERNIÈRE SESSION » → Prochaines sessions A).
+
 **Le problème.** En SINGLE CALL, sur un gros dossier (testé : 4 docs dont un **RCP de 150 pages**), l'appel Claude dépasse les **400 s de wall-clock Supabase** → shutdown brutal du worker → l'analyse reste figée en statut intermédiaire (`files_ready`), pas de rapport, rattrapée seulement par le watchdog 30 min plus tard. **Confirmé par les logs** : « Appel Claude » à 18:18:14 → « shutdown » à 18:24:53 = **exactement 6 min 40 = 400 s**, et **aucun log intermédiaire** (l'appel n'a jamais rendu sa réponse).
 
 **Faits établis et vérifiés cette session (sources officielles) :**
@@ -758,7 +821,7 @@ Ordre **impératif** : **1)** pousser les 5 fichiers front sur GitHub (`RapportP
 - **Hyp. B — l'ENTRÉE** (lecture de gros volumes : RCP 150 p ≈ 300K tokens) : peut aussi peser lourd.
 - Impossible de trancher avec les logs actuels (rien entre « Appel Claude » et le shutdown).
 
-**➡️ PROCHAINE ÉTAPE N°1 (avant de coder une solution) : LOG DE MESURE.** Ajouter dans `analyser-run`, juste après l'appel `callAI`, un log affichant le **temps écoulé** + la **taille du rapport généré** (nb de caractères/tokens). Lancer une analyse petite / moyenne / grosse → voir si le temps suit la **taille du rapport** (= sortie) ou le **nb de pages** (= entrée). Sans ça, risque de coder la mauvaise solution.
+**➡️ PROCHAINE ÉTAPE N°1 — ✅ FAIT (2-3 juillet).** Mesure réalisée sur un vrai dossier (11 docs, Benoist Lucy) : timeout à 386 s, `EarlyDrop`, mémoire 13 Mo, CPU bas → le temps suit la **génération (sortie)**, pas la mémoire/CPU. Conclusion : Hyp. A (sortie) confirmée dominante. Passer directement à la solution = **découpage MAP-REDUCE v2** (voir DERNIÈRE SESSION).
 
 **Solutions selon le résultat :**
 - **Voie simple (à privilégier d'abord)** : garder le single call (suffit pour la grande majorité). Sur les rares dossiers trop lourds → bascule propre en échec + message clair (« dossier volumineux, réessayez »). + filet UX ci-dessous.
