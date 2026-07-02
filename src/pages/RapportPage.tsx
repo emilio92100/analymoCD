@@ -1029,49 +1029,56 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
           <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Synthèse de l'analyse</span>
           <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #2a7d9c, transparent)', marginTop: 8, borderRadius: 99 }} />
         </div>
-        <div className="points-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-          <div className="points-card" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2d6a2d', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: 99, marginBottom: 16 }}>✓ POINTS POSITIFS</div>
-            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {rapport.points_forts.length > 0 ? rapport.points_forts.map((p: string, i: number) => {
-                // Strip éventuel ✓ en tête injecté par le LLM
-                const cleanText = safeStr(p).replace(/^\s*[✓✔✅]+[\s:—-]*/u, '').trim();
-                return (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
-                    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="11" cy="11" r="10" stroke="#2d6a2d" strokeWidth="1.5"/>
-                      <path d="M7 11.5l3 3 5-5" stroke="#2d6a2d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{cleanText}</span>
+        {(() => {
+          const splitPoint = (raw: unknown): { titre: string | null; detail: string } => {
+            if (raw && typeof raw === 'object') {
+              const o = raw as Record<string, unknown>;
+              const t = safeStr(o.titre).trim();
+              const d = safeStr(o.detail ?? o.message ?? o.label ?? o.texte).trim();
+              return { titre: t || null, detail: d };
+            }
+            const clean = safeStr(raw).replace(/^\s*[✓✔✅⚠⚡!•]+[\s:—-]*/u, '').trim();
+            const iEm = clean.indexOf(' — ');
+            if (iEm > 0 && iEm <= 60) return { titre: clean.slice(0, iEm).trim(), detail: clean.slice(iEm + 3).trim() };
+            const iCol = clean.indexOf(' : ');
+            if (iCol > 0 && iCol <= 50) return { titre: clean.slice(0, iCol).trim(), detail: clean.slice(iCol + 3).trim() };
+            return { titre: null, detail: clean };
+          };
+          const renderCol = (items: unknown, variant: 'pos' | 'vig') => {
+            const headBg = variant === 'pos' ? '#2f6b3f' : '#9a4a2c';
+            const bord = variant === 'pos' ? '#cfe6d4' : '#efd6c9';
+            const icon = variant === 'pos' ? '✓' : '⚠';
+            const label = variant === 'pos' ? 'Points positifs' : 'Points de vigilance';
+            const vide = variant === 'pos' ? 'Aucun point positif identifié.' : 'Aucun point de vigilance identifié.';
+            const list = Array.isArray(items) ? (items as unknown[]) : [];
+            return (
+              <div>
+                <div style={{ background: headBg, color: '#fff', padding: '11px 16px', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '0.01em' }}>{label}</span>
+                  {list.length > 0 && <span style={{ marginLeft: 'auto', fontSize: 12, background: 'rgba(255,255,255,0.18)', padding: '2px 10px', borderRadius: 20 }}>{list.length}</span>}
                 </div>
-                );
-              }) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
-            </div>
-          </div>
-          <div className="points-card" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#92400e', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: 99, marginBottom: 16 }}>⚠ POINTS DE VIGILANCE</div>
-            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p: string, i: number) => {
-                // Strip un éventuel ⚠ en tête injecté par le LLM (évite le doublon avec le triangle UI)
-                const cleanText = safeStr(p).replace(/^\s*[⚠⚡!]+[\s:—-]*/u, '').trim();
-                return (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
-                    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M11 2.5L2 19.5h18L11 2.5z" stroke="#92400e" strokeWidth="1.5" strokeLinejoin="round"/>
-                      <path d="M11 9.5v4.5" stroke="#92400e" strokeWidth="1.5" strokeLinecap="round"/>
-                      <circle cx="11" cy="16.5" r="0.8" fill="#92400e"/>
-                    </svg>
-                  </div>
-                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{cleanText}</span>
+                <div style={{ background: '#fff', border: `1px solid ${bord}`, borderTop: 'none', borderRadius: '0 0 12px 12px' }}>
+                  {list.length > 0 ? list.map((p, i) => {
+                    const { titre, detail } = splitPoint(p);
+                    return (
+                      <div key={i} style={{ padding: '12px 16px', borderBottom: i < list.length - 1 ? '0.5px solid #edf2f7' : 'none' }}>
+                        {titre && <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: detail ? 2 : 0, lineHeight: 1.4 }}>{titre}</div>}
+                        {detail && <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.55 }}>{detail}</div>}
+                      </div>
+                    );
+                  }) : <div style={{ padding: '14px 16px', fontSize: 13, color: '#94a3b8' }}>{vide}</div>}
                 </div>
-                );
-              }) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
+              </div>
+            );
+          };
+          return (
+            <div className="points-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+              {renderCol(rapport.points_forts, 'pos')}
+              {renderCol(rapport.points_vigilance, 'vig')}
             </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* 4. PISTES DE NÉGOCIATION */}
