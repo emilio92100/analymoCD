@@ -2947,15 +2947,23 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <SectionTitle emoji="📜" text="Règles d'usage (RCP)" tooltip="Issues du Règlement de Copropriété — ce qui est autorisé ou interdit dans votre lot et la résidence." />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {restrictions.map((r, i) => {
-                    const low = r.toLowerCase();
-                    const interdit = low.includes('interdit') || low.includes('prohib') || low.includes('non autoris');
-                    const color = interdit ? '#dc2626' : '#16a34a';
-                    const bg = interdit ? '#fef2f2' : '#f0fdf4';
-                    const border = interdit ? '#fecaca' : '#bbf7d0';
+                    const label = safeStr(r).replace(/^[✓✗×•-]\s*/, '').trim();
+                    const low = label.toLowerCase();
+                    // Interdiction — y compris négations "pas de", "ne peut/peuvent pas", "aucun"...
+                    const isInterdit = /interdit|prohib|non\s+autoris|défendu|proscrit|\bpas\s+d|ne\s+(peut|peuvent|doit|doivent)\s+pas|\baucun|sans\s+autorisation/i.test(low);
+                    // Sous conditions / toléré / soumis à accord
+                    const isCondition = !isInterdit && /sous\s+condition|sous\s+réserve|toléré|soumis\s+à|accord\s+préalable|autorisation\s+préalable|autorisation\s+écrite|moyennant/i.test(low);
+                    // Autorisation explicite (uniquement ce qui est vraiment permis)
+                    const isAutorise = !isInterdit && !isCondition && /autoris|permis|admis|\blibre\b/i.test(low);
+                    const state = isInterdit ? 'interdit' : isCondition ? 'condition' : isAutorise ? 'autorise' : 'neutre';
+                    const color = state === 'interdit' ? '#dc2626' : state === 'condition' ? '#d97706' : state === 'autorise' ? '#16a34a' : '#64748b';
+                    const bg = state === 'interdit' ? '#fef2f2' : state === 'condition' ? '#fff7ed' : state === 'autorise' ? '#f0fdf4' : '#f1f5f9';
+                    const border = state === 'interdit' ? '#fecaca' : state === 'condition' ? '#fed7aa' : state === 'autorise' ? '#bbf7d0' : '#e2e8f0';
+                    const badgeLabel = state === 'interdit' ? '✗ Interdit' : state === 'condition' ? '~ Sous conditions' : state === 'autorise' ? '✓ Autorisé' : 'À noter';
                     return (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 14px', background: 'var(--color-background-secondary)', borderRadius: 9, gap: 10 }}>
-                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{safeStr(r).replace(/^[✓✗×•-]\s*/, '')}</span>
-                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `0.5px solid ${border}`, flexShrink: 0, fontWeight: 500 }}>{interdit ? '✗ Interdit' : '✓ Autorisé'}</span>
+                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{label}</span>
+                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `0.5px solid ${border}`, flexShrink: 0, fontWeight: 500, whiteSpace: 'nowrap' as const }}>{badgeLabel}</span>
                       </div>
                     );
                   })}
