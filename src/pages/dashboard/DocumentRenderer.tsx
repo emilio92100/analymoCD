@@ -1064,7 +1064,7 @@ function RendererPVAG({ r, isShared, hideVerimoBranding }: { r: any; isShared?: 
       {/* Travaux votés — bleu */}
       {r.travaux_votes?.length > 0 && (
         <PBlock label="Travaux votés" borderColor="#B5D4F4" headerBg="#E6F1FB" dotColor="#185FA5" labelColor="#0C447C"
-          note="ℹ Votés avant compromis = à la charge du vendeur. À vérifier avec votre notaire.">
+          note="ℹ En pratique repris par le vendeur via une clause du compromis. Vérifiez que cette clause y figure.">
           {r.travaux_votes.map((t: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < r.travaux_votes.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg, gap: 12 }}>
               <div style={{ flex: 1 }}>
@@ -1592,7 +1592,7 @@ function RendererCarnetEntretien({ r, isShared, hideVerimoBranding }: { r: any; 
         <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
           <CardHeader label="TRAVAUX VOTÉS EN COURS (NON ENCORE RÉALISÉS)" color={C.orange.dot} />
           <div style={{ padding: '10px 20px', background: '#fffbf5', borderBottom: `0.5px solid ${C.orange.border}`, fontSize: 13, color: C.orange.text }}>
-            ℹ Travaux votés en AG — leur charge revient en principe au vendeur si votés avant le compromis. À confirmer avec votre notaire.
+            ℹ Travaux votés en AG — en pratique repris par le vendeur via une clause du compromis. Sans clause, les appels postérieurs à la vente seraient à la charge de l'acheteur. À confirmer avec votre notaire.
           </div>
           {r.travaux_en_cours.map((t: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_en_cours.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
@@ -1854,7 +1854,7 @@ function RendererPreEtatDate({ r, isShared, hideVerimoBranding }: { r: any; isSh
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.orange.text }}>Travaux votés à la charge du vendeur</span>
           </div>
           <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
-            ℹ Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour l'acheteur.
+            ℹ D'après le pré-état daté, ces travaux sont à la charge du vendeur. Confirmez que le compromis le reprend bien — c'est ce qui protège l'acheteur.
           </div>
           {r.travaux_charge_vendeur.map((t: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_charge_vendeur.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
