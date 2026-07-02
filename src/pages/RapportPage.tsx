@@ -2073,11 +2073,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         defaultOpen={allOpen}
         status={travaux_evoques.length > 0 ? 'warning' : travaux_votes.length > 0 ? 'ok' : 'ok'}
         badge={travaux_evoques.length > 0 ? `${travaux_evoques.length} vigilance${travaux_evoques.length > 1 ? 's' : ''}` : `${travaux_realises.length + travaux_votes.length} détectés`}
-        tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. S'ils l'ont été avant le compromis, c'est la charge du vendeur.|⚠️ Évoqués — mentionnés sans vote. Si le vote a lieu après votre achat, vous en paierez une part.">
+        tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. En pratique repris par le vendeur via une clause du compromis (à vérifier).|⚠️ Évoqués — mentionnés sans vote. Si le vote a lieu après votre achat, vous en paierez une part.">
 
         {travaux_votes.length > 0 && (
-          <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
-            <strong>⚖️ Travaux votés avant le compromis = charge du vendeur.</strong> Tout travail voté en AG avant la signature de votre compromis de vente est légalement à la charge du vendeur, même si les appels interviennent après. Vérifiez avec votre notaire.
+          <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: 10, border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', lineHeight: 1.6 }}>
+            <strong>⚖️ Travaux votés : qui paie ?</strong> En principe, la loi met à votre charge (acheteur) les appels de fonds qui tombent après la vente. Mais en pratique, l'usage veut que le <strong>vendeur les reprenne à son compte</strong> via une clause du compromis. Vérifiez simplement que cette clause y figure — c'est ce qui vous protège.
           </div>
         )}
 
@@ -3529,7 +3529,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             <SectionTitle emoji="⚖️" text="Travaux votés à la charge du vendeur" />
             <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 14, color: '#1e40af' }}>
-                Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour vous. <span style={{ fontSize: 12, fontStyle: 'italic', color: '#3b82f6' }}>(source : pré-état daté)</span>
+                D'après le pré-état daté, ces travaux sont à la charge du vendeur. Confirmez simplement que le compromis le reprend bien — c'est ce qui vous met à l'abri. <span style={{ fontSize: 12, fontStyle: 'italic', color: '#3b82f6' }}>(source : pré-état daté)</span>
               </div>
               {ped!.travaux_charge_vendeur!.map((t, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: i < ped!.travaux_charge_vendeur!.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
