@@ -1180,6 +1180,38 @@ function RendererAppelCharges({ r, isShared, hideVerimoBranding }: { r: any; isS
         {r.montant_annuel && <Kpi label="Charges annuelles estimées" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
       </KpiGrid>
 
+      {/* Ligne "dont X cotisation ALUR" — part incluse dans les charges annuelles */}
+      {Number(r.cotisation_fonds_travaux_annuelle) > 0 && (
+        <div style={{ fontSize: 13, color: C.textSec, margin: '-4px 0 14px 2px' }}>
+          dont ~{Math.round(Number(r.cotisation_fonds_travaux_annuelle)).toLocaleString('fr-FR')} €/an de cotisation au fonds de travaux (ALUR)
+        </div>
+      )}
+
+      {/* Fonds rattachés au lot (rappel pour mémoire des fonds) — à rembourser au vendeur */}
+      {(Number(r.avance_tresorerie) > 0 || Number(r.fonds_travaux_alur) > 0) && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="FONDS RATTACHÉS À VOTRE LOT" color={C.blue.dot} />
+          <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.border}`, fontSize: 13.5, color: C.blue.text }}>
+            À rembourser au vendeur à la signature, en plus du prix de vente.
+          </div>
+          {Number(r.avance_tresorerie) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: 15, color: C.text }}>Avance de trésorerie</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{Number(r.avance_tresorerie).toLocaleString('fr-FR')} €</span>
+            </div>
+          )}
+          {Number(r.fonds_travaux_alur) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: 15, color: C.text }}>Fonds de travaux (ALUR) déjà versé</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
+            </div>
+          )}
+          <div style={{ padding: '9px 20px', borderTop: `0.5px solid ${C.border}`, fontSize: 12, color: C.textSec, fontStyle: 'italic' as const }}>
+            Montant indicatif issu de l'appel de charges — le montant exact figurera sur le pré-état daté.
+          </div>
+        </div>
+      )}
+
       {/* Décomposition par lot */}
       {lots.length > 0 && (
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
