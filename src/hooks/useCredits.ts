@@ -27,7 +27,13 @@ export function useCredits() {
     setLoadingCredits(false);
   }, []);
 
-  useEffect(() => { fetchCredits(); }, [fetchCredits]);
+  useEffect(() => {
+    fetchCredits();
+    // Bus d'événement : toute consommation/remboursement ailleurs rafraîchit ce compteur (nav en direct, sans refresh)
+    const handler = () => { fetchCredits(); };
+    window.addEventListener('verimo:credits-changed', handler);
+    return () => window.removeEventListener('verimo:credits-changed', handler);
+  }, [fetchCredits]);
 
   // 🆕 Déduction atomique via fonction SQL (anti race condition multi-onglets)
   const deductCredit = async (type: 'document' | 'complete') => {
@@ -49,6 +55,8 @@ export function useCredits() {
     if (data === true) {
       // Mise à jour du state local pour refléter le changement BDD
       setCredits(prev => ({ ...prev, [type]: Math.max(0, (type === 'document' ? prev.document : prev.complete) - 1) }));
+      // Notifie les autres compteurs (nav à gauche) pour qu'ils se rafraîchissent en direct
+      window.dispatchEvent(new Event('verimo:credits-changed'));
       return true;
     }
 
