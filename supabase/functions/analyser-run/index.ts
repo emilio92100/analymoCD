@@ -636,68 +636,19 @@ async function deleteFromFilesAPI(fileId: string, apiKey: string): Promise<void>
 // ══════════════════════════════════════════════════════════════════════
 async function refundCredit(analyseId: string, supabaseAdmin: SupabaseClient): Promise<boolean> {
   try {
-    // Récupérer l'analyse pour connaître le user_id et le type
-    const { data: analyse } = await supabaseAdmin
-      .from('analyses')
-      .select('user_id, type')
-      .eq('id', analyseId)
-      .single();
-    
-    if (!analyse?.user_id || !analyse?.type) {
-      console.warn('[analyser-run] Remboursement impossible — user_id ou type manquant');
+    // 🔒 Remboursement IDEMPOTENT centralisé : la fonction SQL pose un verrou (analyses.credit_refunded)
+    // pour qu'un crédit ne soit JAMAIS remboursé deux fois (client + analyser-run + watchdog).
+    const { data, error } = await supabaseAdmin.rpc('refund_analyse_credit', { p_analyse_id: analyseId });
+    if (error) {
+      console.error('[analyser-run] Erreur refund_analyse_credit:', error.message);
       return false;
     }
-
-    // Ne pas rembourser les types inconnus
-    const creditType = analyse.type;
-    if (creditType !== 'document' && creditType !== 'complete') {
-      console.log(`[analyser-run] Pas de remboursement pour type=${creditType}`);
-      return false;
-    }
-
-    // 🆕 Vérifier si le user est pro pour utiliser refund_pro_credit (identique à analyser/index.ts)
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role, credits_document, credits_complete')
-      .eq('id', analyse.user_id)
-      .single();
-
-    if (!profile) {
-      console.error('[analyser-run] Profil introuvable pour remboursement');
-      return false;
-    }
-
-    // 🆕 Branche PRO : appel RPC refund_pro_credit (rembourse abo / unitaires / grants)
-    if ((profile as Record<string, unknown>).role === 'pro') {
-      const { error: rpcErr } = await supabaseAdmin.rpc('refund_pro_credit', {
-        p_user_id: analyse.user_id,
-        p_credit_type: creditType,
-      });
-      if (rpcErr) {
-        console.error('[analyser-run] Erreur refund_pro_credit:', rpcErr.message);
-        return false;
-      }
-      console.log(`[analyser-run] ✅ Crédit pro ${creditType} remboursé pour user ${analyse.user_id} (analyse ${analyseId})`);
+    if (data === true) {
+      console.log(`[analyser-run] ✅ Crédit remboursé (verrou) pour analyse ${analyseId}`);
       return true;
     }
-
-    // Branche PARTICULIER : UPDATE classique sur profiles
-    const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
-    const current = (profile as Record<string, number>)[col] || 0;
-    
-    // Recréditer
-    const { error } = await supabaseAdmin
-      .from('profiles')
-      .update({ [col]: current + 1 })
-      .eq('id', analyse.user_id);
-    
-    if (error) {
-      console.error('[analyser-run] Erreur remboursement:', error.message);
-      return false;
-    }
-
-    console.log(`[analyser-run] ✅ Crédit ${creditType} remboursé pour user ${analyse.user_id} (analyse ${analyseId})`);
-    return true;
+    console.log(`[analyser-run] Remboursement déjà effectué ou non applicable pour analyse ${analyseId}`);
+    return false;
   } catch (err) {
     console.error('[analyser-run] Erreur remboursement:', err);
     return false;
