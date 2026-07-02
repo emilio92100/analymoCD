@@ -2617,6 +2617,13 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
   const chargesLot = fin?.charges_annuelles_lot;
   const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
   const chargesMensuellesLot = chargesLotNum > 0 ? Math.round(chargesLotNum / 12) : 0;
+  // Cotisation fonds travaux ALUR annuelle du lot (part incluse dans les charges annuelles) — pour la ligne "dont X"
+  const toNum = (v: unknown): number => typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(String(v).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0 : 0;
+  const cotisationFtNum = toNum(fin?.cotisation_fonds_travaux_lot_annuelle);
+  // Fonds rattachés au lot (issus d'un appel de charges, sans pré-état daté) — avance de trésorerie + fonds ALUR déjà versé
+  const fondsRattaches = (fin?.fonds_rattaches_lot as Record<string, unknown> | null | undefined) ?? null;
+  const avanceTresorerieNum = toNum(fondsRattaches?.avance_tresorerie);
+  const fondsAlurRattacheNum = toNum(fondsRattaches?.fonds_travaux_alur);
 
   // Taxe foncière : priorité à finances.taxe_fonciere_annuelle (mode complet), repli sur l'objet taxe_fonciere (analyse simple) ou le champ legacy top-level
   const taxeFonciereRaw = (fin?.taxe_fonciere ?? fin?.taxe_fonciere_annuelle ?? (rapport as Record<string, unknown>).taxe_fonciere) as TaxeT | number | string | null;
@@ -3355,6 +3362,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
               <div>
                 <div style={{ fontSize: 13, color: '#2563eb', marginBottom: 8 }}>Charges annuelles lot</div>
                 <div style={{ fontSize: 36, fontWeight: 500, color: '#1e3a5f', lineHeight: 1 }}>{chargesLotNum.toLocaleString('fr-FR')} €</div>
+                {cotisationFtNum > 0 && (
+                  <div style={{ fontSize: 11.5, color: '#60a5fa', marginTop: 7 }}>dont ~{Math.round(cotisationFtNum).toLocaleString('fr-FR')} €/an de cotisation au fonds de travaux (ALUR)</div>
+                )}
               </div>
               <div style={{ width: 0.5, height: 52, background: '#bfdbfe', flexShrink: 0 }} />
               <div>
@@ -3362,6 +3372,33 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <div style={{ fontSize: 36, fontWeight: 500, color: '#1e40af', lineHeight: 1 }}>{chargesMensuellesLot.toLocaleString('fr-FR')} €</div>
               </div>
               <div style={{ fontSize: 12, color: '#3b82f6', marginLeft: 'auto', fontStyle: 'italic', alignSelf: 'flex-end' }}>Charges courantes · hors appels exceptionnels</div>
+            </div>
+          </>
+        )}
+
+        {/* Fonds rattachés au lot (issus d'un appel de charges, uniquement sans pré-état daté) */}
+        {!hasPed && (avanceTresorerieNum > 0 || fondsAlurRattacheNum > 0) && (
+          <>
+            <SectionTitle emoji="👛" text="Fonds rattachés à votre lot" tooltip="Montants déjà versés, rattachés au lot, à rembourser au vendeur à la signature de l'acte (en plus du prix). Source : appel de charges." />
+            <div style={{ border: '0.5px solid #bfdbfe', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 18px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 13, color: '#1e40af' }}>
+                À rembourser au vendeur à la signature, en plus du prix de vente.
+              </div>
+              {avanceTresorerieNum > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 18px', borderBottom: fondsAlurRattacheNum > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Avance de trésorerie</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{avanceTresorerieNum.toLocaleString('fr-FR')} €</span>
+                </div>
+              )}
+              {fondsAlurRattacheNum > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 18px' }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Fonds de travaux (ALUR) déjà versé</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{fondsAlurRattacheNum.toLocaleString('fr-FR')} €</span>
+                </div>
+              )}
+              <div style={{ padding: '9px 18px', background: 'var(--color-background-secondary)', borderTop: '0.5px solid var(--color-border-tertiary)', fontSize: 11.5, color: 'var(--color-text-tertiary)', fontStyle: 'italic' }}>
+                Montant indicatif issu de l'appel de charges — le montant exact figurera sur le pré-état daté.
+              </div>
             </div>
           </>
         )}
@@ -3639,7 +3676,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           <div style={{ marginTop: 4, padding: '11px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 12.5, color: '#075985', lineHeight: 1.55, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💡</span>
             <span>
-              <strong>Cette section peut être plus complète.</strong> Avec un <strong>pré-état daté</strong>, vous obtiendrez les charges futures à prévoir, les fonds à rembourser au vendeur à la signature et l'historique des charges N-1 / N-2. Vous pouvez l'ajouter via « Compléter mon dossier ».
+              <strong>Cette section peut être plus complète.</strong> Avec un <strong>pré-état daté</strong>, vous obtiendrez les charges futures à prévoir{(avanceTresorerieNum > 0 || fondsAlurRattacheNum > 0) ? '' : ', les fonds à rembourser au vendeur à la signature'} et l'historique des charges N-1 / N-2. Vous pouvez l'ajouter via « Compléter mon dossier ».
             </span>
           </div>
         )}
