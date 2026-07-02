@@ -52,53 +52,19 @@ async function refundCredit(
   supabaseAdmin: SupabaseClient
 ): Promise<boolean> {
   try {
-    const creditType = analyse.type;
-    if (creditType !== 'document' && creditType !== 'complete') {
-      console.log(`[watchdog] Pas de remboursement pour type=${creditType} (analyse ${analyse.id})`);
+    // 🔒 Remboursement IDEMPOTENT centralisé (verrou analyses.credit_refunded) — jamais deux fois
+    // (client + analyser-run + watchdog appellent la même fonction).
+    const { data, error } = await supabaseAdmin.rpc('refund_analyse_credit', { p_analyse_id: analyse.id });
+    if (error) {
+      console.error(`[watchdog] Erreur refund_analyse_credit pour ${analyse.id}:`, error.message);
       return false;
     }
-
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role, credits_document, credits_complete')
-      .eq('id', analyse.user_id)
-      .single();
-
-    if (!profile) {
-      console.error(`[watchdog] Profil introuvable pour user ${analyse.user_id}`);
-      return false;
-    }
-
-    // Branche PRO
-    if ((profile as Record<string, unknown>).role === 'pro') {
-      const { error: rpcErr } = await supabaseAdmin.rpc('refund_pro_credit', {
-        p_user_id: analyse.user_id,
-        p_credit_type: creditType,
-      });
-      if (rpcErr) {
-        console.error(`[watchdog] refund_pro_credit error pour ${analyse.id}:`, rpcErr.message);
-        return false;
-      }
-      console.log(`[watchdog] ✅ Crédit pro ${creditType} remboursé pour ${analyse.id}`);
+    if (data === true) {
+      console.log(`[watchdog] ✅ Crédit remboursé (verrou) pour ${analyse.id}`);
       return true;
     }
-
-    // Branche PARTICULIER
-    const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
-    const current = (profile as Record<string, number>)[col] || 0;
-
-    const { error } = await supabaseAdmin
-      .from('profiles')
-      .update({ [col]: current + 1 })
-      .eq('id', analyse.user_id);
-
-    if (error) {
-      console.error(`[watchdog] Erreur update profile pour ${analyse.id}:`, error.message);
-      return false;
-    }
-
-    console.log(`[watchdog] ✅ Crédit ${creditType} remboursé pour ${analyse.id}`);
-    return true;
+    console.log(`[watchdog] Remboursement déjà effectué ou non applicable pour ${analyse.id}`);
+    return false;
   } catch (err) {
     console.error(`[watchdog] Exception refund pour ${analyse.id}:`, err);
     return false;
