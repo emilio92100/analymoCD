@@ -445,25 +445,25 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
   // ── DPE
   if (!diagPresent('DPE')) {
     ajouter("DPE — Diagnostic de performance énergétique (obligatoire pour la vente)");
-    ajouterVigilance("Le DPE n'a pas été détecté dans le dossier. Il est obligatoire pour la vente. Demandez-le au vendeur.");
+    ajouterVigilance("DPE manquant — Le DPE n'a pas été détecté dans le dossier. Obligatoire pour la vente, à demander au vendeur.");
   }
 
   // ── ERP
   if (!diagPresent('ERP')) {
     ajouter("État des Risques et Pollutions — ERP (obligatoire pour la vente)");
-    ajouterVigilance("L'État des Risques et Pollutions (ERP) n'a pas été détecté. Il est obligatoire pour la vente. Demandez-le au vendeur.");
+    ajouterVigilance("ERP manquant — L'État des Risques et Pollutions n'a pas été détecté. Obligatoire pour la vente, à demander au vendeur.");
   }
 
   // ── CARREZ (obligatoire en copropriété)
   if ((typeBien === 'appartement' || typeBien === 'maison_copro') && !diagPresent('CARREZ')) {
     ajouter("Mesurage loi Carrez (obligatoire en copropriété)");
-    ajouterVigilance("Le mesurage loi Carrez n'a pas été détecté. Il est obligatoire en copropriété. Demandez-le au vendeur.");
+    ajouterVigilance("Mesurage Carrez manquant — Le mesurage loi Carrez n'a pas été détecté. Obligatoire en copropriété, à demander au vendeur.");
   }
 
   // ── ELECTRICITE (installation > 15 ans, donc en pratique année < 2011)
   if (annee && annee < 2011 && !diagPresent('ELECTRICITE')) {
     ajouter("Diagnostic électrique (obligatoire pour les installations de plus de 15 ans)");
-    ajouterVigilance("Le diagnostic électrique n'a pas été détecté. Il est obligatoire pour les installations de plus de 15 ans. Demandez-le au vendeur.");
+    ajouterVigilance("Diagnostic électrique manquant — Non détecté. Obligatoire pour une installation de plus de 15 ans, à demander au vendeur.");
   }
 
   // ── AMIANTE privatif (construction avant 1997)
@@ -476,32 +476,32 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
     });
     if (!amiantePrivatif) {
       ajouter("Diagnostic amiante privatif (obligatoire pour les biens construits avant 1997)");
-      ajouterVigilance("Le diagnostic amiante privatif n'a pas été détecté. Il est obligatoire pour les biens construits avant 1997. Demandez-le au vendeur.");
+      ajouterVigilance("Diagnostic amiante manquant — Non détecté. Obligatoire pour un bien construit avant 1997, à demander au vendeur.");
     }
   }
 
   // ── PLOMB (construction avant 1949)
   if (annee && annee < 1949 && !diagPresent('PLOMB')) {
     ajouter("Constat de risque d'exposition au plomb — CREP (obligatoire pour les biens construits avant 1949)");
-    ajouterVigilance("Le constat de risque d'exposition au plomb (CREP) n'a pas été détecté. Il est obligatoire pour les biens construits avant 1949. Demandez-le au vendeur.");
+    ajouterVigilance("Plomb (CREP) manquant — Le constat plomb (CREP) n'a pas été détecté. Obligatoire pour un bien construit avant 1949, à demander au vendeur.");
   }
 
   // ── AUDIT ENERGETIQUE (maison + DPE E/F/G)
   if (typeBien === 'maison' && dpeClasse && ['E', 'F', 'G'].includes(dpeClasse) && !docPresent('AUDIT_ENERGETIQUE')) {
     ajouter("Audit énergétique (obligatoire pour les maisons classées E, F ou G)");
-    ajouterVigilance(`L'audit énergétique n'a pas été détecté. Il est obligatoire pour la vente d'une maison classée ${dpeClasse}. Demandez-le au vendeur.`);
+    ajouterVigilance(`Audit énergétique manquant — Non détecté. Obligatoire pour la vente d'une maison classée ${dpeClasse}, à demander au vendeur.`);
   }
 
   // ── ASSAINISSEMENT (maison non raccordée au tout-à-l'égout)
   if (typeBien === 'maison' && !docPresent('ASSAINISSEMENT')) {
     ajouter("Diagnostic assainissement (si non raccordé au tout-à-l'égout)");
-    ajouterVigilance("Le diagnostic assainissement n'a pas été détecté. Il est obligatoire si la maison n'est pas raccordée au tout-à-l'égout. À vérifier avec le vendeur.");
+    ajouterVigilance("Diagnostic assainissement manquant — Non détecté. Obligatoire si la maison n'est pas raccordée au tout-à-l'égout, à vérifier avec le vendeur.");
   }
 
   // ── TERMITES (zone arrêté préfectoral)
   // On NE met PAS dans documents_manquants (incertain), juste un point de vigilance neutre
   if (!diagPresent('TERMITES')) {
-    ajouterVigilance("Vérifier auprès de la mairie ou du notaire si la commune est en zone termites par arrêté préfectoral. Si c'est le cas, l'état termites est obligatoire pour la vente.");
+    ajouterVigilance("État termites à vérifier — Vérifiez auprès de la mairie ou du notaire si la commune est en zone termites (arrêté préfectoral). Si oui, l'état termites est obligatoire pour la vente.");
   }
 
   console.log(`[analyser-run] validateDiagsManquants: ${docsManquants.length} docs manquants, ${pointsVigilance.length} points vigilance`);
@@ -1686,6 +1686,8 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
 - negociation : applicable=true UNIQUEMENT si score < 17. En dessous de ce seuil, il y a toujours au moins un levier de negociation possible. RÈGLE CRITIQUE : ne JAMAIS inclure dans negociation.elements des items deja a la charge du vendeur (travaux votes avant la vente, fonds ALUR a rembourser, honoraires syndic pre-etat date) — ces items ne sont PAS des leviers de negociation pour l acheteur. Les leviers valides sont : travaux evoques non votes avec risque acheteur, DPE defavorable (E/F/G seulement), equipements vetustes non remplaces (chaudiere > 20 ans par ex), anomalies techniques majeures detectees, procedures en cours, impayes copro eleves (>15% du budget), gouvernance defaillante (quitus refuse). Si un item mentionne "charge vendeur", "deja vote", "fonds ALUR" ou "honoraires pre-etat date" : NE PAS l inclure dans negociation.elements. Si aucun levier valide, mettre applicable=false et elements=[].
 
 - RÈGLE CRITIQUE — QUI PAIE LES TRAVAUX VOTES : NE JAMAIS ecrire qu un travaux vote est "legalement a la charge du vendeur" (c est FAUX). Par defaut (article 6-2 du decret de 1967), les appels de fonds exigibles APRES la vente sont a la charge de l ACHETEUR, meme pour des travaux votes avant et meme si l acheteur n a pas vote. Quand tu mentionnes dans points_vigilance (ou ailleurs) des travaux votes dont des appels de fonds tombent apres la vente, formule de facon RASSURANTE et EXACTE : en principe ces appels seraient a la charge de l acheteur, MAIS en pratique l usage notarial veut que le vendeur les reprenne via une clause du compromis — inviter a verifier que cette clause figure bien au compromis (c est ce qui protege l acheteur). NE JAMAIS affirmer une charge vendeur automatique, ni laisser une charge acheteur sans la nuance de la clause. Distinguer : travaux REALISES et payes = aucun cout acheteur ; travaux EVOQUES non votes = risque futur acheteur.
+
+- RÈGLE FORMAT points_forts / points_vigilance (SYNTHESE FINALE uniquement) : formuler CHAQUE point ainsi -> un TITRE court (2 a 5 mots) puis " — " (tiret cadratin entoure d espaces) puis 1 a 2 phrases de detail. Le titre resume l essentiel ; le detail precise (montant, date, consequence pour l acheteur) SANS repeter le titre. Exemples : "Syndic stable — TiffenCoge reconduit jusqu au 30/09/2027, gestion continue." / "Travaux votes a financer — environ 6 611 EUR appeles entre juin et octobre 2026, a votre charge sauf clause du compromis." / "Diagnostics manquants — DPE, electricite, plomb et Carrez ne sont pas au dossier." JAMAIS d emoji ni de puce en tete. Max 8 points par liste. Cette regle ne concerne QUE les points_forts et points_vigilance au niveau RACINE du JSON de synthese (pas ceux internes aux documents).
 
 - RÈGLE APPELS DE FONDS EXCEPTIONNELS : chaque entree de vie_copropriete.appels_fonds_exceptionnels[] DOIT avoir la structure suivante : { motif: "sujet precis de l appel (ex: 'Ravalement facade', 'Reparation ascenseur', 'Travaux toiture')", detail: "1 phrase courte expliquant pourquoi cet appel (contexte des travaux ou de la situation)", montant_total: nombre ou null, date_ag: "date du vote en AG (si connue)", echeance: "date de paiement attendue (si connue)" }. NE JAMAIS mettre "Appel de fonds exceptionnel" comme motif generique — toujours preciser l objet reel de l appel. Si l objet n est pas identifiable dans les PV, ne PAS creer l entree plutot que de mettre un motif vague.
 - RÈGLE CRITIQUE — VOTES EN DEUX TOURS : En copropriété française, si une résolution ne recueille pas la majorité art. 25 au 1er tour mais obtient au moins 1/3 des voix, un 2ème tour à la majorité art. 24 est organisé immédiatement. Si le 2ème tour adopte la résolution, elle EST ADOPTÉE. Ne jamais la marquer comme refusée. Indices : "second tour", "art. 24", "adoptée à la majorité art. 24". Un vrai refus = résolution rejetée sans 2ème tour ou 2ème tour également rejeté. S applique à toutes les résolutions : fonds travaux, travaux, contrat syndic, etc.
