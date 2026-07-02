@@ -1084,7 +1084,7 @@ async function notifyAnalysisReady(
 async function callAI(params: {
   system: string; userContent: unknown[]; maxTokens: number; apiKey: string; timeoutMs?: number;
 }): Promise<{ text: string; error?: string }> {
-  const { system, userContent, maxTokens, apiKey, timeoutMs = 350000 } = params;
+  const { system, userContent, maxTokens, apiKey, timeoutMs = 385000 } = params;
   for (let attempt = 1; attempt <= 3; attempt++) {
     // Timeout dur sur l'appel : sans ça, un appel lent attend jusqu'à la limite wall-clock (~400s)
     // de l'edge function → le worker est tué EN PLEIN APPEL et l'analyse reste bloquée en "processing".
