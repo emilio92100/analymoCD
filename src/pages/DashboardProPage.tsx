@@ -7720,6 +7720,17 @@ export default function DashboardProPage() {
   const [subscription, setSubscription] = useState<ProSubscription | null>(null);
   const [hasEverSubscribed, setHasEverSubscribed] = useState(false);
   const [proCredits, setProCredits] = useState<ProCredits | null>(null);
+  // 🆕 Rafraîchit le solde pro en direct quand une analyse est lancée/remboursée (bus d'événement, sans refresh)
+  useEffect(() => {
+    const refreshProCredits = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
+      if (data && data.length > 0) setProCredits(data[0] as ProCredits);
+    };
+    window.addEventListener('verimo:credits-changed', refreshProCredits);
+    return () => window.removeEventListener('verimo:credits-changed', refreshProCredits);
+  }, []);
   const [analyses, setAnalyses] = useState<ProAnalysis[]>([]);
   const [shares, setShares] = useState<ReportShare[]>([]);
   const [folders, setFolders] = useState<ProFolder[]>([]);
