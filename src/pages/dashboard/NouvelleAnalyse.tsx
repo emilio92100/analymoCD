@@ -463,6 +463,7 @@ export default function NouvelleAnalyse() {
       if (user) {
         const { data } = await supabase.rpc('consume_pro_credit', { p_user_id: user.id, p_credit_type: creditType });
         ok = data === true;
+        if (ok) window.dispatchEvent(new Event('verimo:credits-changed'));
       }
     } else {
       ok = await deductCredit(creditType);
@@ -475,6 +476,7 @@ export default function NouvelleAnalyse() {
     const analyseId = analyseDB?.id || null;
     if (!analyseId) {
       await refundCredit(creditType);
+      window.dispatchEvent(new Event('verimo:credits-changed'));
       setAnalyseError({ message: "Impossible de créer l'analyse. Votre crédit a été remboursé automatiquement.", creditType });
       setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
@@ -493,8 +495,11 @@ export default function NouvelleAnalyse() {
     }
 
     if (!result.success) {
-      await refundCredit(creditType);
+      // 🔒 Remboursement IDEMPOTENT : analyser-run et le watchdog remboursent déjà via la même
+      // fonction verrouillée. On l'appelle ici aussi → si c'est déjà fait, aucun effet (fini le double +1).
       await markAnalyseFailed(analyseId);
+      await supabase.rpc('refund_analyse_credit', { p_analyse_id: analyseId });
+      window.dispatchEvent(new Event('verimo:credits-changed'));
       if (!isMountedRef.current) return;
       setStep('upload'); resetUpload();
       setAnalyseError({ message: result.errorMessage || "Une erreur est survenue. Votre crédit a été remboursé automatiquement.", creditType });
