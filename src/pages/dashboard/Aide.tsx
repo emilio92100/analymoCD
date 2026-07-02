@@ -57,8 +57,8 @@ const penalties = [
 
 const bonuses = [
   { cat: 'Travaux', items: [
-    { l: 'Travaux votés à charge du vendeur (petits/moyens)', v: '+2' },
-    { l: 'Gros travaux votés à charge du vendeur', v: '+3' },
+    { l: 'Travaux votés repris par le vendeur (petits/moyens)', v: '+2' },
+    { l: 'Gros travaux votés repris par le vendeur', v: '+3' },
     { l: 'Garantie décennale récente', v: '+2' },
   ]},
   { cat: 'Procédures', items: [
