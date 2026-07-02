@@ -155,8 +155,8 @@ const categories = [
       { l: 'Travaux légers évoqués non votés', v: '-1', tip: 'Peinture parties communes, interphones, petit entretien — évoqués sans vote. Impact financier limité.' },
     ],
     good: [
-      { l: 'Travaux votés à charge du vendeur (petits/moyens)', v: '+2', tip: 'Des travaux ont été votés et seront payés par le vendeur avant la vente. L\'acheteur en bénéficie sans les financer.' },
-      { l: 'Gros travaux votés à charge du vendeur', v: '+3', tip: 'Chaudière, ravalement, toiture — travaux lourds déjà votés et financés par le vendeur. Signal très positif.' },
+      { l: 'Travaux votés repris par le vendeur (petits/moyens)', v: '+2', tip: 'Des travaux ont été votés. En pratique, le vendeur les reprend via une clause du compromis, donc l\'acheteur n\'a pas à les financer (à confirmer au compromis).' },
+      { l: 'Gros travaux votés repris par le vendeur', v: '+3', tip: 'Chaudière, ravalement, toiture — travaux lourds votés, en général repris par le vendeur via une clause du compromis. Signal positif si la clause le confirme.' },
       { l: 'Garantie décennale récente sur travaux', v: '+2', tip: 'Les travaux réalisés sont couverts par une garantie décennale en cours de validité — protection contre les malfaçons pendant 10 ans.' },
     ],
   },
