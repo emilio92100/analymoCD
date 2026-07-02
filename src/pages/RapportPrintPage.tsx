@@ -324,7 +324,7 @@ export default function RapportPrintPage() {
                 {rapport.travaux_votes.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 10, fontWeight: 800, color: '#3b82f6', letterSpacing: '0.06em', marginBottom: 6 }}>VOTÉS EN AG</div>
-                    <div style={{ fontSize: 11, color: '#1e40af', background: '#eff6ff', borderRadius: 7, padding: '6px 10px', marginBottom: 6 }}>ℹ️ Travaux votés avant compromis = à la charge du vendeur. Vérifiez avec votre notaire.</div>
+                    <div style={{ fontSize: 11, color: '#1e40af', background: '#eff6ff', borderRadius: 7, padding: '6px 10px', marginBottom: 6 }}>ℹ️ Travaux votés : en pratique repris par le vendeur via une clause du compromis. Sans clause, les appels postérieurs à la vente sont à la charge de l'acheteur. Vérifiez avec votre notaire.</div>
                     {rapport.travaux_votes.map((t, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, padding: '5px 10px', borderBottom: '1px solid #eff6ff', background: i % 2 === 0 ? '#f8fbff' : '#fff' }}>
                         <span style={{ color: '#1e40af', fontWeight: 500 }}>• {String(t.label)}{t.annee ? ` (${String(t.annee)})` : ''}{t.charge_vendeur ? ' — charge vendeur' : ''}</span>
