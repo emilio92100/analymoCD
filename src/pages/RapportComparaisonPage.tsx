@@ -499,72 +499,121 @@ function ProfilsBiensSection({ verdict, analyses, bestIdx }: { verdict: VerdictV
   const gridCols = analyses.length === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
 
   return (
-    <div style={{ background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 16, overflow: 'hidden' }}>
-      <div style={{ padding: '16px 22px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontSize: 15 }}>⚖️</div>
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.12em' }}>
-            FORCES & POINTS FAIBLES PAR BIEN
-          </span>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, paddingLeft: 4 }}>
+        <div style={{ width: 26, height: 26, borderRadius: 8, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 13 }}>⚖️</span>
         </div>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.12em' }}>
+          FORCES & POINTS FAIBLES PAR BIEN
+        </span>
       </div>
-      <div className="rcp-section-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0, marginTop: 14 }}>
+
+      <div className="rcp-section-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 14, alignItems: 'start' }}>
         {analyses.map((a, i) => {
           const p = profils.find(pr => pr.bien_idx === i);
           const isBest = i === bestIdx;
+          const forces = (p && Array.isArray(p.forces)) ? p.forces : [];
+          const faibles = (p && Array.isArray(p.points_faibles)) ? p.points_faibles : [];
           return (
-            <div key={a.id} style={{ padding: '16px 20px 20px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none', borderTop: '1px solid #f8fafc' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 800, color: isBest ? '#16a34a' : '#94a3b8', letterSpacing: '0.1em' }}>
-                  BIEN {i + 1}{isBest ? ' ⭐' : ''}
-                </span>
-                {p?.profil && (
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '2px 9px', borderRadius: 99 }}>
-                    {p.profil}
+            <div key={a.id} style={{
+              background: '#fff',
+              borderRadius: 18,
+              border: `2px solid ${isBest ? '#bbf7d0' : '#edf2f7'}`,
+              boxShadow: isBest ? '0 6px 22px rgba(22,163,74,0.08)' : '0 1px 4px rgba(0,0,0,0.04)',
+              overflow: 'hidden',
+            }}>
+              {/* En-tête du bien */}
+              <div style={{
+                padding: '16px 18px 14px',
+                background: isBest ? 'linear-gradient(135deg, #f0fdf4, #fff)' : 'linear-gradient(135deg, #f8fafc, #fff)',
+                borderBottom: '1px solid #f1f5f9',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em',
+                    color: isBest ? '#15803d' : '#64748b',
+                    background: isBest ? 'rgba(22,163,74,0.1)' : 'rgba(100,116,139,0.08)',
+                    padding: '3px 10px', borderRadius: 99,
+                  }}>
+                    BIEN {i + 1}{isBest ? ' ⭐' : ''}
                   </span>
+                  {p?.profil && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.15)', padding: '3px 10px', borderRadius: 99 }}>
+                      {p.profil}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>
+                  {(a.adresse_bien || '').split(',')[0]}
+                </div>
+              </div>
+
+              <div style={{ padding: '14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Forces — bulles vertes */}
+                {forces.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, paddingLeft: 2 }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#15803d', letterSpacing: '0.1em' }}>FORCES</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#15803d', background: '#dcfce7', padding: '1px 8px', borderRadius: 99 }}>{forces.length}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {forces.map((f, fi) => (
+                        <div key={fi} style={{
+                          display: 'flex', gap: 10, alignItems: 'flex-start',
+                          padding: '11px 13px', borderRadius: 14,
+                          background: '#f0fdf4', border: '1px solid #dcfce7',
+                        }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                            <CheckCircle size={13} color="#16a34a" />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: f.detail ? 3 : 0 }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#14532d', lineHeight: 1.4 }}>{f.titre}</span>
+                              <ImpactBadge impact={f.impact} />
+                            </div>
+                            {f.detail && <p style={{ fontSize: 12, color: '#3f6212', opacity: 0.85, lineHeight: 1.55, margin: 0 }}>{f.detail}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Points faibles — bulles ambrées */}
+                {faibles.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, paddingLeft: 2 }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309', letterSpacing: '0.1em' }}>POINTS FAIBLES</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fef3c7', padding: '1px 8px', borderRadius: 99 }}>{faibles.length}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {faibles.map((pf, pfi) => (
+                        <div key={pfi} style={{
+                          display: 'flex', gap: 10, alignItems: 'flex-start',
+                          padding: '11px 13px', borderRadius: 14,
+                          background: '#fffbeb', border: '1px solid #fef3c7',
+                        }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                            <AlertTriangle size={12} color="#d97706" />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: pf.detail ? 3 : 0 }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#78350f', lineHeight: 1.4 }}>{pf.titre}</span>
+                              <ImpactBadge impact={pf.impact} />
+                            </div>
+                            {pf.detail && <p style={{ fontSize: 12, color: '#92400e', opacity: 0.85, lineHeight: 1.55, margin: 0 }}>{pf.detail}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!p && (
+                  <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', margin: 0, padding: '4px 2px' }}>Profil non disponible pour ce bien.</p>
                 )}
               </div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {(a.adresse_bien || '').split(',')[0]}
-              </div>
-
-              {p && Array.isArray(p.forces) && p.forces.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                  {p.forces.map((f, fi) => (
-                    <div key={fi} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                      <CheckCircle size={13} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>{f.titre}</span>
-                          <ImpactBadge impact={f.impact} />
-                        </div>
-                        {f.detail && <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.55, margin: '2px 0 0' }}>{f.detail}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {p && Array.isArray(p.points_faibles) && p.points_faibles.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10, borderTop: '1px dashed #e2e8f0' }}>
-                  {p.points_faibles.map((pf, pfi) => (
-                    <div key={pfi} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                      <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>{pf.titre}</span>
-                          <ImpactBadge impact={pf.impact} />
-                        </div>
-                        {pf.detail && <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.55, margin: '2px 0 0' }}>{pf.detail}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {!p && (
-                <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>Profil non disponible pour ce bien.</p>
-              )}
             </div>
           );
         })}
