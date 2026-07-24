@@ -767,7 +767,7 @@ export default function DashboardPage() {
             onClick={() => { if (!helpSending) { setShowHelpPopup(false); setHelpSent(false); setHelpSubject(''); setHelpCustomSubject(''); setHelpMessage(''); setHelpCreatedId(null); setHelpHasOpenTicket(false); } }}>
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 8 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 520, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
+              style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 600, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
               {helpHasOpenTicket ? (
                 <div style={{ padding: '48px 32px', textAlign: 'center' }}>
@@ -817,7 +817,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <>
-                  <div style={{ padding: '28px 28px 0' }}>
+                  <div style={{ padding: '32px 34px 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 42, height: 42, borderRadius: 12, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -864,7 +864,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <div style={{ padding: '0 28px 28px' }}>
+                  <div style={{ padding: '0 34px 32px' }}>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Décrivez votre problème</label>
                     <textarea value={helpMessage} onChange={e => setHelpMessage(e.target.value)}
                       placeholder="Expliquez-nous votre situation en détail..."
