@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — comparer (v3 — ordre canonique + anti-doublon)
+// EDGE FUNCTION — comparer (v4 — recommandé = Bien 1 partout)
 // Reçoit 2-3 IDs d'analyses complètes
 // Lit les rapports JSON depuis Supabase
 // Appelle Claude pour générer un verdict comparatif personnalisé
@@ -171,6 +171,68 @@ COHÉRENCE DU TEXTE NARRATIF :
 }
 
 // ══════════════════════════════════════════════════════════════
+// v4 — RENUMÉROTATION : le bien recommandé devient TOUJOURS le Bien 1
+// Si Claude recommande un autre bien que le premier (exception facteur
+// bloquant), on permute tout le verdict : textes "Bien X", index des
+// profils, valeurs des écarts clés. L'ordre d'affichage final (ids) est
+// retourné pour que le frontend affiche exactement dans cet ordre.
+// ══════════════════════════════════════════════════════════════
+// deno-lint-ignore no-explicit-any
+function remapVerdictRecommandeEnPremier(verdict: any, orderedIds: string[]): { verdict: any; ordreAffichage: string[] } {
+  const n = orderedIds.length;
+  let r = typeof verdict.bien_recommande_idx === 'number' ? verdict.bien_recommande_idx : 0;
+  if (r < 0 || r >= n) r = 0;
+  if (r === 0) {
+    verdict.bien_recommande_idx = 0;
+    return { verdict, ordreAffichage: orderedIds };
+  }
+
+  // perm[i] = ancien index du bien affiché en position i (recommandé en premier)
+  const perm = [r, ...Array.from({ length: n }, (_, i) => i).filter(i => i !== r)];
+  const newIdxOf = (old: number) => perm.indexOf(old);
+
+  // 1) Textes : permuter les mentions "Bien X" / "bien X" partout dans le
+  //    verdict (titre, comparatif, analyse croisée, delta_labels, actions…).
+  //    Placeholders pour éviter les collisions pendant la permutation.
+  let s = JSON.stringify(verdict);
+  for (let old = 0; old < n; old++) {
+    s = s.split(`Bien ${old + 1}`).join(`§B_${newIdxOf(old) + 1}§`);
+    s = s.split(`bien ${old + 1}`).join(`§b_${newIdxOf(old) + 1}§`);
+  }
+  for (let i = 1; i <= n; i++) {
+    s = s.split(`§B_${i}§`).join(`Bien ${i}`);
+    s = s.split(`§b_${i}§`).join(`bien ${i}`);
+  }
+  // deno-lint-ignore no-explicit-any
+  let v: any;
+  try { v = JSON.parse(s); } catch { v = verdict; }
+
+  // 2) Structures numériques
+  v.bien_recommande_idx = 0;
+  if (Array.isArray(v.profils)) {
+    // deno-lint-ignore no-explicit-any
+    v.profils.forEach((p: any) => {
+      if (typeof p.bien_idx === 'number' && p.bien_idx >= 0 && p.bien_idx < n) p.bien_idx = newIdxOf(p.bien_idx);
+    });
+    // deno-lint-ignore no-explicit-any
+    v.profils.sort((a: any, b: any) => ((a.bien_idx ?? 0) as number) - ((b.bien_idx ?? 0) as number));
+  }
+  // deno-lint-ignore no-explicit-any
+  const remapEcart = (e: any) => {
+    if (!e || typeof e !== 'object') return;
+    const oldVals = [e.bien_1 ?? null, e.bien_2 ?? null, e.bien_3 ?? null];
+    for (let i = 0; i < 3; i++) e[`bien_${i + 1}`] = i < n ? oldVals[perm[i]] : null;
+  };
+  if (v.ecarts_cles) {
+    remapEcart(v.ecarts_cles.score);
+    remapEcart(v.ecarts_cles.cout_annee_1);
+    remapEcart(v.ecarts_cles.dpe);
+  }
+
+  return { verdict: v, ordreAffichage: perm.map(i => orderedIds[i]) };
+}
+
+// ══════════════════════════════════════════════════════════════
 // APPEL CLAUDE AVEC RETRY SUR 503/529/429
 // ══════════════════════════════════════════════════════════════
 type ClaudeError = 'overload' | 'rate_limit' | 'auth' | 'api_error' | 'network';
@@ -279,16 +341,28 @@ Deno.serve(async (req) => {
       }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const analysesOrdered = analyseIds
+    const analysesFound = analyseIds
       .map(id => analyses.find(a => a.id === id))
       .filter((a): a is NonNullable<typeof a> => a !== undefined);
 
-    if (analysesOrdered.length !== analyseIds.length) {
+    if (analysesFound.length !== analyseIds.length) {
       return new Response(JSON.stringify({
         error: 'analyses_not_found',
         userMessage: 'Une ou plusieurs analyses sont introuvables.',
       }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
+
+    // ─── v4 : ORDRE DE GÉNÉRATION = meilleur score d'abord ──────
+    // "Bien 1" envoyé à Claude = meilleur score (tie-break: id) → dans ~90%
+    // des cas le bien recommandé sera déjà le Bien 1. Si Claude fait une
+    // exception (facteur bloquant), on renumérote après coup (voir
+    // remapVerdictRecommandeEnPremier) pour que le recommandé soit TOUJOURS
+    // le Bien 1 à l'affichage.
+    const analysesOrdered = [...analysesFound].sort((a, b) => {
+      const scoreDiff = ((b.score as number) ?? 0) - ((a.score as number) ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return String(a.id).localeCompare(String(b.id));
+    });
 
     const sortedIds = analyseIds.join(','); // déjà triés (ordre canonique v3)
     const { data: existing } = await supabaseAdmin
@@ -298,20 +372,20 @@ Deno.serve(async (req) => {
       .eq('analyse_ids', sortedIds)
       .maybeSingle();
 
-    // Cache : on ne sert que les verdicts v3 (marqueur _ordre_trie).
-    // Les anciens verdicts (générés avec l'ordre de clic) peuvent être
-    // désalignés avec l'affichage → on les régénère silencieusement.
+    // Cache : on ne sert que les verdicts v4 (champ ordre_affichage présent :
+    // recommandé = Bien 1, ordre d'affichage stocké). Les verdicts plus
+    // anciens sont régénérés silencieusement à la première réouverture.
     //
     // 🔧 FIX : le verdict peut revenir de la BDD sous forme de STRING JSON
-    // (comportement déjà observé côté frontend). Sans ce parse, le check du
-    // marqueur échouait toujours → le cache ne matchait JAMAIS → un appel
-    // Claude complet était relancé à CHAQUE ouverture du rapport.
+    // (comportement déjà observé côté frontend). Sans ce parse, le check
+    // échouait toujours → un appel Claude complet était relancé à CHAQUE
+    // ouverture du rapport.
     let existingVerdict = existing?.verdict as Record<string, unknown> | string | null;
     if (typeof existingVerdict === 'string') {
       try { existingVerdict = JSON.parse(existingVerdict) as Record<string, unknown>; }
       catch { existingVerdict = null; }
     }
-    if (existingVerdict && existingVerdict._ordre_trie === true) {
+    if (existingVerdict && Array.isArray(existingVerdict.ordre_affichage)) {
       return new Response(JSON.stringify({ success: true, verdict: existingVerdict, cached: true }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
@@ -461,9 +535,13 @@ Deno.serve(async (req) => {
       }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // v3 : marqueur d'ordre canonique — permet d'invalider les anciens
-    // verdicts générés avec l'ordre de clic (potentiellement désalignés).
+    // v4 : le recommandé devient TOUJOURS le Bien 1 (renumérotation si
+    // nécessaire), et l'ordre d'affichage (ids) est stocké dans le verdict
+    // pour que le frontend affiche toutes les sections dans le même ordre.
+    const remap = remapVerdictRecommandeEnPremier(verdict, analysesOrdered.map(a => String(a.id)));
+    verdict = remap.verdict;
     verdict._ordre_trie = true;
+    verdict.ordre_affichage = remap.ordreAffichage;
 
     const { error: upsertError } = await supabaseAdmin.from('comparaisons').upsert({
       user_id: user.id,
