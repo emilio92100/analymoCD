@@ -558,7 +558,7 @@ function RapportHeader({ rapport, isShared, backUrl, hideVerimoBranding }: { rap
   const scoreColor = getScoreColor(rapport.score);
   const isComplete = rapport.type === 'complete';
   const backTo = backUrl || '/dashboard/analyses';
-  const backLabel = backUrl?.includes('/dossier/') ? 'Mon dossier' : 'Mes analyses';
+  const backLabel = backUrl?.includes('/rapport-comparaison') ? 'La comparaison' : backUrl?.includes('/dossier/') ? 'Mon dossier' : 'Mes analyses';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -4873,7 +4873,7 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backU
 
               {analysisStarted && (
                 <Link to={backUrl || '/dashboard/analyses'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18, padding: '10px 18px', borderRadius: 10, background: '#0f2d3d', color: '#fff', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
-                  <ChevronLeft size={15} /> {(backUrl || '').includes('/dossier/') ? 'Revenir au dossier' : 'Revenir à mes analyses'}
+                  <ChevronLeft size={15} /> {(backUrl || '').includes('/rapport-comparaison') ? 'Revenir à la comparaison' : (backUrl || '').includes('/dossier/') ? 'Revenir au dossier' : 'Revenir à mes analyses'}
                 </Link>
               )}
             </div>
@@ -5240,15 +5240,22 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
       return;
     }
 
-    // Déterminer le bon lien retour selon le rôle et le dossier
+    // Déterminer le bon lien retour selon le rôle et le dossier.
+    // 🆕 UX : si on arrive depuis une comparaison (param ?from=/rapport-comparaison?ids=…),
+    // le bouton Retour ramène à CETTE comparaison au lieu de "Mes analyses".
+    // Sécurité : on n'accepte que des chemins internes commençant par /rapport-comparaison.
+    const fromParam = searchParams.get('from') || '';
+    const fromComparaison = fromParam.startsWith('/rapport-comparaison') ? fromParam : null;
+
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     const { data: analyse } = await supabase.from('analyses').select('folder_id').eq('id', id).single();
     if (profile?.role === 'pro') {
       setHideVerimoBranding(true);
-      if (analyse?.folder_id) setBackUrl(`/dashboard/dossier/${analyse.folder_id}`);
+      if (fromComparaison) setBackUrl(fromComparaison);
+      else if (analyse?.folder_id) setBackUrl(`/dashboard/dossier/${analyse.folder_id}`);
       else setBackUrl('/dashboard');
     } else {
-      setBackUrl('/dashboard/analyses');
+      setBackUrl(fromComparaison || '/dashboard/analyses');
     }
 
     const MAX_ATTEMPTS = 36;
@@ -5301,13 +5308,13 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
         {/* Bouton sticky mobile */}
         <div className="doc-back-sticky" style={{ display: 'none', position: 'sticky', top: 0, zIndex: 100, background: '#f5f9fb', padding: '8px 12px', borderBottom: '1px solid #edf2f7' }}>
           <Link to={backUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '8px 14px', borderRadius: 9, background: '#2a7d9c' }}>
-            <ChevronLeft size={13} /> Mes analyses
+            <ChevronLeft size={13} /> {backUrl.includes('/rapport-comparaison') ? 'La comparaison' : 'Mes analyses'}
           </Link>
         </div>
         <div className="doc-simple-wrapper" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px' }}>
           <div className="doc-back-desktop" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link to={backUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
-              <ChevronLeft size={15} /> Mes analyses
+              <ChevronLeft size={15} /> {backUrl.includes('/rapport-comparaison') ? 'La comparaison' : 'Mes analyses'}
             </Link>
           </div>
           <DocumentRenderer result={documentResult} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
