@@ -462,6 +462,33 @@ export default function Compare() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* ═══ BARRE STICKY — Lancer la comparaison (reste visible au défilement) ═══ */}
+      {canLaunch && !processingCompares.some(pc => pc.analyse_ids === [...selected].sort().join(',')) && (
+        <div style={{ position: 'sticky', top: 12, zIndex: 30 }}>
+          {(() => {
+            const sortedSel = [...selected].sort().join(',');
+            const existing = historique.find(c => c.analyse_ids === sortedSel);
+            return (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px 12px 18px', borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', boxShadow: '0 8px 24px rgba(15,45,61,0.28)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 1 }}>
+                    {existing ? 'Comparaison déjà disponible' : 'Prêt à comparer'}
+                  </div>
+                </div>
+                <button onClick={() => existing ? openComparaison(selected) : handleLaunch()} disabled={launched}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 11, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: launched ? 'default' : 'pointer', flexShrink: 0, opacity: launched ? 0.7 : 1 }}>
+                  {existing ? <><Eye size={16} /> Voir le rapport</> : <><GitCompare size={16} /> Lancer la comparaison <ArrowRight size={15} /></>}
+                </button>
+              </motion.div>
+            );
+          })()}
+        </div>
+      )}
+
       {launchError && (
         <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#991b1b' }}>
           ⚠ {launchError}
