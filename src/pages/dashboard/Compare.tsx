@@ -204,6 +204,7 @@ export default function Compare() {
       const { data } = await supabase
         .from('comparaisons')
         .select('id, analyse_ids, verdict, created_at')
+        .not('verdict', 'is', null)
         .order('created_at', { ascending: false })
         .limit(10);
       if (data) setHistorique(data as ComparaisonSaved[]);
@@ -212,6 +213,36 @@ export default function Compare() {
   }, []);
 
   useEffect(() => { loadHistorique(); }, [loadHistorique]);
+
+  // ─── Comparaisons EN COURS (status = 'processing' en base) ────────────────
+  // Même principe qu'une analyse classique : la source de vérité est la base.
+  // La edge function "comparer" crée une ligne 'processing' au lancement puis la
+  // passe à 'completed'. Au retour sur l'onglet (ou depuis un autre appareil),
+  // on lit ces lignes et on affiche un spinner, avec polling jusqu'à la fin.
+  const [processingCompares, setProcessingCompares] = useState<{ analyse_ids: string }[]>([]);
+
+  const loadProcessing = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('comparaisons')
+      .select('analyse_ids')
+      .eq('user_id', user.id)
+      .eq('status', 'processing');
+    setProcessingCompares(data || []);
+  }, []);
+
+  useEffect(() => { loadProcessing(); }, [loadProcessing]);
+
+  // Polling toutes les 4s tant qu'au moins une comparaison est en cours
+  useEffect(() => {
+    if (processingCompares.length === 0) return;
+    const poll = setInterval(async () => {
+      await loadProcessing();
+      await loadHistorique();
+    }, 4000);
+    return () => clearInterval(poll);
+  }, [processingCompares.length, loadProcessing, loadHistorique]);
 
   const deleteComparaison = async (id: string) => {
     if (!confirm('Supprimer cette comparaison ?')) return;
@@ -241,6 +272,8 @@ export default function Compare() {
     if (!canLaunch) return;
     setLaunched(true);
     setLaunchError(null);
+    // Rafraîchit l'affichage "en cours" (la ligne processing est créée côté serveur)
+    setTimeout(loadProcessing, 1200);
 
     try {
       const session = (await supabase.auth.getSession()).data.session;
@@ -264,6 +297,7 @@ export default function Compare() {
 
       const data = await res.json();
       if (data.success && data.verdict) {
+        loadProcessing();
         // Rafraîchir l'historique en arrière-plan puis rediriger vers le rapport
         loadHistorique();
         // Redirection vers la page rapport plein écran
@@ -507,6 +541,19 @@ export default function Compare() {
         {/* Comparaison existante ou bouton lancer */}
         {canLaunch && (() => {
           const sortedSelected = [...selected].sort().join(',');
+          // Si ces biens sont déjà en cours de comparaison, on affiche le spinner
+          // plutôt que le bouton "Lancer" (évite un double lancement).
+          if (processingCompares.some(pc => pc.analyse_ids === sortedSelected)) {
+            return (
+              <div style={{ padding: '0 16px 16px' }}>
+                <div style={{ padding: '16px 18px', borderRadius: 14, background: '#f0f7fb', border: '1.5px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', border: '3px solid #e6f1fb', borderTopColor: '#2a7d9c', animation: 'vr-compare-spin 0.8s linear infinite', flexShrink: 0 }} />
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d' }}>Comparaison de ces biens en cours…</div>
+                </div>
+                <style>{`@keyframes vr-compare-spin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            );
+          }
           const existingComp = historique.find(c => c.analyse_ids === sortedSelected);
           if (existingComp) {
             const dateExist = new Date(existingComp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -548,6 +595,27 @@ export default function Compare() {
           );
         })()}
       </div>
+
+      {/* ═══ COMPARAISON(S) EN COURS (au retour sur l'onglet pendant le traitement) ═══ */}
+      {processingCompares.map((pc) => (
+        <motion.div key={pc.analyse_ids} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #bae3f5', overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 42, height: 42, flexShrink: 0 }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', border: '3px solid #e6f1fb', borderTopColor: '#2a7d9c', animation: 'vr-compare-spin 0.8s linear infinite' }} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
+                Comparaison en cours…
+              </div>
+              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                Votre verdict comparatif se génère en arrière-plan. Il apparaîtra ici automatiquement, sans rien faire de votre part.
+              </div>
+            </div>
+          </div>
+          <style>{`@keyframes vr-compare-spin { to { transform: rotate(360deg); } }`}</style>
+        </motion.div>
+      ))}
 
       {/* ═══ HISTORIQUE — Bloc séparé ═══ */}
       {historique.length > 0 && (
