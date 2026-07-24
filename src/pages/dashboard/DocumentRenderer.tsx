@@ -228,36 +228,53 @@ function stripLeadingEmoji(text: string): string {
 
 function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilances: string[] }) {
   if (!forts?.length && !vigilances?.length) return null;
+
+  // Découpe un point "Titre — détail" ou "Titre : détail" en deux niveaux,
+  // exactement comme l'analyse complète (RapportPage). Si aucun séparateur,
+  // le texte entier devient le détail (pas de titre).
+  const splitPoint = (raw: string): { titre: string | null; detail: string } => {
+    const clean = stripLeadingEmoji(raw).replace(/^\s*[✓✔✅⚠⚡!•]+[\s:—-]*/u, '').trim();
+    const iEm = clean.indexOf(' — ');
+    if (iEm > 0 && iEm <= 60) return { titre: clean.slice(0, iEm).trim(), detail: clean.slice(iEm + 3).trim() };
+    const iCol = clean.indexOf(' : ');
+    if (iCol > 0 && iCol <= 50) return { titre: clean.slice(0, iCol).trim(), detail: clean.slice(iCol + 3).trim() };
+    return { titre: null, detail: clean };
+  };
+
+  const renderCol = (items: string[], variant: 'pos' | 'vig') => {
+    const headBg = variant === 'pos' ? '#2f6b3f' : '#9a4a2c';
+    const bord = variant === 'pos' ? '#cfe6d4' : '#efd6c9';
+    const icon = variant === 'pos' ? '✓' : '⚠';
+    const label = variant === 'pos' ? 'Points positifs' : 'Points de vigilance';
+    const vide = variant === 'pos' ? 'Aucun point positif identifié.' : 'Aucun point de vigilance identifié.';
+    const list = Array.isArray(items) ? items : [];
+    if (list.length === 0) return null;
+    return (
+      <div>
+        <div style={{ background: headBg, color: '#fff', padding: '11px 16px', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '0.01em' }}>{label}</span>
+          {list.length > 0 && <span style={{ marginLeft: 'auto', fontSize: 12, background: 'rgba(255,255,255,0.18)', padding: '2px 10px', borderRadius: 20 }}>{list.length}</span>}
+        </div>
+        <div style={{ background: '#fff', border: `1px solid ${bord}`, borderTop: 'none', borderRadius: '0 0 12px 12px' }}>
+          {list.length > 0 ? list.map((p, i) => {
+            const { titre, detail } = splitPoint(p);
+            return (
+              <div key={i} style={{ padding: '12px 16px', borderBottom: i < list.length - 1 ? '0.5px solid #edf2f7' : 'none' }}>
+                {titre && <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: detail ? 2 : 0, lineHeight: 1.4 }}>{titre}</div>}
+                {detail && <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.55 }}>{detail}</div>}
+              </div>
+            );
+          }) : <div style={{ padding: '14px 16px', fontSize: 13, color: '#94a3b8' }}>{vide}</div>}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="dr-points-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-      {forts?.length > 0 && (
-        <div style={{ background: '#f0fdf4', border: `0.5px solid #bbf7d0`, borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 20px', borderBottom: `0.5px solid #bbf7d0`, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a' }} />
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS POSITIFS</div>
-          </div>
-          {forts.map((p, i) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < forts.length - 1 ? `0.5px solid #bbf7d0` : 'none', background: i % 2 === 0 ? '#f0fdf4' : '#f7fef9', fontSize: 14, color: C.text, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
-              <span>{stripLeadingEmoji(p)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {vigilances?.length > 0 && (
-        <div style={{ background: '#fef2f2', border: `0.5px solid #fecaca`, borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 20px', borderBottom: `0.5px solid #fecaca`, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS DE VIGILANCE</div>
-          </div>
-          {vigilances.map((p, i) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < vigilances.length - 1 ? `0.5px solid #fecaca` : 'none', background: i % 2 === 0 ? '#fef2f2' : '#fff5f5', fontSize: 14, color: C.text, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <span style={{ color: '#dc2626', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>⚠</span>
-              <span>{stripLeadingEmoji(p)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="dr-points-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14, marginBottom: 14 }}>
+      {renderCol(forts, 'pos')}
+      {renderCol(vigilances, 'vig')}
     </div>
   );
 }
