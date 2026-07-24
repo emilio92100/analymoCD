@@ -100,7 +100,13 @@ STRUCTURE DE TA RÉPONSE (JSON strict) :
     "cout_annee_1": { "bien_1": 2361, "bien_2": 3209, "bien_3": null, "delta_label": "848 € d'écart sur l'année 1" },
     "dpe": { "bien_1": "E", "bien_2": "E", "bien_3": null, "delta_label": "Même classe" }
   },
-  "lecture_verimo": "4-6 phrases denses. LA section d'analyse du rapport (fusion de la lecture comparée et de l'analyse croisée). Structure imposée : (1) le constat décisif — les 2-3 écarts concrets qui font pencher la balance, classés par impact financier réel pour l'acheteur ; (2) les corrélations inter-thèmes que les chiffres séparés ne montrent pas (ex : DPE + fonds travaux, impayés + dette fournisseurs + travaux non votés) ; (3) ce que chaque bien coûte de manière CERTAINE vs ce qu'il expose comme risque NON CHIFFRÉ. Factuel strict.",
+  "lecture_verimo": {
+    "constat": "2-3 phrases — le constat décisif : les 2-3 écarts concrets qui font pencher la balance, classés par impact financier réel pour l'acheteur. C'est ici (et uniquement ici) que la recommandation est justifiée.",
+    "correlations": "2-3 phrases — les corrélations inter-thèmes que les chiffres séparés ne montrent pas (ex : DPE + fonds travaux, impayés + dette fournisseurs + travaux non votés).",
+    "synthese_par_bien": [
+      { "bien_idx": 0, "resume": "1 phrase percutante (25 mots max) : ce que ce bien coûte de manière CERTAINE vs ce qu'il expose comme risque NON CHIFFRÉ." }
+    ]
+  },
   "profils": [
     {
       "bien_idx": 0,
@@ -132,11 +138,14 @@ RÈGLES DE REMPLISSAGE :
 - ecarts_cles.delta_label : formulation "X d écart" adaptée au type (points, euros, lettres).
 
 RÈGLES POUR lecture_verimo :
-- C'est LA section à forte valeur ajoutée du rapport : elle doit HIÉRARCHISER, pas énumérer. Classer les écarts par impact financier réel pour l'acheteur : coûts certains (charges annuelles, fonds à rembourser à la signature, quote-part de travaux votés) > engagements très probables (travaux évoqués chiffrés par devis, obligations légales) > risques non chiffrés (procédures, absence de documents, travaux évoqués sans montant).
+- C'est LA section à forte valeur ajoutée du rapport : elle doit HIÉRARCHISER, pas énumérer. Trois sous-champs OBLIGATOIRES :
+  * constat : les écarts déterminants classés par impact financier réel pour l'acheteur : coûts certains (charges annuelles, fonds à rembourser à la signature, quote-part de travaux votés) > engagements très probables (travaux évoqués chiffrés par devis, obligations légales) > risques non chiffrés (procédures, absence de documents, travaux évoqués sans montant). Phrases courtes et denses.
+  * correlations : uniquement les liens inter-critères que le lecteur ne verrait pas seul. Ne PAS répéter les montants déjà cités dans constat — les désigner sans les rechiffrer (ex : "la rénovation non votée évoquée plus haut").
+  * synthese_par_bien : EXACTEMENT N objets (un par bien, bien_idx correspondant à l'ordre reçu). Chaque resume = 1 seule phrase, 25 mots max, format "coûts certains vs risques ouverts". Percutant, pas de jargon.
 - DPE : tu PEUX mentionner les obligations réglementaires FACTUELLES attachées à une classe (interdiction progressive de location des passoires thermiques F et G, audit énergétique obligatoire à la vente pour F et G) — ce sont des faits de loi, pas des projections. Tu peux relever qu'un DPE E/F/G combiné à un fonds travaux insuffisant ou à des travaux énergétiques non votés constitue un cumul de signaux sur la même problématique.
 - INTERDIT : projection chiffrée inventée ("cela pourrait coûter X €" sans devis présent dans les documents), estimation de perte ou de prise de valeur, pronostic de votes futurs en AG, calcul de rendement locatif.
 - AUTORISÉ : additionner des montants présents dans les documents, relier DPE + fonds travaux, relier procédure + impayés + dette fournisseurs, pointer un effet cumulatif factuel.
-- Si les deux biens sont réellement très proches sur les axes mesurables : le dire clairement plutôt que de forcer un écart artificiel, et indiquer que la décision se jouera sur les critères non documentaires (emplacement, agencement, prix).
+- Si les deux biens sont réellement très proches sur les axes mesurables : le dire clairement dans constat plutôt que de forcer un écart artificiel, et indiquer que la décision se jouera sur les critères non documentaires (emplacement, agencement, prix).
 
 RÈGLE ANTI-REDONDANCE (s'applique à l'ENSEMBLE du JSON) :
 - Chaque fait chiffré précis (un montant, un pourcentage, une classe DPE, une date) ne doit être DÉVELOPPÉ que dans UNE SEULE section du verdict. Répartition stricte : lecture_verimo hiérarchise et relie les faits déterminants ; profils[] détaille les forces/faiblesses propres à chaque bien ; alerte_documents ne parle QUE des documents ; points_a_approfondir ne contient QUE des actions à mener.
@@ -163,7 +172,7 @@ RÈGLE DE SÉLECTION DU BIEN RECOMMANDÉ (bien_recommande_idx) :
    * Impayés de copropriété globaux > 15% du budget annuel
    * Cumul d'au moins DEUX signaux financiers majeurs convergents (impayés > 15% du budget, dette fournisseurs significative, fonds travaux insuffisant) COMBINÉ à des travaux lourds non votés estimés > 50 000 EUR dans les documents
    * Asymétrie documentaire MAJEURE : le bien au meilleur score a été analysé avec < 3 documents, l'autre avec beaucoup plus
-3. SI TU FAIS UNE EXCEPTION : tu DOIS impérativement mentionner explicitement dans titre_verdict ET dans lecture_verimo POURQUOI tu ne recommandes pas le meilleur score.
+3. SI TU FAIS UNE EXCEPTION : tu DOIS impérativement mentionner explicitement dans titre_verdict ET dans lecture_verimo.constat POURQUOI tu ne recommandes pas le meilleur score.
 4. SI AUCUN FACTEUR BLOQUANT : tu dois OBLIGATOIREMENT recommander le bien avec le meilleur score, même si l'écart est faible.
 
 COHÉRENCE DU TEXTE NARRATIF :
@@ -220,6 +229,15 @@ function remapVerdictRecommandeEnPremier(verdict: any, orderedIds: string[]): { 
     });
     // deno-lint-ignore no-explicit-any
     v.profils.sort((a: any, b: any) => ((a.bien_idx ?? 0) as number) - ((b.bien_idx ?? 0) as number));
+  }
+  // v5 : lecture_verimo.synthese_par_bien contient aussi des bien_idx à permuter
+  if (v.lecture_verimo && typeof v.lecture_verimo === 'object' && Array.isArray(v.lecture_verimo.synthese_par_bien)) {
+    // deno-lint-ignore no-explicit-any
+    v.lecture_verimo.synthese_par_bien.forEach((sb: any) => {
+      if (typeof sb.bien_idx === 'number' && sb.bien_idx >= 0 && sb.bien_idx < n) sb.bien_idx = newIdxOf(sb.bien_idx);
+    });
+    // deno-lint-ignore no-explicit-any
+    v.lecture_verimo.synthese_par_bien.sort((a: any, b: any) => ((a.bien_idx ?? 0) as number) - ((b.bien_idx ?? 0) as number));
   }
   // deno-lint-ignore no-explicit-any
   const remapEcart = (e: any) => {
