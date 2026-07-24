@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 3 juillet 2026
+# VERIMO — Contexte projet — 24 juillet 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -25,7 +25,64 @@
 
 ---
 
-## 🆕 DERNIÈRE SESSION — 2-3 juillet 2026 ⭐⭐⭐
+## 🆕 DERNIÈRE SESSION — 24 juillet 2026 ⭐⭐⭐
+
+> Session UX/affichage + fiabilisation comparaison. Beaucoup de frontend, un prompt, une migration SQL. Tout compile, plusieurs points confirmés en live par Alex.
+
+### ✅ Chantiers livrés
+
+**1. Temps estimé d'analyse — FIGÉ (NouvelleAnalyse.tsx)**
+- Avant : le « temps restant » affiché en haut dépendait du `pct` de progression → il s'effondrait (ex : « ~10-15 min » → « ~1 min » en quelques secondes) parce que l'upload et le MAP parallèle font bondir le pourcentage, puis restait figé pendant la synthèse (phase la plus longue). UX trompeuse.
+- Fix : `tempsRestant` calculé **une seule fois** sur le nombre de docs (≤3 → 2 min, ≤8 → 4 min, ≤12 → 7 min, sinon 10 à 15 min), ne bouge plus. Affiché « Environ X ». Le vrai chrono « Temps écoulé » (déjà présent) reste la valeur qui évolue en direct, désormais visible dès **30 s** (au lieu de 60 s).
+- ⚠️ Limites connues NON traitées (à voir plus tard) : estimation basée sur le **nombre de docs** seulement (un PDF de 200 p compte comme un de 3 p) ; table plafonnée à 13 docs (un dossier de 25 est estimé comme 13).
+
+**2. Compteur « Document X sur Y » en MAP-REDUCE — anomalie identifiée (NON corrigée)**
+- En mode MAP-REDUCE (seuil réel = **`SEUIL_MAP_REDUCE = 6`** dans analyser-run, pas 8/9), `progress_total = files.length + 1` (le +1 = étape de synthèse). Donc « Document 12 sur 16 » pour 15 docs. Incohérence : le message serveur dit « (12/15) » mais `progress_total` vaut 16. Affichage OK sur < 6 docs (total = files.length exact). **Signalé à Alex, pas corrigé cette session** (candidat futur : afficher `total - 1` ou « Synthèse finale »).
+
+**3. Carnet d'entretien — refonte affichage (RapportPage.tsx, onglet Copro)**
+- Contrats d'entretien : chaque card a maintenant une **icône dédiée par équipement** (helper `contratIcon` : 🛗 ascenseur, 🧯 extincteurs, 🐀 dératisation, 🪳 désinsectisation, 🚪 porte garage, 🌳 jardin, 🔥 chaudière, 💧 compteurs…). Avant : 🏢 générique identique partout → tout se ressemblait.
+- Diagnostics parties communes : **statut (Positif/Négatif/Non effectué) en bandeau centré en bas** de chaque card (avant : collé à droite), carte teintée selon résultat (rouge/vert/gris), icône propre par diagnostic (helpers `diagStatut` + `diagEmoji`). Mapping basé sur le **texte du libellé** → marche pour tout carnet, sans champ structuré dédié.
+
+**4. Points forts / vigilance — harmonisation analyse SIMPLE = COMPLÈTE (DocumentRenderer.tsx)**
+- Avant : l'analyse simple (`PointsFortsVigilances` dans DocumentRenderer) affichait les points sur une seule ligne, sans titre gras. L'analyse complète (RapportPage) découpait « Titre — détail ». Incohérence.
+- Fix : `PointsFortsVigilances` reprend **exactement** le rendu de la complète (bandeaux foncés vert #2f6b3f / brun #9a4a2c + compteur + `splitPoint` titre gras/détail léger). Une seule modif de la définition → les ~18 usages en profitent. Grille responsive (1 col mobile déjà géré).
+
+**5. Format « Titre — détail » des points PAR DOCUMENT — PROMPT (analyser-run/index.ts) ⚠️ REDÉPLOIEMENT MANUEL**
+- Cause racine du point 4 : la règle « Titre court (2-5 mots) — détail » existait déjà mais UNIQUEMENT pour la synthèse finale (racine du JSON). Les `points_forts`/`points_vigilance` **internes à chaque document** (PV_AG, DDT…) n'avaient aucune consigne de format → phrases sans séparateur exploitable → pas de titre gras côté affichage simple.
+- Fix : règle de format ajoutée dans `buildDocumentPrompt` (s'applique à TOUS les documents, titre < 60 caractères pour matcher la limite du `splitPoint` frontend). N'affecte que les **nouvelles** analyses. Le `splitPoint` reste le filet (pas de séparateur → détail simple, jamais cassé).
+
+**6. Popup « Besoin d'aide » — refonte UX (DashboardPage.tsx + DashboardProPage.tsx)**
+- ⚠️ Popup **DUPLIQUÉ dans 2 fichiers** (particulier + pro) — toujours modifier les deux.
+- Motifs : chaque bouton a une **icône colorée en pastille** (analyse=bleu FileText, abonnement=violet CreditCard, bug=rouge Wrench, crédits=vert, autre=gris HelpCircle ; +ambre Users « Volume important » côté pro). Sélection nette (bordure 2px + fond teinté + ombre). Import lucide : ajout `Wrench, HelpCircle` (pro aussi).
+- Popup **élargi 520 → 600 px** + padding 32/34 (plus aéré, libellés sur une ligne).
+
+**7. Comparaison de biens — FIABILISATION COMPLÈTE (le gros chantier) ⭐**
+- ⚠️ Composant `Compare` **partagé** entre dashboard particulier (DashboardPage L529) ET pro (DashboardProPage L7952) — une seule correction couvre les deux.
+- **a) Ordre des biens figé (RapportComparaisonPage.tsx)** : avant, le bien recommandé était déplacé en 1ʳᵉ position (gauche) → « Bien 2 » pouvait apparaître à gauche, déroutant. Fix : `displayOrder` = ordre d'origine (**Bien 1 toujours à gauche, Bien 2 à droite**). Le badge « ⭐ RECOMMANDÉ » suit le bon bien via `bestIdx`, quelle que soit sa position.
+- **b) Suivi « en cours » via BASE (comme une analyse classique)** — 3 pièces coordonnées :
+  - **SQL** : `ALTER TABLE comparaisons ADD COLUMN status` (processing/completed/failed) + `updated_at` + index `(user_id, status)`. Migration = `01-migration-comparaisons-status.sql`. Table `comparaisons` avait 5 colonnes (id, user_id, analyse_ids, verdict **text**, created_at) — pas de status avant.
+  - **Edge Function `comparer`** ⚠️ REDÉPLOIEMENT MANUEL : crée la ligne `status='processing'` (verdict null) **dès le début**, passe à `completed` à la fin (upsert onConflict `user_id,analyse_ids`), `failed` sur erreur API ou parse. Cache inchangé (lit `verdict`, donc ne matche jamais une ligne processing).
+  - **Frontend `Compare.tsx`** : lit les comparaisons `status='processing'` en base, affiche un **spinner « Comparaison en cours… » tout en haut de la page**, polling 4 s jusqu'à résolution. Historique filtré `.not('verdict','is',null)` (les processing ne polluent pas). Robuste multi-appareils/refresh (source de vérité = base). ⚠️ Une 1ʳᵉ version localStorage a été écrite puis **remplacée** par cette version base — ne garder que la version base.
+- **c) Barre flottante « Lancer la comparaison »** : apparaît dès 2-3 biens sélectionnés, **suit le scroll en permanence**. ⚠️ Piège vécu : `position:fixed` NE MARCHE PAS car le `<main>` du dashboard a `overflowX:hidden` (piège classique qui neutralise `fixed`). **Solution = `createPortal` sur `document.body`** → la barre échappe à tous les overflow/transform parents. **CONFIRMÉ LIVE par Alex après le portail.**
+- **d) Bouton « Annuler » retiré** (écran d'attente) : il ne faisait que `setLaunched(false)` côté client, l'Edge Function tournait quand même → trompeur. Retiré (bouton + prop `onCancel` + fonction `handleCancel`).
+
+### 📦 À DÉPLOYER (ordre strict pour cette session)
+1. **SQL Editor D'ABORD** : `01-migration-comparaisons-status.sql` (sinon le frontend cherche `status` inexistant + l'Edge Function plante)
+2. **GitHub** (Vercel auto) : `NouvelleAnalyse.tsx`, `RapportPage.tsx`, `DocumentRenderer.tsx`, `DashboardPage.tsx`, `DashboardProPage.tsx`, `Compare.tsx`, `RapportComparaisonPage.tsx`
+3. **Supabase Studio — redéploiement MANUEL** : `analyser-run` (format points par doc) ET `comparer` (statut processing)
+- ⚠️ Faire SQL + Edge Functions AVANT le frontend idéalement (sinon erreur silencieuse le temps du décalage, pas de casse).
+
+### 🔎 SEO / indexation — POINT D'ÉTAPE (24 juillet)
+- **Constat** : un client a trouvé Verimo **via Claude** (recherche web) et a payé. Preuve que le SEO alimente déjà l'acquisition via assistants IA. Aucun système de pub — seule la recherche web fait remonter Verimo.
+- **Indexation réelle mesurée (Search Console + repo)** : **24 guides indexés sur 47**. 34 pages indexées au total (24 guides + 10 pages site). Les 47 fichiers existent bien dans `src/guides/` et dans le sitemap (aucun écart).
+- ⚠️ **Les mauvais 23 manquent** : sur les 5 articles piliers, **4 ne sont PAS indexés** (`analyser-pv-ag-avant-achat`, `dpe-comment-lire-avant-achat`, `charges-copropriete-trop-elevees`, `10-documents-avant-offre-achat` ; seul `compromis-vente-clauses-lire` est indexé). Explique pourquoi une recherche « PV d'AG » ne remonte pas Verimo.
+- **Cause** : soumission jamais reprise (quota sauté en mai). Action = **soumettre les 23 manquants** dans Search Console (~10/jour). Alex a commencé cette session.
+- **Autres anomalies vues** : désindexation mi-juin (~40 → 34 pages, jamais remontée) ; `/dashboard/nouvelle-analyse` indexée à tort (robots.txt `Disallow` bloque l'exploration mais PAS l'indexation → il faut un `noindex`, pas un Disallow) ; `/cgu` et `/contact-pro` dans le sitemap jamais indexées ; `lastmod` du sitemap figés au 6 mai.
+- **Prerendering (SSG)** : discuté, **NON prioritaire**. Le site est une SPA React/Vite → les robots sans JS (IA, réseaux sociaux) ne lisent que la coquille `index.html` (meta générique). Google exécute le JS donc indexe. Impact réel = les IA/LinkedIn ne lisent pas le corps des articles, seulement les citent via résultats de recherche. Chantier à risque (peut casser le build), à faire plus tard sur branche de test si besoin de visibilité IA/sociale. Options notées : `vite-react-ssg` (propre, refonte routes), `react-snap` (léger). Items backlog liés : images OG absentes, FAQ dans les articles (format que Google/IA aiment extraire).
+
+---
+
+## 📌 SESSION — 2-3 juillet 2026 ⭐⭐⭐
 
 ### ✅ Chantiers livrés (à déployer — voir « À DÉPLOYER » plus bas)
 
@@ -183,9 +240,9 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 | Nom | Rôle | Version |
 |-----|------|---------|
 | `analyser` | Lance une analyse — gère la queue Anthropic 503 | v8 |
-| `analyser-run` | Worker qui traite l'analyse en background. **PROD = SINGLE-CALL v7** (le MAP-REDUCE v18 a été retiré du repo le 25 juin — voir section MAP-REDUCE conservée en historique). 🆕 **Support ASL/AFUL** : types `ASL_CHIFFRES`/`ASL_REGLES` en mode `document` + `vie_asl`/`asl_mentionnee` en mode `complete` (25 juin). Modes `document` (simple) et `complement` toujours single appel. | **v7 single-call + ASL** (25 juin) |
+| `analyser-run` | Worker qui traite l'analyse en background. **PROD = SINGLE-CALL v7** (le MAP-REDUCE v18 a été retiré du repo le 25 juin — voir section MAP-REDUCE conservée en historique). 🆕 **Support ASL/AFUL** : types `ASL_CHIFFRES`/`ASL_REGLES` en mode `document` + `vie_asl`/`asl_mentionnee` en mode `complete` (25 juin). Modes `document` (simple) et `complement` toujours single appel. 🆕 **Format « Titre — détail »** imposé aux `points_forts`/`points_vigilance` de CHAQUE document (24 juil) — titre < 60 car. ⚠️ NB : `SEUIL_MAP_REDUCE = 6` présent dans le code (bascule le compteur « X sur N+1 »). | **v7 single-call + ASL + format points** (24 juil) |
+| `comparer` | Compare 2 ou 3 rapports. 🆕 Écrit `status='processing'` dès le début puis `completed`/`failed` (24 juil) — permet au frontend d'afficher un spinner « en cours » comme une analyse classique. ⚠️ Nécessite la colonne `comparaisons.status` (migration SQL 24 juil). | **v2** (24 juil) |
 | `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) | — |
-| `comparer` | Compare 2 ou 3 rapports | — |
 | `admin-user-management` | Actions admin (create, invite, delete, reset password, create_pro_demo enrichi, activate_pro_demo, unlock_agence_subscription, grant_agence_credits, 🆕 **set_agence_users_max** 23 juin) — **modifié 28 mai pour création auto entité agence** | **v4** (23 juin) |
 | `pro-checkout-create` | Stripe pro : subscribe / preview_upgrade / buy_unit / cancel / cancel_scheduled_change / reactivate / billing_portal / list_invoices | V3 |
 | `stripe-webhook-pro` | Webhook Stripe pro (5 events) + mail résiliation + auto-conversion démo→actif + recharge pool agence quand plan=agence + 🆕 **préserve `nb_users_max` custom au renouvellement** (`Math.max(3, valeur_actuelle)`, 23 juin) | **V10** (23 juin) |
