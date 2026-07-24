@@ -308,6 +308,23 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
   // ═══ FINANCES (note_max = 4) ═══
   let noteFinances = 2;
   const fin = rapport.finances || {};
+
+  // 🆕 STATUT FONDS TRAVAUX DÉTERMINISTE : calculé depuis le ratio
+  // cotisation annuelle copro / budget total (minimum légal ALUR = 5%).
+  // On ne fait plus confiance au statut choisi par l'IA quand les deux
+  // montants sont connus. Grille : <5% insuffisant | 5-7,4% conforme |
+  // 7,5-9,9% bien | >=10% excellent.
+  const ftMontant = typeof fin.fonds_travaux === 'number' ? fin.fonds_travaux : null;
+  const btcMontant = typeof fin.budget_total_copro === 'number' ? fin.budget_total_copro : null;
+  if (ftMontant != null && btcMontant != null && btcMontant > 0) {
+    const ratio = ftMontant / btcMontant;
+    fin.fonds_travaux_statut =
+      ratio >= 0.10 ? 'excellent' :
+      ratio >= 0.075 ? 'bien' :
+      ratio >= 0.05 ? 'conforme' : 'insuffisant';
+    console.log(`[analyser-run] Fonds travaux statut recalcule: ${fin.fonds_travaux_statut} (ratio ${(ratio * 100).toFixed(1)}%)`);
+  }
+
   const fondsStatut = fin.fonds_travaux_statut;
   if (fondsStatut === 'excellent') noteFinances += 1.5;
   else if (fondsStatut === 'bien') noteFinances += 1;
@@ -1571,14 +1588,15 @@ REGLES FONDS TRAVAUX STATUT :
 
 REGLES IMPORTANTES :
 - finances.budget_total_copro = budget annuel TOTAL copropriete, PAS la quote-part du lot
-- finances.charges_annuelles_lot = charges annuelles du lot (quote-part acheteur). Extraire depuis TOUT document mentionnant les charges du lot : appels de charges, appels de fonds provisionnels. Un appel de fonds provisionnel est la MEME chose qu un appel de charges.
+- finances.charges_annuelles_lot = charges annuelles COURANTES du lot (quote-part acheteur). Extraire depuis TOUT document mentionnant les charges du lot : appels de charges, appels de fonds provisionnels. Un appel de fonds provisionnel est la MEME chose qu un appel de charges.
+- RÈGLE CALCUL CHARGES COURANTES (methode unique) : charges_annuelles_lot = la SOMME de TOUTES les lignes RECURRENTES appelees au lot, quelle que soit la presentation du document : charges generales, charges speciales par equipement (ascenseur, chauffage collectif, eau, escalier...), provisions du budget previsionnel sous toute repartition par postes, ET cotisation fonds de travaux. Le critere d inclusion est unique : la ligne revient-elle a chaque appel ? Oui = comptee. Non (appel de fonds pour travaux votes, provision hors budget, regularisation d exercice, avance exceptionnelle) = exclue, a ranger dans son champ dedie (appels_fonds_exceptionnels, travaux) et JAMAIS dans les charges. x4 si l appel est trimestriel. Le total imprime en bas du document sert uniquement de CONTROLE : s il differe de la somme calculee, une ligne exceptionnelle existe — la signaler dans son champ dedie. Ne jamais partir du total imprime comme source.
 - RÈGLE CASCADE SOURCES FINANCES DU LOT : pour remplir finances.charges_annuelles_lot et les informations financieres associees au lot vendu, appliquer la cascade suivante par ordre de priorite descendante :
-  1. PRÉ-ÉTAT DATÉ ou ÉTAT DATÉ : si present, c est la source la plus fiable. Extraire charges_futures.montant_annuel (x4 si trimestriel), fonds_travaux_alur, impayes_vendeur, et surtout historique_charges N-1 et N-2 (budget_appele + charges_reelles) qui doivent apparaitre dans finances.budgets_historique. Source = "Pré-état daté" ou "État daté".
-  2. APPEL DE CHARGES du lot : si present sans pre-etat date, extraire montant_annuel du lot. Source = "Appel de charges".
+  1. PRÉ-ÉTAT DATÉ ou ÉTAT DATÉ : si present, c est la source la plus fiable. ATTENTION ADDITION OBLIGATOIRE : le pre-etat date presente les charges futures en DEUX lignes distinctes (provisions du budget previsionnel + cotisation au fonds de travaux). finances.charges_annuelles_lot = (montant trimestriel budget + fonds_travaux_trimestriel) x 4 — la SOMME des deux lignes, JAMAIS la ligne budget seule. Et finances.cotisation_fonds_travaux_lot_annuelle = fonds_travaux_trimestriel x 4. Extraire aussi fonds_travaux_alur, impayes_vendeur, et surtout historique_charges N-1 et N-2 (budget_appele + charges_reelles) qui doivent apparaitre dans finances.budgets_historique. Source = "Pré-état daté (budget + cotisation fonds travaux)" ou "État daté (budget + cotisation fonds travaux)".
+  2. APPEL DE CHARGES du lot : si present sans pre-etat date, utiliser le DERNIER appel (le plus recent si plusieurs au dossier) et appliquer la RÈGLE CALCUL CHARGES COURANTES ci-dessus (somme des lignes recurrentes uniquement). Source = "Appel de charges [periode]".
   3. PV D AG + TANTIEMES : si seulement un PV d AG fourni avec budget total ET tantiemes du lot connus (lot_achete.quote_part_tantiemes), calculer estimation = budget_total × tantiemes_lot / total_tantiemes. Source = "Estimation depuis PV d AG × tantiemes".
   4. PV D AG SEUL : si ni tantiemes ni appel de charges, laisser charges_annuelles_lot = null et signaler dans avis_verimo : "Charges du lot non determinables — uploader un appel de charges ou le pre-etat date pour obtention du montant precis."
 - RÈGLE COTISATION FONDS TRAVAUX DU LOT (finances.cotisation_fonds_travaux_lot_annuelle) : si un appel de charges (ou un pre-etat date) distingue une ligne propre au lot "Fonds de travaux loi ALUR" / "cotisation fonds travaux", remplir finances.cotisation_fonds_travaux_lot_annuelle = montant trimestriel de cette ligne x 4 (ex : 26,27/trim => 105). IMPORTANT : ce montant doit deja etre INCLUS dans finances.charges_annuelles_lot (qui = total general appele du lot = charges courantes + cotisation fonds travaux). Sert a afficher "dont X euros/an de cotisation au fonds de travaux" sous les charges annuelles. Laisser null si la cotisation n est pas distinguable.
-- RÈGLE FONDS RATTACHES AU LOT (finances.fonds_rattaches_lot) : UNIQUEMENT si AUCUN pre-etat date / etat date n est fourni. Si un appel de charges contient un cadre "Rappel pour memoire de votre participation aux fonds" (colonnes Avances / Fonds ALUR / Prov. travaux / Provisions), extraire fonds_rattaches_lot.avance_tresorerie (colonne Avances) et fonds_rattaches_lot.fonds_travaux_alur (colonne Fonds ALUR), et fonds_rattaches_lot.source = "Appel de charges du [periode]". Ce sont des montants de CAPITAL deja verses, rattaches au lot, a REMBOURSER AU VENDEUR a la signature (en sus du prix) — PAS des charges recurrentes, donc ne PAS les ajouter a charges_annuelles_lot. Si un pre-etat date est fourni, laisser fonds_rattaches_lot a null (le pre-etat date est prioritaire et a ses propres champs pre_etat_date.fonds_travaux_alur / fonds_roulement_acheteur).
+- RÈGLE FONDS RATTACHES AU LOT (finances.fonds_rattaches_lot) : UNIQUEMENT si AUCUN pre-etat date / etat date n est fourni (si un pre-etat date est fourni, laisser null : il est prioritaire via pre_etat_date.fonds_travaux_alur / fonds_roulement_acheteur). Le montant du fonds de travaux rattache aux lots = la somme DEJA COTISEE par le coproprietaire vendeur (capital constitue), presentee dans le DERNIER appel de charges sous un rappel type "pour memoire", "situation de vos fonds", "fonds constitues", "participation aux fonds" (quelle que soit la denomination exacte du syndic). Ce n est JAMAIS la cotisation appelee pour le trimestre en cours. Si plusieurs lots ont chacun leur montant : ADDITIONNER pour afficher le total. Extraire de meme l avance de tresorerie si distinguee. fonds_rattaches_lot.source = "Appel de charges [periode]". Si aucun rappel de ce type n apparait clairement dans le document : null (le pre-etat date le confirmera). Ces montants sont du CAPITAL a rembourser au vendeur a la signature — PAS des charges recurrentes, ne JAMAIS les ajouter a charges_annuelles_lot.
 - RÈGLE AFFICHAGE FINANCES LOT (UI) : NE JAMAIS mentionner "taxe fonciere" dans les labels ou textes concernant les finances copro du lot. La taxe fonciere est un impot, pas une charge copro. Si l onglet affiche un texte d aide, il doit etre : "Uploadez un appel de charges OU un pre-etat date pour obtenir ces informations." (Sans mention de taxe fonciere.)
 - finances.budgets_historique = tableau des budgets annuels extraits de CHAQUE PV d'AG disponible : [{annee: "2023", budget_total: 180000, fonds_travaux: 9000, charges_lot: 3200}]. Laisser null si aucun PV fourni.
 - diagnostics : perimetre OBLIGATOIRE = "lot_privatif" ou "parties_communes"
