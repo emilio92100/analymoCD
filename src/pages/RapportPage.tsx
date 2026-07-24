@@ -261,8 +261,11 @@ function DiagRow({ d }: { d: any }) {
 
   const isERP = d.type === 'ERP';
   const isCarrez = d.type === 'CARREZ' || (d.label as string)?.toLowerCase().includes('carrez') || (d.label as string)?.toLowerCase().includes('mesurage') || (d.label as string)?.toLowerCase().includes('superficie');
-  const hasAlert = !!d.alerte && !isERP;
   const isAbsence = d.presence === 'absence';
+  // 🆕 FIX : une note informative (alerte) sur un diag "aucune anomalie" ne doit
+  // PAS faire passer la carte en rouge — le badge et le fond se contredisaient.
+  // La note reste affichée, en encart neutre (voir plus bas).
+  const hasAlert = !!d.alerte && !isERP && !isAbsence;
   const isNonRealise = d.presence === 'non_realise';
 
   // "Détecté" sans alerte = installation présente et conforme → badge vert
@@ -402,7 +405,11 @@ function DiagRow({ d }: { d: any }) {
             )
           )}
           {d.alerte && !isERP && (
-            <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.65, fontWeight: 500 }}>⚠️ {d.alerte}</div>
+            isAbsence ? (
+              <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 9, border: '1px solid #e2e8f0', fontSize: 12, color: '#475569', lineHeight: 1.65, fontWeight: 500 }}>ℹ️ {d.alerte}</div>
+            ) : (
+              <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.65, fontWeight: 500 }}>⚠️ {d.alerte}</div>
+            )
           )}
           {(d.date_diagnostic || d.date_validite) && (
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -2082,12 +2089,6 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         badge={travaux_evoques.length > 0 ? `${travaux_evoques.length} vigilance${travaux_evoques.length > 1 ? 's' : ''}` : `${travaux_realises.length + travaux_votes.length} détectés`}
         tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. En pratique repris par le vendeur via une clause du compromis (à vérifier).|⚠️ Évoqués — mentionnés sans vote. Si le vote a lieu après votre achat, vous en paierez une part.">
 
-        {travaux_votes.length > 0 && (
-          <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: 10, border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', lineHeight: 1.6 }}>
-            <strong>⚖️ Travaux votés : qui paie ?</strong> En principe, la loi met à votre charge (acheteur) les appels de fonds qui tombent après la vente. Mais en pratique, l'usage veut que le <strong>vendeur les reprenne à son compte</strong> via une clause du compromis. Vérifiez simplement que cette clause y figure — c'est ce qui vous protège.
-          </div>
-        )}
-
         {travaux_realises.length > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2103,6 +2104,9 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3b82f6' }} /> Votés en AG
+            </div>
+            <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: 10, border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', lineHeight: 1.6, marginBottom: 8 }}>
+              <strong>⚖️ Travaux votés : qui paie ?</strong> En principe, la loi met à votre charge (acheteur) les appels de fonds qui tombent après la vente. Mais en pratique, l'usage veut que le <strong>vendeur les reprenne à son compte</strong> via une clause du compromis. Vérifiez simplement que cette clause y figure — c'est ce qui vous protège.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {travaux_votes.map((t, i) => <TravauxRow key={i} t={t} variant="vote" />)}
@@ -4170,14 +4174,23 @@ function TabAsl({ rapport }: { rapport: RapportData }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* 🆕 Bulle pédagogique — affichée uniquement quand une ASL est détectée */}
+      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '14px 18px', fontSize: 13.5, color: '#1e40af', lineHeight: 1.65, display: 'flex', gap: 10 }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>🏘️</span>
+        <span>
+          <strong>Ce bien fait partie d'une ASL (Association Syndicale Libre).</strong> En plus de la copropriété de votre immeuble, une structure regroupe plusieurs bâtiments pour gérer des équipements communs à l'ensemble (espaces verts, voirie, chaufferie…). L'adhésion est automatique avec l'achat : vous paierez donc deux types de charges — celles de votre copropriété <em>et</em> celles de l'ASL. Voici ce qu'il faut en retenir.
+        </span>
+      </div>
       {structures.map((s, idx) => {
         const nat = s.nature_structure;
         const fin = (s.finances as Record<string, unknown>) || {};
         const gouv = (s.gouvernance as Record<string, unknown>) || {};
         const conf = (s.conformite_2004 as Record<string, unknown>) || {};
         const cahier = (s.cahier_charges as Record<string, unknown>) || {};
-        const contraintes = Array.isArray(cahier.contraintes_urbanisme) ? cahier.contraintes_urbanisme as Record<string, unknown>[] : [];
-        const servitudes = Array.isArray(cahier.servitudes) ? cahier.servitudes as Record<string, unknown>[] : [];
+        const contraintes = (Array.isArray(cahier.contraintes_urbanisme) ? cahier.contraintes_urbanisme as Record<string, unknown>[] : [])
+          .filter(c => (c.label && String(c.label).trim()) || (c.detail && String(c.detail).trim()));
+        const servitudes = (Array.isArray(cahier.servitudes) ? cahier.servitudes as Record<string, unknown>[] : [])
+          .filter(sv => (sv.description && String(sv.description).trim()) || (sv.type && String(sv.type).trim() && String(sv.type).toLowerCase() !== 'servitude'));
         const equipements = Array.isArray(s.equipements_lourds) ? s.equipements_lourds as unknown[] : [];
         const travaux = Array.isArray(s.travaux) ? s.travaux as Record<string, unknown>[] : [];
         const vigilances = Array.isArray(s.points_vigilance) ? s.points_vigilance as unknown[] : [];
@@ -4292,11 +4305,11 @@ function TabAsl({ rapport }: { rapport: RapportData }) {
             )}
 
             {allVigilances.length > 0 && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, overflow: 'hidden' }}>
-                <div style={{ padding: '10px 16px', borderBottom: '1px solid #fecaca', fontSize: 12, fontWeight: 600, color: '#991b1b', letterSpacing: '0.04em' }}>POINTS DE VIGILANCE</div>
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 16px', borderBottom: '1px solid #fde68a', fontSize: 12, fontWeight: 700, color: '#92400e', letterSpacing: '0.04em' }}>📌 À SAVOIR SUR CETTE ASL</div>
                 {allVigilances.map((p, i) => (
-                  <div key={i} style={{ padding: '11px 16px', borderBottom: i < allVigilances.length - 1 ? '1px solid #fecaca' : 'none', fontSize: 13, color: '#0f2d3d', display: 'flex', gap: 9, lineHeight: 1.6 }}>
-                    <span style={{ color: '#dc2626', fontWeight: 700, flexShrink: 0 }}>⚠</span><span>{String(p)}</span>
+                  <div key={i} style={{ padding: '11px 16px', borderBottom: i < allVigilances.length - 1 ? '1px solid #fde68a' : 'none', fontSize: 13, color: '#0f2d3d', display: 'flex', gap: 9, lineHeight: 1.6 }}>
+                    <span style={{ color: '#d97706', fontWeight: 700, flexShrink: 0 }}>•</span><span>{String(p)}</span>
                   </div>
                 ))}
               </div>
