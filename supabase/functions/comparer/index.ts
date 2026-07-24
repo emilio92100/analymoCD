@@ -284,6 +284,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── Marqueur "en cours" : on crée (ou réactive) la ligne AVANT l'appel long
+    // à Claude. Ainsi, si l'utilisateur quitte l'onglet, le frontend peut retrouver
+    // la comparaison en cours via son statut en base (comme une analyse classique).
+    // Le verdict reste null tant que le traitement n'est pas fini.
+    await supabaseAdmin.from('comparaisons').upsert({
+      user_id: user.id,
+      analyse_ids: sortedIds,
+      status: 'processing',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,analyse_ids' });
+
     const userContent = analysesOrdered.map((a, i) => {
       const result = a.result as Record<string, unknown>;
       const compact = {
@@ -361,6 +372,12 @@ Deno.serve(async (req) => {
         metadata: { stage: 'compare_call', error: result.error, status: result.status, analyseIds },
       });
 
+      // La comparaison a échoué : on marque la ligne pour que le frontend
+      // arrête le spinner et affiche l'erreur au lieu de tourner indéfiniment.
+      await supabaseAdmin.from('comparaisons')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('user_id', user.id).eq('analyse_ids', sortedIds);
+
       return new Response(JSON.stringify({
         error: result.error,
         userMessage,
@@ -384,6 +401,9 @@ Deno.serve(async (req) => {
         userId: user.id,
         metadata: { stage: 'parse', rawSnippet: result.text.slice(0, 200), analyseIds },
       });
+      await supabaseAdmin.from('comparaisons')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('user_id', user.id).eq('analyse_ids', sortedIds);
       return new Response(JSON.stringify({
         error: 'parse_error',
         userMessage: 'Une erreur est survenue lors de la génération de la comparaison. Veuillez réessayer.',
@@ -394,7 +414,9 @@ Deno.serve(async (req) => {
       user_id: user.id,
       analyse_ids: sortedIds,
       verdict,
+      status: 'completed',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,analyse_ids' });
 
     if (upsertError) {
