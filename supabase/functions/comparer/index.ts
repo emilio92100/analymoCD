@@ -301,7 +301,16 @@ Deno.serve(async (req) => {
     // Cache : on ne sert que les verdicts v3 (marqueur _ordre_trie).
     // Les anciens verdicts (générés avec l'ordre de clic) peuvent être
     // désalignés avec l'affichage → on les régénère silencieusement.
-    const existingVerdict = existing?.verdict as Record<string, unknown> | null;
+    //
+    // 🔧 FIX : le verdict peut revenir de la BDD sous forme de STRING JSON
+    // (comportement déjà observé côté frontend). Sans ce parse, le check du
+    // marqueur échouait toujours → le cache ne matchait JAMAIS → un appel
+    // Claude complet était relancé à CHAQUE ouverture du rapport.
+    let existingVerdict = existing?.verdict as Record<string, unknown> | string | null;
+    if (typeof existingVerdict === 'string') {
+      try { existingVerdict = JSON.parse(existingVerdict) as Record<string, unknown>; }
+      catch { existingVerdict = null; }
+    }
     if (existingVerdict && existingVerdict._ordre_trie === true) {
       return new Response(JSON.stringify({ success: true, verdict: existingVerdict, cached: true }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
