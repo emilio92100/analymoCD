@@ -100,7 +100,7 @@ STRUCTURE DE TA RÉPONSE (JSON strict) :
     "cout_annee_1": { "bien_1": 2361, "bien_2": 3209, "bien_3": null, "delta_label": "848 € d'écart sur l'année 1" },
     "dpe": { "bien_1": "E", "bien_2": "E", "bien_3": null, "delta_label": "Même classe" }
   },
-  "analyse_croisee": "2-3 phrases qui RELIENT des faits entre les biens pour apporter une valeur ajoutée au-delà des chiffres bruts. Factuel strict, aucune projection, aucune estimation de risque futur. Ex: 'Le Bien 1 combine un DPE D et une cotisation fonds travaux en place, ce qui indique une copropriété anticipant sa rénovation. Le Bien 2 cumule DPE E et fonds travaux insuffisant, deux signaux qui portent sur la même problématique de financement des travaux énergétiques.'",
+  "lecture_verimo": "4-6 phrases denses. LA section d'analyse du rapport (fusion de la lecture comparée et de l'analyse croisée). Structure imposée : (1) le constat décisif — les 2-3 écarts concrets qui font pencher la balance, classés par impact financier réel pour l'acheteur ; (2) les corrélations inter-thèmes que les chiffres séparés ne montrent pas (ex : DPE + fonds travaux, impayés + dette fournisseurs + travaux non votés) ; (3) ce que chaque bien coûte de manière CERTAINE vs ce qu'il expose comme risque NON CHIFFRÉ. Factuel strict.",
   "profils": [
     {
       "bien_idx": 0,
@@ -113,7 +113,6 @@ STRUCTURE DE TA RÉPONSE (JSON strict) :
       ]
     }
   ],
-  "comparatif": "2-3 phrases (3-4 si 3 biens) comparant directement les biens. Factuel, nuancé.",
   "points_a_approfondir": [
     { "bien": "Bien 1|Bien 2|Bien 3|Les 2|Les 3", "action": "Action concrète à mener avant signature, 15-25 mots" }
   ],
@@ -127,18 +126,22 @@ RÈGLES DE REMPLISSAGE :
 - 3-4 forces et 2-3 points faibles par bien est une bonne moyenne.
 - forces + points_faibles DOIVENT être factuels et mesurables (chiffres, dates, statuts précis). Pas de généralités.
 - impact = "majeur" si ça change la décision (ex: procédure lourde, travaux > 20 000 €), "modere" si ça mérite attention (ex: DPE E, tensions AG), "mineur" si c est un point de contexte.
-- comparatif : 2-3 phrases qui comparent directement les biens (ex: "Le Bien 1 se distingue par X, tandis que le Bien 2 présente Y. L écart principal porte sur Z.")
 - points_a_approfondir : 3-5 items concrets. Chaque item cible un bien précis (champ "bien"). Exemples d actions : "Réclamer le pré-état daté", "Demander le détail des travaux votés", "Vérifier le dernier PV d AG".
 - ecarts_cles.bien_X null si le bien n existe pas (cas 2 biens : bien_3 = null partout).
 - ecarts_cles.cout_annee_1 : somme de (charges annuelles + fonds ALUR signature + fonds roulement signature + cotisations fonds travaux année 1 + taxe foncière annuelle si disponible dans finances.taxe_fonciere_annuelle). Si pré-état daté manquant, estimer sur charges annuelles seules et le signaler dans le commentaire.
 - ecarts_cles.delta_label : formulation "X d écart" adaptée au type (points, euros, lettres).
 
-RÈGLES POUR analyse_croisee :
-- 2-3 phrases maximum, factuelles, qui apportent une valeur ajoutée Verimo : relier des faits entre les biens, identifier des convergences ou divergences thématiques que le lecteur ne verrait pas en lisant les chiffres séparément.
-- INTERDIT : projection chiffrée de risques futurs ("cela pourrait coûter X €"), estimation de perte de valeur, pronostic de votes futurs en AG, calcul de rendement locatif, estimation de durée de rentabilité.
-- AUTORISÉ : relier DPE + fonds travaux, relier procédure + impayés, relier ancienneté du bâti + travaux évoqués, pointer un effet cumulatif factuel déjà présent dans les documents.
-- Ton : analyste froid, constat factuel. Pas de conseil, pas de projection.
-- Si aucune corrélation pertinente à faire (biens très similaires ou données trop maigres), renvoyer une phrase neutre du type : "Les deux biens présentent des profils comparables sur les axes mesurables — la décision finale se jouera sur les préférences personnelles (emplacement, surface, agencement) non couvertes par l analyse documentaire."
+RÈGLES POUR lecture_verimo :
+- C'est LA section à forte valeur ajoutée du rapport : elle doit HIÉRARCHISER, pas énumérer. Classer les écarts par impact financier réel pour l'acheteur : coûts certains (charges annuelles, fonds à rembourser à la signature, quote-part de travaux votés) > engagements très probables (travaux évoqués chiffrés par devis, obligations légales) > risques non chiffrés (procédures, absence de documents, travaux évoqués sans montant).
+- DPE : tu PEUX mentionner les obligations réglementaires FACTUELLES attachées à une classe (interdiction progressive de location des passoires thermiques F et G, audit énergétique obligatoire à la vente pour F et G) — ce sont des faits de loi, pas des projections. Tu peux relever qu'un DPE E/F/G combiné à un fonds travaux insuffisant ou à des travaux énergétiques non votés constitue un cumul de signaux sur la même problématique.
+- INTERDIT : projection chiffrée inventée ("cela pourrait coûter X €" sans devis présent dans les documents), estimation de perte ou de prise de valeur, pronostic de votes futurs en AG, calcul de rendement locatif.
+- AUTORISÉ : additionner des montants présents dans les documents, relier DPE + fonds travaux, relier procédure + impayés + dette fournisseurs, pointer un effet cumulatif factuel.
+- Si les deux biens sont réellement très proches sur les axes mesurables : le dire clairement plutôt que de forcer un écart artificiel, et indiquer que la décision se jouera sur les critères non documentaires (emplacement, agencement, prix).
+
+RÈGLE ANTI-REDONDANCE (s'applique à l'ENSEMBLE du JSON) :
+- Chaque fait chiffré précis (un montant, un pourcentage, une classe DPE, une date) ne doit être DÉVELOPPÉ que dans UNE SEULE section du verdict. Répartition stricte : lecture_verimo hiérarchise et relie les faits déterminants ; profils[] détaille les forces/faiblesses propres à chaque bien ; alerte_documents ne parle QUE des documents ; points_a_approfondir ne contient QUE des actions à mener.
+- Une même idée d'analyse ne doit JAMAIS apparaître deux fois sous deux formulations différentes dans le verdict.
+- alerte_documents : STRICTEMENT limité à l'asymétrie documentaire (quels documents manquent, pour quel bien, quelles années/périodes, et en une phrase pourquoi cela limite la comparaison). AUCUNE reprise des montants financiers, du DPE ou des travaux déjà traités ailleurs.
 
 RÈGLE TAXE FONCIÈRE DANS COMPARER :
 - Si l un des biens a finances.taxe_fonciere_annuelle renseignée et l autre non, signaler l asymétrie dans alerte_documents ou dans points_a_approfondir (ex: "Demander le dernier avis de taxe foncière du Bien 2 pour une comparaison complète").
@@ -158,12 +161,13 @@ RÈGLE DE SÉLECTION DU BIEN RECOMMANDÉ (bien_recommande_idx) :
    * Procédure judiciaire grave en cours (contentieux copro, administration provisoire)
    * DPE F ou G (passoire thermique) alors que l'autre bien est A-D
    * Impayés de copropriété globaux > 15% du budget annuel
+   * Cumul d'au moins DEUX signaux financiers majeurs convergents (impayés > 15% du budget, dette fournisseurs significative, fonds travaux insuffisant) COMBINÉ à des travaux lourds non votés estimés > 50 000 EUR dans les documents
    * Asymétrie documentaire MAJEURE : le bien au meilleur score a été analysé avec < 3 documents, l'autre avec beaucoup plus
-3. SI TU FAIS UNE EXCEPTION : tu DOIS impérativement mentionner explicitement dans titre_verdict ET dans comparatif POURQUOI tu ne recommandes pas le meilleur score.
+3. SI TU FAIS UNE EXCEPTION : tu DOIS impérativement mentionner explicitement dans titre_verdict ET dans lecture_verimo POURQUOI tu ne recommandes pas le meilleur score.
 4. SI AUCUN FACTEUR BLOQUANT : tu dois OBLIGATOIREMENT recommander le bien avec le meilleur score, même si l'écart est faible.
 
 COHÉRENCE DU TEXTE NARRATIF :
-- titre_verdict et comparatif doivent TOUJOURS désigner le bien indiqué par bien_recommande_idx. Jamais de contradiction entre l'index numérique et le texte.
+- titre_verdict et lecture_verimo doivent TOUJOURS désigner le bien indiqué par bien_recommande_idx. Jamais de contradiction entre l'index numérique et le texte.
 - Utilise "Bien 1", "Bien 2", "Bien 3" dans le texte pour correspondre aux labels de l'interface (l'ordre des biens dans les données = l'ordre affiché à l'écran).
 - RÈGLE TITRE_VERDICT : NE JAMAIS utiliser "malgré" suivi d'un écart de score quand le bien recommandé A le meilleur score. "Malgré un écart de 2 points" sous-entend que le bien recommandé aurait une note inférieure, ce qui est trompeur. Formulations correctes : "Le Bien 1 se distingue avec un score supérieur de 2 points" ou "Le Bien 1 présente un profil globalement plus équilibré, avec 2 points d'avance". Réserver "malgré" UNIQUEMENT au cas d'exception où le bien recommandé a un score INFÉRIEUR au meilleur score.
 
