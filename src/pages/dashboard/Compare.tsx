@@ -32,7 +32,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 /* ══════════════════════════════════════════
    ÉCRAN D'ATTENTE — analyse comparative en cours
    ══════════════════════════════════════════ */
-function CompareWaitingScreen({ biens, fromCache, onCancel }: { biens: string[]; fromCache: boolean; onCancel: () => void }) {
+function CompareWaitingScreen({ biens, fromCache }: { biens: string[]; fromCache: boolean }) {
   const [currentStep, setCurrentStep] = useState(0);
   const n = biens.length;
 
@@ -144,11 +144,6 @@ function CompareWaitingScreen({ biens, fromCache, onCancel }: { biens: string[];
       <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', marginTop: 4 }}>
         L'analyse prend généralement moins d'une minute
       </p>
-
-      <button onClick={onCancel}
-        style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: '4px 8px' }}>
-        Annuler
-      </button>
     </motion.div>
   );
 }
@@ -263,11 +258,6 @@ export default function Compare() {
 
   const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
   const canLaunch = selected.length >= 2;
-
-  const handleCancel = () => {
-    setLaunched(false);
-    setLaunchError(null);
-  };
 
   const handleLaunch = async () => {
     if (!canLaunch) return;
@@ -455,7 +445,6 @@ export default function Compare() {
         <CompareWaitingScreen
           biens={selectedAnalyses.map(a => a.adresse_bien || a.nom_document || 'Bien sans titre')}
           fromCache={false}
-          onCancel={handleCancel}
         />
       </div>
     );
