@@ -1,15 +1,31 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — comparer (v2 — retry + alerts admin + UX)
+// EDGE FUNCTION — comparer (v3 — ordre canonique + anti-doublon)
 // Reçoit 2-3 IDs d'analyses complètes
 // Lit les rapports JSON depuis Supabase
 // Appelle Claude pour générer un verdict comparatif personnalisé
 // Stocke le verdict dans la table comparaisons
 //
 // v2 :
-//   - Retry sur 503/529 (3 tentatives, sleep 15s)
+//   - Retry sur 503/529 (3 tentatives)
 //   - Insertion alertes dans system_alerts (page admin)
 //   - Distinction des erreurs (overload, rate_limit, auth, parse)
 //   - Messages utilisateur clairs et en français
+//
+// v3 :
+//   - ORDRE CANONIQUE : les analyseIds sont TOUJOURS triés avant
+//     génération. Le verdict ("Bien 1", "Bien 2", bien_recommande_idx)
+//     correspond donc toujours à l'ordre trié — le même que la clé de
+//     cache et que l'affichage frontend. Fini le désalignement quand on
+//     rouvre depuis l'historique.
+//   - Marqueur verdict._ordre_trie = true. Les verdicts en cache SANS
+//     ce marqueur (générés avec l'ordre de clic, potentiellement
+//     désalignés) sont ignorés et régénérés automatiquement.
+//   - ANTI-DOUBLON : si une ligne est en status='processing' depuis
+//     moins de 150s, on refuse le relancement (HTTP 409) au lieu de
+//     lancer un 2e appel Claude en parallèle. Si le processing est
+//     "stale" (>150s, fonction probablement morte), on autorise la
+//     régénération.
+//   - Sleep overload réduit à 8s pour tenir dans le budget 2 min.
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -189,7 +205,7 @@ async function callClaude(systemPrompt: string, userMessage: string, apiKey: str
       console.error(`[comparer] Anthropic ${res.status} (tentative ${attempt}):`, errBody);
 
       if (res.status === 503 || res.status === 529) {
-        if (attempt < 3) { await sleep(15000); continue; }
+        if (attempt < 3) { await sleep(8000); continue; }
         return { error: 'overload', status: res.status };
       }
       if (res.status === 429) {
@@ -236,7 +252,11 @@ Deno.serve(async (req) => {
     userIdForCatch = user.id;
 
     const body = await req.json() as { analyseIds: string[] };
-    const { analyseIds } = body;
+    // ─── v3 : ORDRE CANONIQUE ───────────────────────────────────
+    // On trie TOUJOURS les IDs. "Bien 1" = premier ID trié, partout :
+    // dans le prompt, dans le verdict, dans la clé de cache, et dans
+    // l'affichage frontend (qui trie aussi les ids de l'URL).
+    const analyseIds = Array.isArray(body.analyseIds) ? [...body.analyseIds].sort() : [];
 
     if (!analyseIds || analyseIds.length < 2 || analyseIds.length > 3) {
       return new Response(JSON.stringify({
@@ -270,18 +290,40 @@ Deno.serve(async (req) => {
       }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const sortedIds = [...analyseIds].sort().join(',');
+    const sortedIds = analyseIds.join(','); // déjà triés (ordre canonique v3)
     const { data: existing } = await supabaseAdmin
       .from('comparaisons')
-      .select('verdict')
+      .select('verdict, status, updated_at')
       .eq('user_id', user.id)
       .eq('analyse_ids', sortedIds)
       .maybeSingle();
 
-    if (existing?.verdict) {
-      return new Response(JSON.stringify({ success: true, verdict: existing.verdict, cached: true }), {
+    // Cache : on ne sert que les verdicts v3 (marqueur _ordre_trie).
+    // Les anciens verdicts (générés avec l'ordre de clic) peuvent être
+    // désalignés avec l'affichage → on les régénère silencieusement.
+    const existingVerdict = existing?.verdict as Record<string, unknown> | null;
+    if (existingVerdict && existingVerdict._ordre_trie === true) {
+      return new Response(JSON.stringify({ success: true, verdict: existingVerdict, cached: true }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
+    }
+
+    // ─── v3 : ANTI-DOUBLON ──────────────────────────────────────
+    // Si cette comparaison est déjà en cours depuis moins de 150s,
+    // on refuse le relancement : le 1er appel finira et remplira le
+    // verdict. Le frontend affiche l'attente et re-tente plus tard.
+    // Au-delà de 150s, le processing est considéré mort (crash/timeout)
+    // → on autorise la régénération.
+    const SEUIL_PROCESSING_MS = 150 * 1000;
+    if (
+      existing?.status === 'processing' &&
+      existing.updated_at &&
+      Date.now() - new Date(existing.updated_at as string).getTime() < SEUIL_PROCESSING_MS
+    ) {
+      return new Response(JSON.stringify({
+        error: 'in_progress',
+        userMessage: 'Cette comparaison est déjà en cours de génération. Elle apparaîtra automatiquement dans quelques instants.',
+      }), { status: 409, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
     // ─── Marqueur "en cours" : on crée (ou réactive) la ligne AVANT l'appel long
@@ -409,6 +451,10 @@ Deno.serve(async (req) => {
         userMessage: 'Une erreur est survenue lors de la génération de la comparaison. Veuillez réessayer.',
       }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
+
+    // v3 : marqueur d'ordre canonique — permet d'invalider les anciens
+    // verdicts générés avec l'ordre de clic (potentiellement désalignés).
+    verdict._ordre_trie = true;
 
     const { error: upsertError } = await supabaseAdmin.from('comparaisons').upsert({
       user_id: user.id,
