@@ -462,9 +462,30 @@ export default function Compare() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* ═══ BARRE STICKY — Lancer la comparaison (reste visible au défilement) ═══ */}
+      {/* ═══ COMPARAISON(S) EN COURS — tout en haut de la page ═══ */}
+      {processingCompares.map((pc) => (
+        <motion.div key={pc.analyse_ids} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #bae3f5', overflow: 'hidden' }}>
+          <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 42, height: 42, flexShrink: 0 }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', border: '3px solid #e6f1fb', borderTopColor: '#2a7d9c', animation: 'vr-compare-spin 0.8s linear infinite' }} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
+                Comparaison en cours…
+              </div>
+              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                Votre verdict comparatif se génère en arrière-plan. Il apparaîtra ici automatiquement, sans rien faire de votre part.
+              </div>
+            </div>
+          </div>
+          <style>{`@keyframes vr-compare-spin { to { transform: rotate(360deg); } }`}</style>
+        </motion.div>
+      ))}
+
+      {/* ═══ BARRE — Lancer la comparaison (défile normalement avec la page) ═══ */}
       {canLaunch && !processingCompares.some(pc => pc.analyse_ids === [...selected].sort().join(',')) && (
-        <div style={{ position: 'sticky', top: 12, zIndex: 30 }}>
+        <div>
           {(() => {
             const sortedSel = [...selected].sort().join(',');
             const existing = historique.find(c => c.analyse_ids === sortedSel);
@@ -622,27 +643,6 @@ export default function Compare() {
           );
         })()}
       </div>
-
-      {/* ═══ COMPARAISON(S) EN COURS (au retour sur l'onglet pendant le traitement) ═══ */}
-      {processingCompares.map((pc) => (
-        <motion.div key={pc.analyse_ids} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #bae3f5', overflow: 'hidden', marginBottom: 16 }}>
-          <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 42, height: 42, flexShrink: 0 }}>
-              <div style={{ width: 42, height: 42, borderRadius: '50%', border: '3px solid #e6f1fb', borderTopColor: '#2a7d9c', animation: 'vr-compare-spin 0.8s linear infinite' }} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
-                Comparaison en cours…
-              </div>
-              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-                Votre verdict comparatif se génère en arrière-plan. Il apparaîtra ici automatiquement, sans rien faire de votre part.
-              </div>
-            </div>
-          </div>
-          <style>{`@keyframes vr-compare-spin { to { transform: rotate(360deg); } }`}</style>
-        </motion.div>
-      ))}
 
       {/* ═══ HISTORIQUE — Bloc séparé ═══ */}
       {historique.length > 0 && (
