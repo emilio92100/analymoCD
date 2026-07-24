@@ -16,6 +16,17 @@ const AI_VERSION = '2023-06-01';
 const FILES_BETA = 'files-api-2025-04-14';
 const MAX_TOKENS_OUTPUT = 64000;
 
+// ══════════════════════════════════════════════════════════════
+// 🗺️ SEUIL MAP-REDUCE — analyses complètes uniquement
+// ≤ SEUIL-1 docs → single-call v7 (inchangé)
+// ≥ SEUIL docs   → MAP (extraction par doc en parallèle) + REDUCE (synthèse)
+// INTERRUPTEUR D'URGENCE : mettre 9999 pour désactiver le MAP-REDUCE
+// et faire repasser 100% des dossiers par le v7. Redéployer après modif.
+// ══════════════════════════════════════════════════════════════
+const SEUIL_MAP_REDUCE = 6;
+const MAP_MAX_TOKENS = 12000;      // sortie max par extraction de doc
+const MAP_TIMEOUT_MS = 300000;     // 5 min max par extraction (parallèle)
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -2180,6 +2191,341 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🗺️ MAP-REDUCE (analyses complètes ≥ SEUIL_MAP_REDUCE docs)
+// Invocation 1 (phase MAP)    : 1 appel IA par doc, tous EN PARALLÈLE.
+//   Extraction exhaustive → map_resultats (jsonb) → suppression RGPD des
+//   PDF au fil de l'eau → self-invoke {phase:'reduce'} (nouveau chrono 400s).
+// Invocation 2 (phase REDUCE) : relit map_resultats, 1 appel IA avec le
+//   prompt v7 complet (règles métier inchangées), post-traitement
+//   déterministe identique au v7, rapport final + documents_non_analyses.
+// Docs en échec : le rapport se génère quand même (bandeau frontend) —
+// échec total + remboursement UNIQUEMENT si aucun doc n'est analysable.
+// ══════════════════════════════════════════════════════════════════════
+
+interface ExtraitDoc {
+  file_name: string;
+  statut: 'ok' | 'echec';
+  raison?: string;
+  extraction?: Record<string, unknown>;
+}
+
+function buildMapPrompt(): string {
+  return `Tu es le moteur d'extraction documentaire de Verimo, service d'analyse de biens immobiliers.
+On te donne UN SEUL document. Ta mission : retranscrire TOUS les faits qu'il contient, sans jugement d'importance. Tu n'écris pas de rapport, tu ne donnes pas d'avis — tu extrais.
+
+RÈGLES ABSOLUES :
+1. Ne RIEN inventer. Une information absente du document = absente de ta sortie. Jamais de valeur devinée, estimée ou "probable". En cas d'information illisible, la signaler dans elements_illisibles.
+2. Chaque fait est accompagné de sa page d'origine (numéro de page du PDF).
+3. Pour tout montant de travaux : préciser le statut EXACT tel qu'écrit — "vote" (avec le numéro de résolution si présent), "evoque" (à l'étude, envisagé, devis demandé), ou "realise". En cas d'ambiguïté sur le statut, recopier la phrase exacte du document dans le champ citation. Ne JAMAIS classer "vote" dans le doute.
+4. Ignorer uniquement : formules de politesse, rappels de loi génériques recopiés, mentions administratives répétitives. En cas de doute sur l'utilité d'un fait → le noter quand même.
+5. Extraction EXHAUSTIVE : chaque chiffre, chaque date, chaque décision, chaque clause, chaque anomalie. Un fait omis est perdu définitivement.
+
+PRÉCISIONS PAR TYPE (si applicable) :
+- PV d'AG : chaque résolution avec son résultat (adoptée/rejetée), quitus au syndic (soumis ? approuvé ?), participation (présents/représentés, tantièmes), changement de syndic, questions diverses notables, appels de fonds.
+- DPE : classe énergie ET classe GES, kWh/m², date du diagnostic, surface, ET si présents les packs de travaux recommandés (pack 1, pack 2, coûts min/max, évolution d'étiquette après chaque pack, détail des postes).
+- DDT / Carrez : surface Carrez totale ET le détail pièce par pièce si présent (nom de pièce + surface). Chaque diagnostic du dossier (électricité, gaz, amiante, plomb, termites, ERP) avec son résultat et ses anomalies.
+- Pré-état daté / état daté : TOUTES les rubriques financières (impayés vendeur, fonds travaux ALUR du lot, avances, honoraires syndic, charges par exercice N-1/N-2, impayés globaux copro, dettes fournisseurs, procédures).
+- Règlement de copro / modificatifs : destination de l'immeuble, clauses restrictives (location, activité, travaux), tantièmes du lot si identifiable, servitudes.
+- Appels de charges / budgets : montants par période, budget total copro, fonds travaux.
+
+FORMAT DE SORTIE — JSON STRICT, rien d'autre (pas de markdown, pas de commentaire) :
+{"type_detecte":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|HISTORIQUE_TRAVAUX|AUTRE","titre_document":"...","date_document":"AAAA-MM-JJ ou AAAA ou null","chiffres_cles":[{"intitule":"...","valeur":"...","unite":"€|m²|classe|%|kWh/m²|tantiemes|null","statut":"vote|evoque|realise|constate|null","page":0,"citation":null}],"alertes":[{"description":"...","gravite":"info|attention|critique","page":0}],"faits":[{"description":"...","page":0}],"elements_illisibles":[]}`;
+}
+
+// Extraction d'UN document — appelée en parallèle pour tous les docs.
+// Retourne toujours un ExtraitDoc (jamais de throw) : statut ok ou echec.
+async function extractOneDoc(
+  file: { id: string; name: string },
+  apiKey: string,
+): Promise<ExtraitDoc> {
+  const userContent: unknown[] = [
+    { type: 'document', source: { type: 'file', file_id: file.id } },
+    { type: 'text', text: `[Document : ${file.name}] Extrais TOUS les faits de ce document. JSON strict uniquement.` },
+  ];
+
+  try {
+    let result = await callAI({ system: buildMapPrompt(), userContent, maxTokens: MAP_MAX_TOKENS, apiKey, timeoutMs: MAP_TIMEOUT_MS });
+    let extraction = result.error ? null : parseJson<Record<string, unknown>>(result.text);
+
+    // JSON invalide (mais appel réussi) → un retry unique
+    if (!result.error && !extraction) {
+      console.warn(`[analyser-run][MAP] JSON invalide pour "${file.name}" — retry 5s`);
+      await sleep(5000);
+      result = await callAI({ system: buildMapPrompt(), userContent, maxTokens: MAP_MAX_TOKENS, apiKey, timeoutMs: MAP_TIMEOUT_MS });
+      extraction = result.error ? null : parseJson<Record<string, unknown>>(result.text);
+    }
+
+    if (result.error || !extraction) {
+      const raison = result.error || 'json_invalide';
+      console.error(`[analyser-run][MAP] Échec extraction "${file.name}" : ${raison}`);
+      return { file_name: file.name, statut: 'echec', raison };
+    }
+
+    console.log(`[analyser-run][MAP] OK "${file.name}" (type détecté: ${(extraction as Record<string, unknown>).type_detecte || '?'})`);
+    return { file_name: file.name, statut: 'ok', extraction };
+  } catch (err) {
+    console.error(`[analyser-run][MAP] Erreur inattendue "${file.name}":`, err);
+    return { file_name: file.name, statut: 'echec', raison: 'erreur_inattendue' };
+  } finally {
+    // RGPD : suppression du PDF dès que son extraction est terminée (succès OU échec)
+    try { await deleteFromFilesAPI(file.id, apiKey); } catch (e) { console.error(`[analyser-run][MAP] Suppression RGPD "${file.name}" échouée:`, e); }
+  }
+}
+
+// ─── PHASE MAP — invocation 1 ───
+async function runPhaseMap(
+  analyseId: string,
+  files: Array<{ id: string; name: string }>,
+  profil: string,
+  supabaseAdmin: SupabaseClient,
+  apiKey: string,
+  typeBienDeclare?: string | null,
+): Promise<void> {
+  try {
+    console.log(`[analyser-run][MAP] Démarrage — ${files.length} docs en parallèle | analyse ${analyseId}`);
+    await supabaseAdmin.from('analyses').update({
+      progress_current: 0,
+      progress_total: files.length + 1, // +1 = étape de synthèse
+      progress_message: `Lecture des ${files.length} documents en parallèle...`,
+    }).eq('id', analyseId);
+
+    // Compteur de progression partagé entre les extractions parallèles
+    let done = 0;
+    const withProgress = async (file: { id: string; name: string }): Promise<ExtraitDoc> => {
+      const extrait = await extractOneDoc(file, apiKey);
+      done++;
+      await supabaseAdmin.from('analyses').update({
+        progress_current: done,
+        progress_message: `Lecture des documents (${done}/${files.length})...`,
+      }).eq('id', analyseId);
+      return extrait;
+    };
+
+    // TOUS les docs en parallèle — le temps total = le doc le plus lent
+    const settled = await Promise.allSettled(files.map(f => withProgress(f)));
+    const extraits: ExtraitDoc[] = settled.map((s, i) =>
+      s.status === 'fulfilled' ? s.value : { file_name: files[i].name, statut: 'echec' as const, raison: 'erreur_interne' }
+    );
+
+    const oks = extraits.filter(e => e.statut === 'ok');
+    const echecs = extraits.filter(e => e.statut === 'echec');
+    console.log(`[analyser-run][MAP] Terminé — ${oks.length} OK, ${echecs.length} échec(s)`);
+
+    // ÉCHEC TOTAL (seul cas bloquant) : aucun doc analysable → remboursement
+    if (oks.length === 0) {
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Aucun de vos documents n\'a pu être analysé. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes ou contactez le support.', `MAP : échec total sur ${files.length} docs`);
+      return;
+    }
+
+    // Sauvegarde des extraits en DB — AVANT le reduce (relançable si le reduce plante)
+    const { error: saveError } = await supabaseAdmin.from('analyses').update({
+      map_resultats: {
+        version: 'map_v2',
+        profil,
+        type_bien_declare: typeBienDeclare || null,
+        nb_docs: files.length,
+        extraits,
+      },
+      progress_message: 'Documents lus — préparation de la synthèse...',
+    }).eq('id', analyseId);
+
+    if (saveError) {
+      console.error('[analyser-run][MAP] ERREUR sauvegarde map_resultats:', saveError.message);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde de l\'analyse. Votre crédit a été remboursé automatiquement. Contactez le support.', 'MAP : erreur sauvegarde extraits');
+      return;
+    }
+
+    // Self-invoke → phase REDUCE dans une NOUVELLE invocation (chrono 400s remis à zéro)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    let invoked = false;
+    for (let attempt = 1; attempt <= 3 && !invoked; attempt++) {
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/analyser-run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+          body: JSON.stringify({ analyseId, phase: 'reduce' }),
+        });
+        if (res.ok) { invoked = true; console.log(`[analyser-run][MAP] Phase REDUCE déclenchée (tentative ${attempt})`); }
+        else { console.error(`[analyser-run][MAP] Self-invoke HTTP ${res.status} (tentative ${attempt})`); await sleep(3000); }
+      } catch (e) {
+        console.error(`[analyser-run][MAP] Self-invoke erreur (tentative ${attempt}):`, e);
+        await sleep(3000);
+      }
+    }
+    if (!invoked) {
+      // Les extraits sont en DB : le remboursement est déclenché mais un support/relance manuelle reste possible
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'MAP : échec déclenchement phase REDUCE');
+    }
+  } catch (err) {
+    console.error('[analyser-run][MAP] Erreur:', err);
+    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Erreur inattendue. Votre crédit a été remboursé automatiquement. Contactez le support.', 'MAP : erreur inattendue');
+  }
+}
+
+// ─── PHASE REDUCE — invocation 2 ───
+async function runPhaseReduce(
+  analyseId: string,
+  supabaseAdmin: SupabaseClient,
+  apiKey: string,
+): Promise<void> {
+  try {
+    const { data: analyse, error } = await supabaseAdmin
+      .from('analyses')
+      .select('map_resultats, profil, type_bien_declare, status')
+      .eq('id', analyseId)
+      .single();
+
+    if (error || !analyse) { console.error('[analyser-run][REDUCE] Analyse introuvable:', error); return; }
+    if (analyse.status === 'completed') { console.log('[analyser-run][REDUCE] Déjà completed — abandon (idempotence)'); return; }
+
+    const mapData = analyse.map_resultats as { profil?: string; type_bien_declare?: string | null; nb_docs?: number; extraits?: ExtraitDoc[] } | null;
+    const extraits = mapData?.extraits || [];
+    const oks = extraits.filter(e => e.statut === 'ok');
+    const echecs = extraits.filter(e => e.statut === 'echec');
+
+    if (oks.length === 0) {
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Aucun document analysable trouvé. Votre crédit a été remboursé automatiquement. Contactez le support.', 'REDUCE : map_resultats vide');
+      return;
+    }
+
+    const profil = (analyse.profil as string) || mapData?.profil || 'rp';
+    const typeBienDeclare = (analyse.type_bien_declare as string) || mapData?.type_bien_declare || null;
+    const nbDocs = mapData?.nb_docs || extraits.length;
+
+    console.log(`[analyser-run][REDUCE] Synthèse — ${oks.length} extraits OK, ${echecs.length} échec(s) | profil:${profil}`);
+
+    // Construction du contenu : les extraits remplacent les PDF
+    const userContent: unknown[] = [];
+    userContent.push({
+      type: 'text',
+      text: `CONTEXTE D'ENTRÉE : tu ne reçois pas les documents PDF originaux mais des EXTRAITS STRUCTURÉS EXHAUSTIFS, produits par une lecture attentive document par document (chaque fait est accompagné de sa page d'origine). Traite ces extraits exactement comme s'il s'agissait des documents eux-mêmes : toutes les règles du prompt système s'appliquent. Ne mentionne JAMAIS les mots "extrait" ou "extraction" dans le rapport. Ne déduis RIEN qui ne figure pas dans les extraits.`,
+    });
+    oks.forEach((e, i) => {
+      userContent.push({
+        type: 'text',
+        text: `--- DOCUMENT ${i + 1}/${oks.length} : ${e.file_name} ---\n${JSON.stringify(e.extraction)}`,
+      });
+    });
+    if (echecs.length > 0) {
+      userContent.push({
+        type: 'text',
+        text: `NOTE : ${echecs.length} document(s) du dossier n'ont pas pu être lus (${echecs.map(e => e.file_name).join(', ')}). Ne fais AUCUNE supposition sur leur contenu. Ne les compte pas dans documents_analyses.`,
+      });
+    }
+    userContent.push({
+      type: 'text',
+      text: `Voici les ${oks.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
+    });
+
+    await supabaseAdmin.from('analyses').update({ progress_message: 'Synthèse du rapport en cours...' }).eq('id', analyseId);
+
+    let msgCount = 0;
+    const progressMessages = [
+      'Croisement des informations...',
+      'Croisement des informations...',
+      'Calcul du score...',
+      'Rédaction du rapport en cours...',
+      'Rédaction du rapport en cours...',
+      'Dernières vérifications...',
+      'Finalisation en cours...',
+    ];
+    const progressInterval = setInterval(async () => {
+      const msg = progressMessages[Math.min(msgCount, progressMessages.length - 1)];
+      msgCount++;
+      await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
+    }, 40_000);
+
+    // Le prompt v7 complet — mêmes règles métier que le single-call
+    let result = await callAI({ system: buildSystemPrompt('complete', profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+    clearInterval(progressInterval);
+    let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
+
+    if (!result.error && !report) {
+      console.warn('[analyser-run][REDUCE] JSON invalide — retry 5s');
+      await sleep(5000);
+      result = await callAI({ system: buildSystemPrompt('complete', profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+      report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
+    }
+
+    if (result.error || !report) {
+      if (result.error === 'api_billing') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_billing', 'Notre service rencontre un problème technique. Notre équipe est informée. Votre crédit a été remboursé automatiquement.', 'Solde API épuisé — analyses bloquées', 'critical');
+      } else if (result.error === 'rate_limit') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'rate_limit', 'Notre outil est momentanément surchargé. Votre crédit a été remboursé automatiquement. Réessayez dans 2 à 3 minutes.', 'Rate limit atteint (REDUCE)');
+      } else if (result.error === 'overload') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé (REDUCE)');
+      } else if (result.error && result.error.startsWith('api_error_5')) {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API (REDUCE)');
+      } else if (result.error === 'timeout') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'timeout', 'La génération du rapport a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Timeout (REDUCE)');
+      } else {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec génération rapport (REDUCE)');
+      }
+      return;
+    }
+
+    // Post-traitement déterministe — STRICTEMENT identique au v7
+    try {
+      report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
+    } catch (e) {
+      console.error('[analyser-run][REDUCE] Erreur recalcul categories (non bloquant):', e);
+    }
+    try {
+      report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
+    } catch (e) {
+      console.error('[analyser-run][REDUCE] validateDiagsManquants erreur (non bloquant):', e);
+    }
+
+    // 🆕 documents_non_analyses — injecté DÉTERMINISTIQUEMENT (pas par l'IA)
+    // Alimente le bandeau frontend + l'invitation "Compléter mon dossier"
+    (report as Record<string, unknown>).documents_non_analyses = echecs.map(e => ({
+      nom: e.file_name,
+      raison: e.raison === 'timeout' ? 'lecture_trop_longue' : (e.raison === 'json_invalide' ? 'document_illisible' : 'erreur_technique'),
+    }));
+
+    // avis_verimo : string (ancien format) ou objet (nouveau) — même logique que v7
+    let avisVerimoForDb: string | null = null;
+    const av = report.avis_verimo;
+    if (typeof av === 'string') {
+      avisVerimoForDb = av || null;
+    } else if (av && typeof av === 'object') {
+      const verdict = (av as Record<string, unknown>).verdict;
+      avisVerimoForDb = typeof verdict === 'string' ? verdict : null;
+    }
+
+    const updateData: Record<string, unknown> = {
+      status: 'completed',
+      progress_current: nbDocs + 1,
+      progress_total: nbDocs + 1,
+      progress_message: 'Rapport pr\u00eat !',
+      file_ids: [],
+      title: (report.titre as string) || 'Analyse immobili\u00e8re',
+      score: (report.score as number) ?? null,
+      avis_verimo: avisVerimoForDb,
+      result: report,
+      paid: true,
+    };
+
+    // Deadline 7 jours pour compléter le dossier (comme v7 mode complete)
+    const dl = new Date(); dl.setDate(dl.getDate() + 7);
+    updateData.regeneration_deadline = dl.toISOString();
+
+    const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
+    if (updateError) {
+      console.error('[analyser-run][REDUCE] ERREUR UPDATE:', updateError.message);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde rapport (REDUCE)');
+    } else {
+      console.log(`[analyser-run][REDUCE] ${analyseId} terminée avec succès (${oks.length}/${nbDocs} docs analysés).`);
+      await notifyAnalysisReady(supabaseAdmin, analyseId);
+    }
+  } catch (err) {
+    console.error('[analyser-run][REDUCE] Erreur:', err);
+    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Erreur inattendue. Votre crédit a été remboursé automatiquement. Contactez le support.', 'REDUCE : erreur inattendue');
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -2206,6 +2552,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ skipped: 'webhook' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
+    // ══ MAP-REDUCE : phase REDUCE (déclenchée par self-invoke — nouveau chrono 400s) ══
+    if (body?.phase === 'reduce') {
+      console.log(`[analyser-run] Phase REDUCE — ${analyseId}`);
+      EdgeRuntime.waitUntil(runPhaseReduce(analyseId, supabaseAdmin, apiKey));
+      return new Response(JSON.stringify({ success: true, analyseId, phase: 'reduce' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+
     const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
     const mode = body?.mode as string || 'complete';
     const profil = body?.profil as string || 'rp';
@@ -2220,7 +2573,16 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[analyser-run] Lancement — ${fileIds.length} docs | mode:${mode} | typeDeclare:${typeBienDeclare || 'null'} | fromRetry:${fromRetry}`);
-    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey, existingReport, complementDocNames, typeBienDeclare, fromRetry));
+
+    // ══ AIGUILLAGE — analyses complètes uniquement ══
+    // ≥ SEUIL_MAP_REDUCE docs → MAP-REDUCE | sinon → single-call v7 (inchangé)
+    // Les modes 'document' et 'complement' restent TOUJOURS en single-call.
+    if (mode === 'complete' && fileIds.length >= SEUIL_MAP_REDUCE) {
+      console.log(`[analyser-run] → MAP-REDUCE (${fileIds.length} docs ≥ seuil ${SEUIL_MAP_REDUCE})`);
+      EdgeRuntime.waitUntil(runPhaseMap(analyseId, fileIds, profil, supabaseAdmin, apiKey, typeBienDeclare));
+    } else {
+      EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey, existingReport, complementDocNames, typeBienDeclare, fromRetry));
+    }
 
     return new Response(JSON.stringify({ success: true, analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
