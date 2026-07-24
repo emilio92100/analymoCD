@@ -1375,8 +1375,8 @@ export default function RapportComparaisonPage() {
                         </div>
                       )}
 
-                      {/* Bouton Voir rapport détaillé */}
-                      <Link to={`/rapport?id=${a.id}`}
+                      {/* Bouton Voir rapport détaillé — param from pour que le Retour du rapport ramène ICI */}
+                      <Link to={`/rapport?id=${a.id}&from=${encodeURIComponent(`/rapport-comparaison?ids=${ids.join(',')}`)}`}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
