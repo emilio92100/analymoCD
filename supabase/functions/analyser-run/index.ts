@@ -24,8 +24,9 @@ const MAX_TOKENS_OUTPUT = 64000;
 // et faire repasser 100% des dossiers par le v7. Redéployer après modif.
 // ══════════════════════════════════════════════════════════════
 const SEUIL_MAP_REDUCE = 6;
-const MAP_MAX_TOKENS = 12000;      // sortie max par extraction de doc
-const MAP_TIMEOUT_MS = 300000;     // 5 min max par extraction (parallèle)
+const MAP_MAX_TOKENS = 32000;      // sortie max par extraction — large pour les gros PV d'AG (JSON tronqué sinon)
+const MAP_TIMEOUT_MS = 350000;     // 350s par extraction — les gros docs (PV AG, RCP) ont besoin de 3-4 min pour écrire leur extraction complète. Tout est parallèle : l'invocation dure au pire 350s + sauvegarde, sous les 400s. NE PAS remonter au-dessus de 370000.
+const MAP_RETRY_WINDOW_MS = 60000; // retry uniquement si le 1er essai a échoué en moins de 60s (échec rapide type JSON malformé) — un essai long ne laisse pas le budget pour un 2ème
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +62,7 @@ interface TravauxItem { label?: string; montant_estime?: number | null; charge_v
 interface ProcedureItem { label?: string; type?: string; gravite?: string; message?: string }
 interface RapportShape {
   score?: number;
+  score_niveau?: string;
   annee_construction?: string | number | null;
   type_bien?: string;
   profil?: string;
@@ -85,6 +87,17 @@ interface RapportShape {
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
+}
+
+// Grille officielle des niveaux — MIROIR EXACT de getScoreLabel() dans
+// RapportPage.tsx / RapportPrintPage.tsx. Toute modification doit être
+// répercutée aux trois endroits.
+function getScoreNiveau(score: number): string {
+  if (score >= 17) return 'Bien irréprochable';
+  if (score >= 14) return 'Bien sain';
+  if (score >= 10) return 'Bien correct avec réserves';
+  if (score >= 7) return 'Bien risqué';
+  return 'Bien à éviter';
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -242,7 +255,7 @@ function recalculerCategoriesMaison(rapport: RapportShape, _profil: string, anne
   );
 
   console.log('[analyser-run] Categories MAISON recalculees:', JSON.stringify(categoriesRecalculees), '| score:', scoreMaison, '| ASL:', hasAsl);
-  return { ...rapport, score: scoreMaison, categories: categoriesRecalculees };
+  return { ...rapport, score: scoreMaison, score_niveau: getScoreNiveau(scoreMaison), categories: categoriesRecalculees };
 }
 
 function recalculerCategories(rapport: RapportShape, profil: string): RapportShape {
@@ -391,7 +404,20 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
   console.log('[analyser-run] Categories recalculees:', JSON.stringify(categoriesRecalculees));
   console.log('[analyser-run] Diags privatifs detectes:', diagsPrivatifs.length, '| types:', diagsPrivatifs.map(d => d.type).join(','));
 
-  return { ...rapport, categories: categoriesRecalculees };
+  // 🆕 FIX SCORE COPRO : le score total = somme des 5 catégories recalculées.
+  // Avant ce fix, le score affiché restait celui écrit par l'IA → incohérence
+  // possible avec les barres de catégories (ex: 13,5 affiché vs 11,5 en somme).
+  // Aligné sur le comportement du chemin maison (recalculerCategoriesMaison).
+  const scoreCopro = Math.round((
+    categoriesRecalculees.travaux.note +
+    categoriesRecalculees.procedures.note +
+    categoriesRecalculees.finances.note +
+    categoriesRecalculees.diags_privatifs.note +
+    categoriesRecalculees.diags_communs.note
+  ) * 2) / 2;
+  console.log('[analyser-run] Score copro recalcule (somme categories):', scoreCopro, '| score IA remplace:', rapport.score);
+
+  return { ...rapport, score: scoreCopro, score_niveau: getScoreNiveau(scoreCopro), categories: categoriesRecalculees };
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2220,6 +2246,7 @@ RÈGLES ABSOLUES :
 3. Pour tout montant de travaux : préciser le statut EXACT tel qu'écrit — "vote" (avec le numéro de résolution si présent), "evoque" (à l'étude, envisagé, devis demandé), ou "realise". En cas d'ambiguïté sur le statut, recopier la phrase exacte du document dans le champ citation. Ne JAMAIS classer "vote" dans le doute.
 4. Ignorer uniquement : formules de politesse, rappels de loi génériques recopiés, mentions administratives répétitives. En cas de doute sur l'utilité d'un fait → le noter quand même.
 5. Extraction EXHAUSTIVE : chaque chiffre, chaque date, chaque décision, chaque clause, chaque anomalie. Un fait omis est perdu définitivement.
+6. Style TÉLÉGRAPHIQUE : descriptions courtes et factuelles, 1 phrase maximum par fait. L'exhaustivité porte sur le NOMBRE de faits capturés, jamais sur la longueur des phrases. Pas de reformulation, pas de contexte superflu.
 
 PRÉCISIONS PAR TYPE (si applicable) :
 - PV d'AG : chaque résolution avec son résultat (adoptée/rejetée), quitus au syndic (soumis ? approuvé ?), participation (présents/représentés, tantièmes), changement de syndic, questions diverses notables, appels de fonds.
@@ -2245,12 +2272,14 @@ async function extractOneDoc(
   ];
 
   try {
+    const t0 = Date.now();
     let result = await callAI({ system: buildMapPrompt(), userContent, maxTokens: MAP_MAX_TOKENS, apiKey, timeoutMs: MAP_TIMEOUT_MS });
     let extraction = result.error ? null : parseJson<Record<string, unknown>>(result.text);
 
-    // JSON invalide (mais appel réussi) → un retry unique
-    if (!result.error && !extraction) {
-      console.warn(`[analyser-run][MAP] JSON invalide pour "${file.name}" — retry 5s`);
+    // JSON invalide (mais appel réussi) → retry UNIQUEMENT si l'échec a été rapide
+    // (un essai qui a consommé plusieurs minutes ne laisse pas le budget pour un 2ème)
+    if (!result.error && !extraction && (Date.now() - t0) < MAP_RETRY_WINDOW_MS) {
+      console.warn(`[analyser-run][MAP] JSON invalide pour "${file.name}" (échec rapide) — retry 5s`);
       await sleep(5000);
       result = await callAI({ system: buildMapPrompt(), userContent, maxTokens: MAP_MAX_TOKENS, apiKey, timeoutMs: MAP_TIMEOUT_MS });
       extraction = result.error ? null : parseJson<Record<string, unknown>>(result.text);
