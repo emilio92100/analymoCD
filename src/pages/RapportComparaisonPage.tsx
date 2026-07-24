@@ -49,11 +49,17 @@ type KpiDifferenciant = {
   pourquoi_differenciant?: string;
 };
 
+type LectureVerimoV5 = {
+  constat?: string | null;
+  correlations?: string | null;
+  synthese_par_bien?: { bien_idx: number; resume: string }[];
+};
+
 type VerdictV2 = {
   bien_recommande_idx: number;
   titre_verdict: string;
   ordre_affichage?: string[]; // v4 : ids des analyses dans l'ordre d'affichage (recommandé = Bien 1, en premier)
-  lecture_verimo?: string | null; // v5 : fusion lecture comparée + analyse croisée
+  lecture_verimo?: string | LectureVerimoV5 | null; // v5 : fusion lecture comparée + analyse croisée (string = ancien format)
   ecarts_cles: {
     score: VerdictEcart;
     cout_annee_1: VerdictEcart;
@@ -711,7 +717,7 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
       {/* ─── BLOC 1ter — Forces & points faibles par bien ─── */}
       <ProfilsBiensSection verdict={verdict} analyses={analyses} bestIdx={bestIdx} />
 
-      {/* ─── BLOC 2 — Lecture Verimo (v5 : fusion lecture comparée + analyse croisée) ─── */}
+      {/* ─── BLOC 2 — Lecture Verimo (v5 : structurée en constat / corrélations / résumé) ─── */}
       {verdict.lecture_verimo ? (
         <div style={{
           position: 'relative',
@@ -720,7 +726,7 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
           background: 'linear-gradient(135deg, #fff 0%, #f0f7fb 100%)',
           border: '1.5px solid #bae3f5',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <div style={{ width: 26, height: 26, borderRadius: 8, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Sparkles size={13} color="#fff" />
             </div>
@@ -731,9 +737,70 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
               text="Verimo hiérarchise les écarts entre vos biens selon leur impact financier réel : coûts certains d'abord, engagements probables ensuite, risques non chiffrés enfin. Cette lecture relie aussi les critères entre eux (ex : un DPE faible combiné à un fonds travaux insuffisant révèle une copropriété qui n'anticipe pas ses rénovations) pour mettre en lumière ce que les chiffres séparés ne montrent pas."
             />
           </div>
-          <p style={{ fontSize: 14.5, lineHeight: 1.7, color: '#0f172a', margin: 0, fontWeight: 500 }}>
-            {verdict.lecture_verimo}
-          </p>
+
+          {typeof verdict.lecture_verimo === 'string' ? (
+            /* Rétrocompatibilité — ancien format texte brut */
+            <p style={{ fontSize: 14.5, lineHeight: 1.7, color: '#0f172a', margin: 0, fontWeight: 500 }}>
+              {verdict.lecture_verimo}
+            </p>
+          ) : (
+            (() => {
+              const lv = verdict.lecture_verimo as LectureVerimoV5;
+              const syntheses = Array.isArray(lv.synthese_par_bien) ? lv.synthese_par_bien : [];
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* Le constat décisif */}
+                  {lv.constat && (
+                    <p style={{ fontSize: 14.5, lineHeight: 1.7, color: '#0f172a', margin: 0, fontWeight: 500 }}>
+                      {lv.constat}
+                    </p>
+                  )}
+
+                  {/* Les corrélations */}
+                  {lv.correlations && (
+                    <div style={{ padding: '14px 16px', borderRadius: 13, background: 'rgba(42,125,156,0.05)', border: '1px dashed rgba(42,125,156,0.25)' }}>
+                      <div style={{ fontSize: 9.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.12em', marginBottom: 6 }}>
+                        🔗 CE QUE LES CHIFFRES SÉPARÉS NE MONTRENT PAS
+                      </div>
+                      <p style={{ fontSize: 13.5, lineHeight: 1.65, color: '#1e3a4a', margin: 0 }}>
+                        {lv.correlations}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* En résumé — une bulle par bien */}
+                  {syntheses.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b', letterSpacing: '0.12em', marginBottom: 8 }}>
+                        EN RÉSUMÉ
+                      </div>
+                      <div className="rcp-section-grid" style={{ display: 'grid', gridTemplateColumns: analyses.length === 2 ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
+                        {analyses.map((a, i) => {
+                          const sb = syntheses.find(x => x.bien_idx === i);
+                          if (!sb) return null;
+                          const isBestSb = i === bestIdx;
+                          return (
+                            <div key={a.id} style={{
+                              padding: '13px 15px', borderRadius: 14,
+                              background: isBestSb ? '#f0fdf4' : '#fff',
+                              border: `1.5px solid ${isBestSb ? '#bbf7d0' : '#e6eef4'}`,
+                            }}>
+                              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: isBestSb ? '#15803d' : '#64748b', marginBottom: 5 }}>
+                                BIEN {i + 1}{isBestSb ? ' ⭐' : ''}
+                              </div>
+                              <p style={{ fontSize: 13, lineHeight: 1.55, color: '#0f172a', margin: 0, fontWeight: 600 }}>
+                                {sb.resume}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+          )}
         </div>
       ) : (
         <>
