@@ -419,6 +419,160 @@ function InfoTooltip({ text }: { text: string }) {
 }
 
 /* ══════════════════════════════════════════
+   ÉCARTS CLÉS — 3 mini-cartes (score / coût année 1 / DPE)
+   Rendu sobre : générés par le verdict, affichage discret.
+   ══════════════════════════════════════════ */
+
+function EcartValeur(v: number | string | null | undefined, suffix = ''): string {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'number') return `${v.toLocaleString('fr-FR')}${suffix}`;
+  return `${v}${suffix}`;
+}
+
+function EcartsClesSection({ verdict, nbBiens, bestIdx }: { verdict: VerdictV2; nbBiens: number; bestIdx: number }) {
+  const e = verdict.ecarts_cles;
+  if (!e) return null;
+  const cards: { label: string; icon: string; ecart: VerdictEcart | undefined; suffix: string }[] = [
+    { label: 'Score Verimo', icon: '🎯', ecart: e.score, suffix: '/20' },
+    { label: 'Coût estimé année 1', icon: '💶', ecart: e.cout_annee_1, suffix: ' €' },
+    { label: 'DPE', icon: '⚡', ecart: e.dpe, suffix: '' },
+  ];
+  const valides = cards.filter(c => c.ecart && (c.ecart.bien_1 != null || c.ecart.bien_2 != null));
+  if (valides.length === 0) return null;
+
+  return (
+    <div className="rcp-kpi-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${valides.length}, 1fr)`, gap: 12 }}>
+      {valides.map((c, ci) => {
+        const vals = [c.ecart!.bien_1, c.ecart!.bien_2, c.ecart!.bien_3].slice(0, nbBiens);
+        return (
+          <div key={ci} style={{ background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <span style={{ fontSize: 13 }}>{c.icon}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{c.label}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {vals.map((v, vi) => (
+                <div key={vi} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: vi === bestIdx ? '#16a34a' : '#94a3b8' }}>
+                    Bien {vi + 1}{vi === bestIdx ? ' ⭐' : ''}
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: vi === bestIdx ? '#0f172a' : '#475569' }}>
+                    {EcartValeur(v, c.suffix)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {c.ecart!.delta_label && (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #e2e8f0', fontSize: 11.5, color: '#64748b', fontStyle: 'italic' }}>
+                {c.ecart!.delta_label}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   PROFILS PAR BIEN — forces & points faibles avec impact
+   ══════════════════════════════════════════ */
+
+function ImpactBadge({ impact }: { impact?: 'majeur' | 'modere' | 'mineur' | null }) {
+  if (!impact) return null;
+  const conf = impact === 'majeur'
+    ? { label: 'Majeur', color: '#dc2626', bg: '#fef2f2' }
+    : impact === 'modere'
+      ? { label: 'Modéré', color: '#d97706', bg: '#fffbeb' }
+      : { label: 'Mineur', color: '#64748b', bg: '#f8fafc' };
+  return (
+    <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', color: conf.color, background: conf.bg, padding: '2px 7px', borderRadius: 5, flexShrink: 0, textTransform: 'uppercase' }}>
+      {conf.label}
+    </span>
+  );
+}
+
+function ProfilsBiensSection({ verdict, analyses, bestIdx }: { verdict: VerdictV2; analyses: AnalyseLite[]; bestIdx: number }) {
+  const profils = Array.isArray(verdict.profils) ? verdict.profils : [];
+  if (profils.length === 0) return null;
+  const gridCols = analyses.length === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
+
+  return (
+    <div style={{ background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 16, overflow: 'hidden' }}>
+      <div style={{ padding: '16px 22px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 15 }}>⚖️</div>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.12em' }}>
+            FORCES & POINTS FAIBLES PAR BIEN
+          </span>
+        </div>
+      </div>
+      <div className="rcp-section-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0, marginTop: 14 }}>
+        {analyses.map((a, i) => {
+          const p = profils.find(pr => pr.bien_idx === i);
+          const isBest = i === bestIdx;
+          return (
+            <div key={a.id} style={{ padding: '16px 20px 20px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none', borderTop: '1px solid #f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: isBest ? '#16a34a' : '#94a3b8', letterSpacing: '0.1em' }}>
+                  BIEN {i + 1}{isBest ? ' ⭐' : ''}
+                </span>
+                {p?.profil && (
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '2px 9px', borderRadius: 99 }}>
+                    {p.profil}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {(a.adresse_bien || '').split(',')[0]}
+              </div>
+
+              {p && Array.isArray(p.forces) && p.forces.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  {p.forces.map((f, fi) => (
+                    <div key={fi} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <CheckCircle size={13} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>{f.titre}</span>
+                          <ImpactBadge impact={f.impact} />
+                        </div>
+                        {f.detail && <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.55, margin: '2px 0 0' }}>{f.detail}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {p && Array.isArray(p.points_faibles) && p.points_faibles.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10, borderTop: '1px dashed #e2e8f0' }}>
+                  {p.points_faibles.map((pf, pfi) => (
+                    <div key={pfi} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>{pf.titre}</span>
+                          <ImpactBadge impact={pf.impact} />
+                        </div>
+                        {pf.detail && <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.55, margin: '2px 0 0' }}>{pf.detail}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!p && (
+                <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>Profil non disponible pour ce bien.</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
    VERDICT PREMIUM — 3 blocs
    ══════════════════════════════════════════ */
 
@@ -499,6 +653,27 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
           </div>
         </div>
       </div>
+
+      {/* ─── BLOC 1bis — Écarts clés (score / coût année 1 / DPE) ─── */}
+      <EcartsClesSection verdict={verdict} nbBiens={nbBiens} bestIdx={bestIdx} />
+
+      {/* ─── BLOC 1ter — Forces & points faibles par bien ─── */}
+      <ProfilsBiensSection verdict={verdict} analyses={analyses} bestIdx={bestIdx} />
+
+      {/* ─── BLOC 1quater — Lecture comparée ─── */}
+      {verdict.comparatif && (
+        <div style={{ padding: '18px 22px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <GitCompare size={14} color="#2a7d9c" />
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.12em' }}>
+              LECTURE COMPARÉE
+            </span>
+          </div>
+          <p style={{ fontSize: 14, lineHeight: 1.65, color: '#334155', margin: 0 }}>
+            {verdict.comparatif}
+          </p>
+        </div>
+      )}
 
       {/* ─── BLOC 2 — Analyse croisée Verimo (avec tooltip explicatif) ─── */}
       {verdict.analyse_croisee && (
@@ -791,7 +966,10 @@ export default function RapportComparaisonPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const idsParam = searchParams.get('ids') || '';
-  const ids = useMemo(() => idsParam.split(',').map(s => s.trim()).filter(Boolean), [idsParam]);
+  // ORDRE CANONIQUE : on trie TOUJOURS les ids. Le backend (comparer v3) trie
+  // aussi avant génération → "Bien 1" du verdict = premier id trié = premier
+  // bien affiché. Quel que soit l'ordre dans l'URL, tout reste aligné.
+  const ids = useMemo(() => idsParam.split(',').map(s => s.trim()).filter(Boolean).sort(), [idsParam]);
 
   const [analyses, setAnalyses] = useState<AnalyseLite[]>([]);
   const [verdict, setVerdict] = useState<VerdictAny | null>(null);
@@ -800,6 +978,10 @@ export default function RapportComparaisonPage() {
   const [verdictError, setVerdictError] = useState(false);
   const [fromCache, setFromCache] = useState(false);
   const [notFound, setNotFound] = useState(false);
+
+  // Ré-essai automatique quand le serveur répond 409 (comparaison déjà en cours)
+  const inProgressRetriesRef = React.useRef(0);
+  const loadVerdictRef = React.useRef<(() => void) | null>(null);
 
   /* ─── Charger les analyses dans l'ordre des ids ─── */
   const loadAnalyses = useCallback(async () => {
@@ -858,6 +1040,19 @@ export default function RapportComparaisonPage() {
         body: JSON.stringify({ analyseIds: ids }),
       });
 
+      // 409 = la comparaison est déjà en cours de génération côté serveur
+      // (anti-doublon). On garde l'écran d'attente et on re-tente dans 6s,
+      // jusqu'à ~2 min max (le temps que le 1er appel remplisse le verdict).
+      if (res.status === 409) {
+        if (inProgressRetriesRef.current < 20) {
+          inProgressRetriesRef.current += 1;
+          setTimeout(() => { loadVerdictRef.current?.(); }, 6000);
+          return; // verdictLoading reste true → écran d'attente
+        }
+        console.error('[RapportComparaisonPage] in_progress : délai dépassé');
+        setVerdictLoading(false); setVerdictError(true); return;
+      }
+
       if (!res.ok) {
         console.error('[RapportComparaisonPage] verdict HTTP error', res.status);
         setVerdictLoading(false); setVerdictError(true); return;
@@ -900,6 +1095,8 @@ export default function RapportComparaisonPage() {
     }
     setVerdictLoading(false);
   }, [ids]);
+
+  useEffect(() => { loadVerdictRef.current = loadVerdict; }, [loadVerdict]);
 
   useEffect(() => { loadAnalyses(); }, [loadAnalyses]);
   useEffect(() => {
