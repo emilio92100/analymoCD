@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
   CheckCircle, BookOpen, Send, MessageSquare, Sun, Moon,
+  Wrench, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -833,14 +834,26 @@ export default function DashboardPage() {
                       </button>
                     </div>
                     <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Quelle est la raison de votre demande ?</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
-                        {['Problème avec mon analyse', 'Question sur mon abonnement', 'Bug technique', 'Question sur les crédits', 'Autre'].map(opt => (
-                          <button key={opt} onClick={() => setHelpSubject(opt)}
-                            style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: helpSubject === opt ? '2px solid #2a7d9c' : '1.5px solid #edf2f7', background: helpSubject === opt ? '#f0f7fb' : '#fff', color: helpSubject === opt ? '#2a7d9c' : '#64748b', transition: 'all 0.15s', textAlign: 'left' }}>
-                            {opt}
-                          </button>
-                        ))}
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>Quelle est la raison de votre demande ?</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+                        {[
+                          { label: 'Problème avec mon analyse', Icon: FileText, color: '#2a7d9c', bg: '#f0f7fb' },
+                          { label: 'Question sur mon abonnement', Icon: CreditCard, color: '#7c3aed', bg: '#f5f3ff' },
+                          { label: 'Bug technique', Icon: Wrench, color: '#dc2626', bg: '#fef2f2' },
+                          { label: 'Question sur les crédits', Icon: CreditCard, color: '#16a34a', bg: '#f0fdf4' },
+                          { label: 'Autre', Icon: HelpCircle, color: '#64748b', bg: '#f8fafc' },
+                        ].map(({ label, Icon, color, bg }) => {
+                          const active = helpSubject === label;
+                          return (
+                            <button key={label} onClick={() => setHelpSubject(label)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', border: active ? `2px solid ${color}` : '1.5px solid #edf2f7', background: active ? bg : '#fff', color: active ? color : '#334155', transition: 'all 0.15s', textAlign: 'left', boxShadow: active ? `0 2px 8px ${color}22` : 'none' }}>
+                              <span style={{ width: 34, height: 34, borderRadius: 9, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Icon size={17} style={{ color }} />
+                              </span>
+                              <span style={{ lineHeight: 1.3 }}>{label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                       {helpSubject === 'Autre' && (
                         <div style={{ marginTop: 12 }}>
