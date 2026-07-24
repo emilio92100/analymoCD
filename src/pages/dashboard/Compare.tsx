@@ -210,35 +210,59 @@ export default function Compare() {
 
   useEffect(() => { loadHistorique(); }, [loadHistorique]);
 
-  // ─── Comparaisons EN COURS (status = 'processing' en base) ────────────────
-  // Même principe qu'une analyse classique : la source de vérité est la base.
+  // ─── Comparaisons EN COURS ou EN ÉCHEC (source de vérité : la base) ───────
   // La edge function "comparer" crée une ligne 'processing' au lancement puis la
-  // passe à 'completed'. Au retour sur l'onglet (ou depuis un autre appareil),
-  // on lit ces lignes et on affiche un spinner, avec polling jusqu'à la fin.
-  const [processingCompares, setProcessingCompares] = useState<{ analyse_ids: string }[]>([]);
+  // passe à 'completed' ou 'failed'. Au retour sur l'onglet (ou depuis un autre
+  // appareil), on lit ces lignes : spinner + polling pour 'processing', et
+  // bouton "Relancer" pour 'failed'. Au-delà de 2 min de processing, le front
+  // bascule lui-même la ligne en 'failed' (le watchdog serveur est le filet
+  // de sécurité si l'onglet est fermé).
+  const [processingCompares, setProcessingCompares] = useState<{ id: string; analyse_ids: string; status: string; updated_at: string }[]>([]);
 
   const loadProcessing = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase
       .from('comparaisons')
-      .select('analyse_ids')
+      .select('id, analyse_ids, status, updated_at')
       .eq('user_id', user.id)
-      .eq('status', 'processing');
+      .in('status', ['processing', 'failed']);
     setProcessingCompares(data || []);
   }, []);
 
   useEffect(() => { loadProcessing(); }, [loadProcessing]);
 
-  // Polling toutes les 4s tant qu'au moins une comparaison est en cours
+  // Polling toutes les 4s tant qu'au moins une comparaison est réellement en cours
+  const nbProcessing = processingCompares.filter(pc => pc.status === 'processing').length;
   useEffect(() => {
-    if (processingCompares.length === 0) return;
+    if (nbProcessing === 0) return;
     const poll = setInterval(async () => {
       await loadProcessing();
       await loadHistorique();
     }, 4000);
     return () => clearInterval(poll);
-  }, [processingCompares.length, loadProcessing, loadHistorique]);
+  }, [nbProcessing, loadProcessing, loadHistorique]);
+
+  // ─── TIMEOUT 2 MIN : si une ligne est en 'processing' depuis plus de
+  // 2 minutes, le front la bascule en 'failed' en base (le backend a
+  // probablement crashé/timeout) → le bouton "Relancer" apparaît.
+  useEffect(() => {
+    const stuck = processingCompares.filter(pc =>
+      pc.status === 'processing' &&
+      pc.updated_at &&
+      Date.now() - new Date(pc.updated_at).getTime() > 120000
+    );
+    if (stuck.length === 0) return;
+    (async () => {
+      for (const pc of stuck) {
+        await supabase.from('comparaisons')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', pc.id)
+          .eq('status', 'processing'); // idempotent : ne touche pas si la fonction a fini entre-temps
+      }
+      loadProcessing();
+    })();
+  }, [processingCompares, loadProcessing]);
 
   const deleteComparaison = async (id: string) => {
     if (!confirm('Supprimer cette comparaison ?')) return;
@@ -259,8 +283,11 @@ export default function Compare() {
   const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
   const canLaunch = selected.length >= 2;
 
-  const handleLaunch = async () => {
-    if (!canLaunch) return;
+  // ─── LANCEMENT / RELANCE ──────────────────────────────────────────────────
+  // Ordre canonique : les IDs sont TOUJOURS triés avant l'appel (le backend
+  // trie aussi de son côté). Utilisé par le bouton "Lancer" ET par "Relancer".
+  const launchCompare = async (ids: string[]) => {
+    const idsTries = [...ids].sort();
     setLaunched(true);
     setLaunchError(null);
     // Rafraîchit l'affichage "en cours" (la ligne processing est créée côté serveur)
@@ -277,12 +304,21 @@ export default function Compare() {
           'Authorization': `Bearer ${session.access_token}`,
           'apikey': SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ analyseIds: selected }),
+        body: JSON.stringify({ analyseIds: idsTries }),
       });
+
+      // 409 = cette comparaison est DÉJÀ en cours (anti-doublon serveur).
+      // Ce n'est pas une erreur : on affiche l'attente, le polling fera le reste.
+      if (res.status === 409) {
+        setLaunched(false);
+        loadProcessing();
+        return;
+      }
 
       if (!res.ok) {
         setLaunchError('La génération du verdict a échoué. Réessayez dans un instant.');
         setLaunched(false);
+        loadProcessing();
         return;
       }
 
@@ -291,17 +327,36 @@ export default function Compare() {
         loadProcessing();
         // Rafraîchir l'historique en arrière-plan puis rediriger vers le rapport
         loadHistorique();
-        // Redirection vers la page rapport plein écran
-        navigate(`/rapport-comparaison?ids=${selected.join(',')}`);
+        // Redirection vers la page rapport plein écran (IDs triés = ordre canonique)
+        navigate(`/rapport-comparaison?ids=${idsTries.join(',')}`);
       } else {
         setLaunchError('Réponse inattendue du serveur. Réessayez.');
         setLaunched(false);
       }
     } catch (e) {
-      console.error('[Compare] handleLaunch error', e);
+      console.error('[Compare] launchCompare error', e);
       setLaunchError('Erreur réseau. Vérifiez votre connexion et réessayez.');
       setLaunched(false);
     }
+  };
+
+  const handleLaunch = () => {
+    if (!canLaunch) return;
+    launchCompare(selected);
+  };
+
+  // Relance depuis une ligne en échec : reprend automatiquement les 2 ou 3
+  // biens de la ligne (analyse_ids est déjà la clé triée).
+  const [relaunchingIds, setRelaunchingIds] = useState<string | null>(null);
+  const relancerComparaison = async (analyseIdsStr: string) => {
+    setRelaunchingIds(analyseIdsStr);
+    await launchCompare(analyseIdsStr.split(','));
+    setRelaunchingIds(null);
+  };
+
+  const supprimerLigneEchec = async (id: string) => {
+    await supabase.from('comparaisons').delete().eq('id', id);
+    loadProcessing();
   };
 
   /* ─── Loader initial pendant le chargement des analyses ─── */
@@ -452,29 +507,75 @@ export default function Compare() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* ═══ COMPARAISON(S) EN COURS — tout en haut de la page ═══ */}
-      {processingCompares.map((pc) => (
-        <motion.div key={pc.analyse_ids} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #bae3f5', overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 42, height: 42, flexShrink: 0 }}>
-              <div style={{ width: 42, height: 42, borderRadius: '50%', border: '3px solid #e6f1fb', borderTopColor: '#2a7d9c', animation: 'vr-compare-spin 0.8s linear infinite' }} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
-                Comparaison en cours…
+      {/* ═══ COMPARAISON(S) EN COURS OU EN ÉCHEC — tout en haut de la page ═══ */}
+      {processingCompares.map((pc) => {
+        const biensLigne = pc.analyse_ids.split(',').map(id => {
+          const a = completedAnalyses.find(an => an.id === id);
+          return a ? (a.adresse_bien || a.nom_document || 'Bien sans titre').split(',')[0] : 'Bien supprimé';
+        });
+        const bienSupprime = biensLigne.includes('Bien supprimé');
+
+        if (pc.status === 'failed') {
+          return (
+            <motion.div key={pc.analyse_ids} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #fecaca', overflow: 'hidden' }}>
+              <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 18 }}>⚠️</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: '#991b1b', marginBottom: 2 }}>
+                    Comparaison non aboutie
+                  </div>
+                  <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {biensLigne.join(' vs ')} — un incident technique a interrompu la génération.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  {!bienSupprime && (
+                    <button onClick={() => relancerComparaison(pc.analyse_ids)} disabled={relaunchingIds === pc.analyse_ids || launched}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: relaunchingIds === pc.analyse_ids ? 'default' : 'pointer', opacity: relaunchingIds === pc.analyse_ids ? 0.7 : 1, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                      {relaunchingIds === pc.analyse_ids ? (
+                        <><div style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'vr-compare-spin 0.8s linear infinite' }} /> Relance…</>
+                      ) : (
+                        <><GitCompare size={14} /> Relancer</>
+                      )}
+                    </button>
+                  )}
+                  <button onClick={() => supprimerLigneEchec(pc.id)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: '#fff', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer' }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-                Votre verdict comparatif se génère en arrière-plan. Il apparaîtra ici automatiquement, sans rien faire de votre part.
+              <style>{`@keyframes vr-compare-spin { to { transform: rotate(360deg); } }`}</style>
+            </motion.div>
+          );
+        }
+
+        return (
+          <motion.div key={pc.analyse_ids} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #bae3f5', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 42, height: 42, flexShrink: 0 }}>
+                <div style={{ width: 42, height: 42, borderRadius: '50%', border: '3px solid #e6f1fb', borderTopColor: '#2a7d9c', animation: 'vr-compare-spin 0.8s linear infinite' }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
+                  Comparaison en cours…
+                </div>
+                <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                  Votre verdict comparatif se génère en arrière-plan. Il apparaîtra ici automatiquement, sans rien faire de votre part.
+                </div>
               </div>
             </div>
-          </div>
-          <style>{`@keyframes vr-compare-spin { to { transform: rotate(360deg); } }`}</style>
-        </motion.div>
-      ))}
+            <style>{`@keyframes vr-compare-spin { to { transform: rotate(360deg); } }`}</style>
+          </motion.div>
+        );
+      })}
 
       {/* ═══ BARRE FLOTTANTE — via portail sur body (insensible aux overflow parents) ═══ */}
-      {canLaunch && !processingCompares.some(pc => pc.analyse_ids === [...selected].sort().join(',')) && createPortal(
+      {canLaunch && !processingCompares.some(pc => pc.status === 'processing' && pc.analyse_ids === [...selected].sort().join(',')) && createPortal(
         (() => {
           const sortedSel = [...selected].sort().join(',');
           const existing = historique.find(c => c.analyse_ids === sortedSel);
@@ -582,7 +683,7 @@ export default function Compare() {
           const sortedSelected = [...selected].sort().join(',');
           // Si ces biens sont déjà en cours de comparaison, on affiche le spinner
           // plutôt que le bouton "Lancer" (évite un double lancement).
-          if (processingCompares.some(pc => pc.analyse_ids === sortedSelected)) {
+          if (processingCompares.some(pc => pc.status === 'processing' && pc.analyse_ids === sortedSelected)) {
             return (
               <div style={{ padding: '0 16px 16px' }}>
                 <div style={{ padding: '16px 18px', borderRadius: 14, background: '#f0f7fb', border: '1.5px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 12 }}>
