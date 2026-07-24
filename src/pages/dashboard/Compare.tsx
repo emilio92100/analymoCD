@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { GitCompare, ShieldCheck, Building2, CheckCircle, ArrowRight, Trash2, Clock, Eye } from 'lucide-react';
@@ -483,15 +484,15 @@ export default function Compare() {
         </motion.div>
       ))}
 
-      {/* ═══ BARRE — Lancer la comparaison (défile normalement avec la page) ═══ */}
-      {canLaunch && !processingCompares.some(pc => pc.analyse_ids === [...selected].sort().join(',')) && (
-        <div>
-          {(() => {
-            const sortedSel = [...selected].sort().join(',');
-            const existing = historique.find(c => c.analyse_ids === sortedSel);
-            return (
-              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px 12px 18px', borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', boxShadow: '0 8px 24px rgba(15,45,61,0.28)' }}>
+      {/* ═══ BARRE FLOTTANTE — via portail sur body (insensible aux overflow parents) ═══ */}
+      {canLaunch && !processingCompares.some(pc => pc.analyse_ids === [...selected].sort().join(',')) && createPortal(
+        (() => {
+          const sortedSel = [...selected].sort().join(',');
+          const existing = historique.find(c => c.analyse_ids === sortedSel);
+          return (
+            <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 2147483000, width: 'calc(100% - 32px)', maxWidth: 560, pointerEvents: 'none' }}>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px 12px 18px', borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', boxShadow: '0 12px 32px rgba(15,45,61,0.35)', pointerEvents: 'auto' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
@@ -505,9 +506,10 @@ export default function Compare() {
                   {existing ? <><Eye size={16} /> Voir le rapport</> : <><GitCompare size={16} /> Lancer la comparaison <ArrowRight size={15} /></>}
                 </button>
               </motion.div>
-            );
-          })()}
-        </div>
+            </div>
+          );
+        })(),
+        document.body
       )}
 
       {launchError && (
