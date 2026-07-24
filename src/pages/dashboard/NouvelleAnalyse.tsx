@@ -912,19 +912,13 @@ export default function NouvelleAnalyse() {
     const docsTotal = files.length;
     const elapsedSec = analyseStartTime ? Math.floor((Date.now() - analyseStartTime) / 1000) : 0;
 
-    const tempsRestant = pct < 20
-      ? (docsTotal <= 3 ? '~2 min' : docsTotal <= 8 ? '~4 min' : docsTotal <= 12 ? '~7 min' : '~10-15 min')
-      : pct < 50
-      ? (docsTotal <= 3 ? '~1 min 30' : docsTotal <= 8 ? '~3 min' : docsTotal <= 12 ? '~5 min' : '~8 min')
-      : pct < 75
-      ? (docsTotal <= 3 ? '~45 sec' : docsTotal <= 8 ? '~1 min 30' : '~3 min')
-      : pct < 90
-      ? (docsTotal <= 3 ? '~20 sec' : '~1 min')
-      : pct < 95
-      ? 'Bientôt prêt…'
-      : pct < 97
-      ? 'Finalisation…'
-      : 'Derniers contrôles…';
+    // Estimation figée au démarrage — calculée une seule fois sur le nombre de
+    // documents, elle ne bouge plus pendant toute l'analyse.
+    // Le temps réel est affiché plus bas ("Temps écoulé").
+    const tempsRestant = docsTotal <= 3 ? '2 min'
+      : docsTotal <= 8 ? '4 min'
+      : docsTotal <= 12 ? '7 min'
+      : '10 à 15 min';
 
     // Label du nombre de documents, adapté au volume
     const docsLabel = docsTotal <= 5
@@ -1032,7 +1026,7 @@ export default function NouvelleAnalyse() {
                   </div>
                   <div className="na-progress-time" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '5px 12px', flexShrink: 0 }}>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>⏱</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{tempsRestant}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Environ {tempsRestant}</span>
                   </div>
                 </div>
               </div>
@@ -1080,7 +1074,7 @@ export default function NouvelleAnalyse() {
                   <span>{currentRotatingMsg}</span>
                 </motion.div>
               </AnimatePresence>
-              {elapsedSec >= 60 && (
+              {elapsedSec >= 30 && (
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
                   Temps écoulé : {Math.floor(elapsedSec / 60)} min {elapsedSec % 60}s
                 </div>
