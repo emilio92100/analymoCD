@@ -1027,6 +1027,13 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
               );
             })}
           </div>
+          {/* 🆕 Bulle estimation — uniquement quand les charges viennent d'une estimation budget × tantièmes */}
+          {chargesLotNum > 0 && String(finances?.charges_annuelles_lot_source || '').toLowerCase().startsWith('estimation') && (
+            <div style={{ padding: '11px 15px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: 12.5, color: '#92400e', lineHeight: 1.6, display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+              <span style={{ flexShrink: 0 }}>💡</span>
+              <span><strong>Montant des charges estimé</strong> — en l'absence de pré-état daté ou d'appel de charges dans le dossier, ce montant est calculé à partir du dernier budget voté en AG et des tantièmes des lots concernés par la vente. Pour le montant exact, ajoutez un appel de charges ou le pré-état daté via « Compléter mon dossier ».</span>
+            </div>
+          )}
         </>
       )}
 
@@ -2332,17 +2339,16 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {contrats.length > 0 && (
               <>
                 <SectionTitle emoji="📑" text={`Contrats d'entretien (${contrats.length})`} />
-                <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
                   {contrats.map((c, i) => (
-                    <div key={i} style={{ padding: '10px 14px', borderBottom: i < contrats.length - 1 ? '1px solid #f1f5f9' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{c.equipement}</div>
-                        {c.prestataire && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{c.prestataire}</div>}
-                      </div>
+                    <div key={i} style={{ padding: '12px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>{c.equipement}</div>
+                      {c.prestataire && <div style={{ fontSize: 12, color: '#64748b' }}>🏢 {c.prestataire}</div>}
                       {(c.date_reconduction || c.periodicite) && (
-                        <div style={{ fontSize: 11, color: '#94a3b8', textAlign: 'right', flexShrink: 0 }}>
-                          {c.date_reconduction && <div>Reconduit le {c.date_reconduction}</div>}
-                          {c.periodicite && <div>{c.periodicite}</div>}
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 'auto', paddingTop: 4, borderTop: '1px dashed #f1f5f9' }}>
+                          {c.periodicite && <span>{c.periodicite}</span>}
+                          {c.periodicite && c.date_reconduction && <span> · </span>}
+                          {c.date_reconduction && <span>reconduit le {c.date_reconduction}</span>}
                         </div>
                       )}
                     </div>
@@ -2376,20 +2382,20 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {travauxReal.length > 0 && (
               <>
                 <SectionTitle emoji="✅" text={`Travaux réalisés (${travauxReal.length})`} />
-                <div style={{ background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
                   {travauxReal.map((t, i) => (
-                    <div key={i} style={{ padding: '9px 14px', borderBottom: i < travauxReal.length - 1 ? '1px solid #dcfce7' : 'none', display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: '#166534' }}>
-                      {t.annee && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', background: '#dcfce7', borderRadius: 99, flexShrink: 0 }}>{t.annee}</span>}
-                      <div style={{ flex: 1 }}>
-                        <div>{t.label}</div>
-                        {(t.entreprise || t.montant) && (
-                          <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2 }}>
-                            {t.entreprise}
-                            {t.entreprise && t.montant && ' — '}
-                            {t.montant && `${t.montant.toLocaleString('fr-FR')} €`}
-                          </div>
-                        )}
+                    <div key={i} style={{ padding: '12px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#166534', lineHeight: 1.4, flex: 1 }}>{t.label}</div>
+                        {t.annee && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', background: '#dcfce7', color: '#166534', borderRadius: 99, flexShrink: 0 }}>{t.annee}</span>}
                       </div>
+                      {(t.entreprise || t.montant) && (
+                        <div style={{ fontSize: 11, color: '#16a34a', marginTop: 'auto', paddingTop: 4, borderTop: '1px dashed #dcfce7' }}>
+                          {t.entreprise}
+                          {t.entreprise && t.montant && ' · '}
+                          {t.montant && <strong>{t.montant.toLocaleString('fr-FR')} €</strong>}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2400,7 +2406,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {diagsPC.length > 0 && (
               <>
                 <SectionTitle emoji="🔍" text="Diagnostics parties communes" />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
                   {diagsPC.map((d, i) => {
                     const bg = d.resultat === 'positif' ? '#fef2f2' : d.resultat === 'negatif' ? '#f0fdf4' : '#f8fafc';
                     const border = d.resultat === 'positif' ? '#fecaca' : d.resultat === 'negatif' ? '#bbf7d0' : '#edf2f7';
@@ -2688,7 +2694,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
   // KPIs bandeau
   const kpiItems: { emoji: string; label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string }[] = [];
   if (dpeClasse) kpiItems.push({ emoji: '⚡', label: 'Performance énergétique', value: `Classe ${dpeClasse}`, sub: dpeKwh ? `${dpeKwh} kWh/m²/an` : undefined, color: DPE_COLORS[dpeClasse], bg: `${DPE_COLORS[dpeClasse]}12`, border: `${DPE_COLORS[dpeClasse]}44`, tooltip: "Classe énergétique du logement. A = très performant, G = passoire thermique. F et G seront progressivement interdits à la location." });
-  if (chargesMensuellesLot > 0) kpiItems.push({ emoji: '💶', label: 'Charges mensuelles lot', value: `${chargesMensuellesLot.toLocaleString('fr-FR')} €`, sub: `${chargesLotNum.toLocaleString('fr-FR')} €/an`, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Charges de copropriété annuelles de votre lot divisées par 12. Ce montant peut inclure le budget prévisionnel courant ainsi que des provisions hors budget (appels exceptionnels pour travaux votés)." });
+  if (chargesMensuellesLot > 0) kpiItems.push({ emoji: '💶', label: 'Charges mensuelles lot', value: `${chargesMensuellesLot.toLocaleString('fr-FR')} €`, sub: `${chargesLotNum.toLocaleString('fr-FR')} €/an`, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Charges de copropriété courantes annuelles de votre lot divisées par 12 : budget prévisionnel (charges générales et spéciales) + cotisation au fonds de travaux. Les appels exceptionnels pour travaux votés n'y figurent pas — ils sont détaillés dans la section Travaux." });
   if (taxeMensuelle) kpiItems.push({ emoji: '🏛', label: 'Taxe foncière', value: `${taxeMensuelle.toLocaleString('fr-FR')} €/mois`, sub: taxeAnnuelle ? `${taxeAnnuelle.toLocaleString('fr-FR')} €/an` : undefined, tooltip: "Impôt local annuel dû par le propriétaire, calculé sur la valeur locative cadastrale." });
   // Tantièmes : affiché dans "Votre lot", pas dans KPI (trop long)
   // Surface Carrez depuis diagnostics
@@ -2988,7 +2994,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e', marginBottom: 4 }}>{travauxEvoques.length} travaux évoqués sans vote dans la copropriété</div>
-                  <div style={{ fontSize: 13, color: '#a16207', lineHeight: 1.6 }}>Si ces travaux sont votés en AG après votre acquisition, vous en supporterez une part proportionnelle à vos tantièmes — potentiellement plusieurs milliers d'euros.</div>
+                  <div style={{ fontSize: 13, color: '#a16207', lineHeight: 1.6 }}>Si ces travaux sont votés en AG après votre acquisition, vous en supporterez une part proportionnelle à vos tantièmes.</div>
                   <button onClick={() => onSwitchTab?.('copropriete' as TabId)} style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}>→ Voir les travaux évoqués dans l'onglet Copropriété</button>
                 </div>
               </div>
