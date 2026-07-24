@@ -243,15 +243,30 @@ export default function Compare() {
     return () => clearInterval(poll);
   }, [nbProcessing, loadProcessing, loadHistorique]);
 
-  // ─── TIMEOUT 2 MIN : si une ligne est en 'processing' depuis plus de
-  // 2 minutes, le front la bascule en 'failed' en base (le backend a
-  // probablement crashé/timeout) → le bouton "Relancer" apparaît.
+  // ─── TIMEOUT : si une ligne est en 'processing' depuis trop longtemps,
+  // le front la bascule en 'failed' en base (le backend a probablement
+  // crashé/timeout) → le bouton "Relancer" apparaît.
+  //
+  // 🔧 FIX FUSEAU HORAIRE : Supabase peut renvoyer updated_at SANS indicateur
+  // de fuseau ("2026-07-24T12:00:00"). new Date() l'interprète alors comme de
+  // l'heure LOCALE (Paris = UTC+2 en été) → la ligne paraissait vieille de 2h
+  // dès la première seconde et passait instantanément en "non aboutie".
+  // parseDbDate force l'interprétation UTC quand le fuseau est absent.
+  //
+  // Seuil aligné sur le serveur (150s) : le front ne marque jamais failed
+  // une comparaison que le serveur considère encore vivante.
+  const parseDbDate = (s: string): number => {
+    if (!s) return NaN;
+    const hasTz = /Z$|[+-]\d{2}:?\d{2}$/.test(s);
+    return new Date(hasTz ? s : s.replace(' ', 'T') + 'Z').getTime();
+  };
+
   useEffect(() => {
-    const stuck = processingCompares.filter(pc =>
-      pc.status === 'processing' &&
-      pc.updated_at &&
-      Date.now() - new Date(pc.updated_at).getTime() > 120000
-    );
+    const stuck = processingCompares.filter(pc => {
+      if (pc.status !== 'processing' || !pc.updated_at) return false;
+      const age = Date.now() - parseDbDate(pc.updated_at);
+      return Number.isFinite(age) && age > 150000;
+    });
     if (stuck.length === 0) return;
     (async () => {
       for (const pc of stuck) {
