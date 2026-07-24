@@ -15,6 +15,11 @@
 // Sécurité : appelable uniquement par pg_cron (x-cron-secret).
 // Idempotent : si l'analyse a déjà été nettoyée entre-temps, no-op.
 // Limite : 50 analyses traitées par exécution (anti-flood).
+//
+// v2 : couvre AUSSI la table `comparaisons` :
+//   • status='processing' depuis >5min → failed + alerte admin
+//   Pas de refund (les comparaisons ne consomment pas de crédit).
+//   Le frontend affiche alors un bouton "Relancer" sur la ligne.
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -22,6 +27,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SEUIL_PROCESSING_MIN = 60;      // 1h
 const SEUIL_FILES_READY_MIN = 30;     // 30min
 const SEUIL_QUEUED_MIN = 90;          // 1h30
+const SEUIL_COMPARAISON_MIN = 5;      // 5min — une comparaison dure < 2min en temps normal
 const MAX_ANALYSES_PAR_EXEC = 50;
 
 const CORS = {
@@ -221,21 +227,16 @@ Deno.serve(async (req) => {
     const stuckAnalyses = (stuck || []) as StuckAnalyse[];
     console.log(`[watchdog] 📊 ${stuckAnalyses.length} analyse(s) bloquée(s) détectée(s)`);
 
-    if (stuckAnalyses.length === 0) {
-      console.log('[watchdog] ✨ Rien à nettoyer');
-      return new Response(JSON.stringify({
-        success: true,
-        detectees: 0,
-        nettoyees: 0,
-        remboursees: 0,
-        erreurs: 0,
-      }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
-    }
-
     // ── 4. Traiter chacune ───────────────────────────────────
+    // ⚠ PAS de return anticipé si 0 analyse : le nettoyage des
+    // comparaisons (section 4bis) doit s'exécuter dans tous les cas.
     let nettoyees = 0;
     let remboursees = 0;
     let erreurs = 0;
+
+    if (stuckAnalyses.length === 0) {
+      console.log('[watchdog] ✨ Aucune analyse bloquée');
+    }
 
     for (const analyse of stuckAnalyses) {
       const ageMs = now - new Date(analyse.created_at).getTime();
@@ -251,8 +252,53 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── 4bis. Comparaisons bloquées ───────────────────────────
+    // Une comparaison prend < 2min en temps normal. Si status='processing'
+    // depuis > 5min, l'edge function comparer a crashé/timeout → on marque
+    // failed pour que le frontend arrête le spinner et propose "Relancer".
+    let comparaisonsNettoyees = 0;
+    try {
+      const comparaisonThreshold = new Date(now - SEUIL_COMPARAISON_MIN * 60 * 1000).toISOString();
+      const { data: stuckComps, error: compQueryErr } = await supabaseAdmin
+        .from('comparaisons')
+        .select('id, user_id, analyse_ids, updated_at')
+        .eq('status', 'processing')
+        .lt('updated_at', comparaisonThreshold)
+        .limit(MAX_ANALYSES_PAR_EXEC);
+
+      if (compQueryErr) {
+        console.error('[watchdog] Erreur requête comparaisons bloquées:', compQueryErr.message);
+      } else if (stuckComps && stuckComps.length > 0) {
+        console.log(`[watchdog] 📊 ${stuckComps.length} comparaison(s) bloquée(s) détectée(s)`);
+        const { error: compUpdateErr } = await supabaseAdmin
+          .from('comparaisons')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .in('id', stuckComps.map(c => c.id))
+          .eq('status', 'processing'); // idempotent : ne touche que si toujours bloquée
+
+        if (compUpdateErr) {
+          console.error('[watchdog] Erreur update comparaisons:', compUpdateErr.message);
+        } else {
+          comparaisonsNettoyees = stuckComps.length;
+          await insertSystemAlert(supabaseAdmin, {
+            type: 'cleanup_stuck_comparaisons',
+            severity: 'warning',
+            title: `Watchdog — ${comparaisonsNettoyees} comparaison(s) bloquée(s) nettoyée(s)`,
+            message: `Le watchdog a marqué ${comparaisonsNettoyees} comparaison(s) en échec (processing > ${SEUIL_COMPARAISON_MIN}min). Les clients concernés voient maintenant un bouton "Relancer". Investiguer la cause racine (timeout comparer ?).`,
+            metadata: {
+              comparaisons: stuckComps.map(c => ({ id: c.id, user_id: c.user_id, analyse_ids: c.analyse_ids })),
+            },
+          });
+        }
+      } else {
+        console.log('[watchdog] ✨ Aucune comparaison bloquée');
+      }
+    } catch (compErr) {
+      console.error('[watchdog] Exception nettoyage comparaisons:', compErr);
+    }
+
     // ── 5. Bilan ──────────────────────────────────────────────
-    console.log(`[watchdog] 🎉 Bilan : ${nettoyees} nettoyées, ${remboursees} remboursées, ${erreurs} erreurs`);
+    console.log(`[watchdog] 🎉 Bilan : ${nettoyees} nettoyées, ${remboursees} remboursées, ${erreurs} erreurs, ${comparaisonsNettoyees} comparaison(s)`);
 
     // ── 6. Alerte système si quelque chose a été nettoyé ────
     // (signe qu'il y a un bug en amont qu'il faut investiguer)
@@ -277,6 +323,7 @@ Deno.serve(async (req) => {
       nettoyees,
       remboursees,
       erreurs,
+      comparaisons_nettoyees: comparaisonsNettoyees,
     }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 
   } catch (err) {
