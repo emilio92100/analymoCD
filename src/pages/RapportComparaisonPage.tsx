@@ -53,6 +53,7 @@ type VerdictV2 = {
   bien_recommande_idx: number;
   titre_verdict: string;
   ordre_affichage?: string[]; // v4 : ids des analyses dans l'ordre d'affichage (recommandé = Bien 1, en premier)
+  lecture_verimo?: string | null; // v5 : fusion lecture comparée + analyse croisée
   ecarts_cles: {
     score: VerdictEcart;
     cout_annee_1: VerdictEcart;
@@ -710,23 +711,47 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
       {/* ─── BLOC 1ter — Forces & points faibles par bien ─── */}
       <ProfilsBiensSection verdict={verdict} analyses={analyses} bestIdx={bestIdx} />
 
-      {/* ─── BLOC 1quater — Lecture comparée ─── */}
-      {verdict.comparatif && (
-        <div style={{ padding: '18px 22px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7' }}>
+      {/* ─── BLOC 2 — Lecture Verimo (v5 : fusion lecture comparée + analyse croisée) ─── */}
+      {verdict.lecture_verimo ? (
+        <div style={{
+          position: 'relative',
+          padding: '20px 22px',
+          borderRadius: 16,
+          background: 'linear-gradient(135deg, #fff 0%, #f0f7fb 100%)',
+          border: '1.5px solid #bae3f5',
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <GitCompare size={14} color="#2a7d9c" />
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Sparkles size={13} color="#fff" />
+            </div>
             <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.12em' }}>
-              LECTURE COMPARÉE
+              LECTURE VERIMO
             </span>
+            <InfoTooltip
+              text="Verimo hiérarchise les écarts entre vos biens selon leur impact financier réel : coûts certains d'abord, engagements probables ensuite, risques non chiffrés enfin. Cette lecture relie aussi les critères entre eux (ex : un DPE faible combiné à un fonds travaux insuffisant révèle une copropriété qui n'anticipe pas ses rénovations) pour mettre en lumière ce que les chiffres séparés ne montrent pas."
+            />
           </div>
-          <p style={{ fontSize: 14, lineHeight: 1.65, color: '#334155', margin: 0 }}>
-            {verdict.comparatif}
+          <p style={{ fontSize: 14.5, lineHeight: 1.7, color: '#0f172a', margin: 0, fontWeight: 500 }}>
+            {verdict.lecture_verimo}
           </p>
         </div>
-      )}
-
-      {/* ─── BLOC 2 — Analyse croisée Verimo (avec tooltip explicatif) ─── */}
-      {verdict.analyse_croisee && (
+      ) : (
+        <>
+          {/* Rétrocompatibilité — anciens verdicts avec lecture comparée + analyse croisée séparées */}
+          {verdict.comparatif && (
+            <div style={{ padding: '18px 22px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <GitCompare size={14} color="#2a7d9c" />
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.12em' }}>
+                  LECTURE COMPARÉE
+                </span>
+              </div>
+              <p style={{ fontSize: 14, lineHeight: 1.65, color: '#334155', margin: 0 }}>
+                {verdict.comparatif}
+              </p>
+            </div>
+          )}
+          {verdict.analyse_croisee && (
         <div style={{
           position: 'relative',
           padding: '20px 22px',
@@ -749,6 +774,8 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
             {verdict.analyse_croisee}
           </p>
         </div>
+      )}
+        </>
       )}
 
       {/* ─── BLOC 4 — Vigilance documentaire (si présente) ─── */}
