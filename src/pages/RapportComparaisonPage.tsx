@@ -52,6 +52,7 @@ type KpiDifferenciant = {
 type VerdictV2 = {
   bien_recommande_idx: number;
   titre_verdict: string;
+  ordre_affichage?: string[]; // v4 : ids des analyses dans l'ordre d'affichage (recommandé = Bien 1, en premier)
   ecarts_cles: {
     score: VerdictEcart;
     cout_annee_1: VerdictEcart;
@@ -1143,27 +1144,41 @@ export default function RapportComparaisonPage() {
   const cols = analyses.length;
   const gridCols = cols === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
 
-  // bestIdx : d'abord from verdict si dispo, sinon fallback best score
+  // ═══ ORDRE UNIQUE v4 : recommandé = Bien 1, toujours à gauche, PARTOUT ═══
+  // L'ordre d'affichage est défini par le verdict (verdict.ordre_affichage,
+  // calculé côté serveur avec renumérotation). Toutes les sections — cartes,
+  // tableau, résumé financier, travaux, écarts, profils, plan d'action —
+  // suivent ce même ordre avec la même numérotation (position = numéro).
+  // Fallback (verdict absent/en erreur) : meilleur score à gauche.
+  const ordreVerdict = (verdict && isVerdictV2(verdict) && Array.isArray((verdict as VerdictV2).ordre_affichage))
+    ? (verdict as VerdictV2).ordre_affichage!
+    : null;
+
+  let analysesDisplay: AnalyseLite[];
+  if (
+    ordreVerdict &&
+    ordreVerdict.length === analyses.length &&
+    ordreVerdict.every(id => analyses.some(a => a.id === id))
+  ) {
+    analysesDisplay = ordreVerdict.map(id => analyses.find(a => a.id === id)!) as AnalyseLite[];
+  } else {
+    analysesDisplay = [...analyses].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  }
+  const resultsDataDisplay = analysesDisplay.map(a => getResultData(a));
+
+  // Le recommandé est toujours en position 0 (Bien 1) après renumérotation serveur.
   let bestIdx = 0;
   if (verdict && typeof (verdict as VerdictV2).bien_recommande_idx === 'number') {
     bestIdx = (verdict as VerdictV2).bien_recommande_idx;
-    if (bestIdx < 0 || bestIdx >= analyses.length) bestIdx = 0;
-  } else {
-    let bestScore = -Infinity;
-    analyses.forEach((a, i) => { if ((a.score ?? 0) > bestScore) { bestScore = a.score ?? 0; bestIdx = i; } });
+    if (bestIdx < 0 || bestIdx >= analysesDisplay.length) bestIdx = 0;
   }
+  const bestDisplayIdx = bestIdx;
 
-  // displayOrder : on affiche TOUJOURS le bien recommandé en première position (gauche).
-  // C'est purement visuel — le backend et le verdict continuent de référencer "Bien 1", "Bien 2"
-  // selon l'ordre d'origine. Cette réorganisation ne touche que l'affichage des cards + tableau.
-  const displayOrder: number[] = [bestIdx, ...analyses.map((_, i) => i).filter(i => i !== bestIdx)];
-  const analysesDisplay = displayOrder.map(i => analyses[i]);
-  const resultsDataDisplay = displayOrder.map(i => resultsData[i]);
-  // Mapping d'un index "display" vers le numéro de bien d'origine (affiché à l'utilisateur "Bien 1", "Bien 2")
-  const origBienNumber = (displayIdx: number) => displayOrder[displayIdx] + 1;
-  const bestDisplayIdx = 0; // après réorganisation, le recommandé est toujours en position 0
+  // Numérotation = position d'affichage (Bien 1 = premier à gauche).
+  const displayOrder: number[] = analysesDisplay.map((_, i) => i);
+  const origBienNumber = (displayIdx: number) => displayIdx + 1;
 
-  const adresses = analyses.map(a => a.adresse_bien || '');
+  const adresses = analysesDisplay.map(a => a.adresse_bien || '');
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
@@ -1372,7 +1387,7 @@ export default function RapportComparaisonPage() {
               )}
 
               {verdict && isVerdictV2(verdict) && verdict.titre_verdict && (
-                <VerdictPremium verdict={verdict} analyses={analyses} />
+                <VerdictPremium verdict={verdict} analyses={analysesDisplay} />
               )}
               {verdict && isVerdictV2(verdict) && !verdict.titre_verdict && (
                 <div style={{ padding: '20px 22px', borderRadius: 16, background: '#fff7ed', border: '1.5px solid #fed7aa' }}>
