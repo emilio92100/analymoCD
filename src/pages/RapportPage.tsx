@@ -2289,6 +2289,46 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         const travauxEnCours = carnet.travaux_en_cours_votes_carnet || [];
         const diagsPC = carnet.diagnostics_parties_communes_carnet || [];
 
+        // Icône dédiée à chaque type d'équipement/contrat — évite que toutes les
+        // cards se ressemblent (le 🏢 générique était identique partout).
+        const contratIcon = (label?: string | null): string => {
+          const s = (label || '').toLowerCase();
+          if (/ascenseur|elevateur|otis|kone|schindler/.test(s)) return '🛗';
+          if (/extincteur|incendie|securite incendie|desenfumage/.test(s)) return '🧯';
+          if (/derat|rongeur|nuisible/.test(s)) return '🐀';
+          if (/desinsect|insecte|cafard|blatte/.test(s)) return '🪳';
+          if (/porte|garage|portail|barriere|fermeture/.test(s)) return '🚪';
+          if (/jardin|espace vert|elagage|paysag/.test(s)) return '🌳';
+          if (/chaudiere|chauffage|bruleur|gaz/.test(s)) return '🔥';
+          if (/compteur|eau chaude|eau froide|releve/.test(s)) return '💧';
+          if (/ventilation|vmc|air/.test(s)) return '💨';
+          if (/electr|tableau|colonne montante/.test(s)) return '⚡';
+          if (/toiture|etancheite|couverture/.test(s)) return '🏠';
+          if (/interphone|digicode|controle acces|badge/.test(s)) return '📟';
+          if (/nettoyage|menage|proprete/.test(s)) return '🧹';
+          if (/antenne|tv|television|fibre/.test(s)) return '📡';
+          return '🔧';
+        };
+
+        // Statut visuel d'un diagnostic partie commune
+        const diagStatut = (res?: string | null) => {
+          if (res === 'positif') return { label: 'Positif détecté', bg: '#fef2f2', border: '#fecaca', dot: '#dc2626', chipBg: '#fee2e2', chipText: '#991b1b' };
+          if (res === 'negatif') return { label: 'Négatif', bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a', chipBg: '#dcfce7', chipText: '#166534' };
+          return { label: 'Non effectué', bg: '#f8fafc', border: '#e2e8f0', dot: '#94a3b8', chipBg: '#f1f5f9', chipText: '#64748b' };
+        };
+        const diagEmoji = (type?: string | null): string => {
+          const s = (type || '').toLowerCase();
+          if (s.includes('amiante')) return '☣️';
+          if (s.includes('plomb')) return '🧱';
+          if (s.includes('termite')) return '🐛';
+          if (s.includes('ascenseur')) return '🛗';
+          if (s.includes('legionel') || s.includes('legionell')) return '🚿';
+          if (s.includes('radon')) return '☢️';
+          if (s.includes('gaz')) return '🔥';
+          if (s.includes('electr')) return '⚡';
+          return '🔬';
+        };
+
         return (
           <AccordionSection
             title="Carnet d'entretien" sub="Équipements · contrats · travaux · diagnostics communs" icon="📓"
@@ -2339,13 +2379,21 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {contrats.length > 0 && (
               <>
                 <SectionTitle emoji="📑" text={`Contrats d'entretien (${contrats.length})`} />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
                   {contrats.map((c, i) => (
-                    <div key={i} style={{ padding: '12px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>{c.equipement}</div>
-                      {c.prestataire && <div style={{ fontSize: 12, color: '#64748b' }}>🏢 {c.prestataire}</div>}
+                    <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}>
+                      {/* En-tête avec pastille icône dédiée */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 15px' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 11, background: 'linear-gradient(135deg, #eef4f8, #dcebf3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+                          {contratIcon(c.equipement)}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', lineHeight: 1.3 }}>{c.equipement}</div>
+                          {c.prestataire && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.prestataire}</div>}
+                        </div>
+                      </div>
                       {(c.date_reconduction || c.periodicite) && (
-                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 'auto', paddingTop: 4, borderTop: '1px dashed #f1f5f9' }}>
+                        <div style={{ fontSize: 11, color: '#94a3b8', padding: '8px 15px', borderTop: '1px dashed #eef2f6', background: '#fafbfc' }}>
                           {c.periodicite && <span>{c.periodicite}</span>}
                           {c.periodicite && c.date_reconduction && <span> · </span>}
                           {c.date_reconduction && <span>reconduit le {c.date_reconduction}</span>}
@@ -2406,30 +2454,33 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {diagsPC.length > 0 && (
               <>
                 <SectionTitle emoji="🔍" text="Diagnostics parties communes" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
                   {diagsPC.map((d, i) => {
-                    const bg = d.resultat === 'positif' ? '#fef2f2' : d.resultat === 'negatif' ? '#f0fdf4' : '#f8fafc';
-                    const border = d.resultat === 'positif' ? '#fecaca' : d.resultat === 'negatif' ? '#bbf7d0' : '#edf2f7';
-                    const emoji = d.type === 'amiante' ? '☣' : d.type === 'plomb' ? '🧱' : d.type === 'termites' ? '🐛' : d.type === 'ascenseur' ? '🛗' : '📋';
+                    const st = diagStatut(d.resultat);
                     return (
-                      <div key={i} style={{ padding: '9px 14px', background: bg, border: `1px solid ${border}`, borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13 }}>
-                        <span style={{ fontSize: 14, flexShrink: 0 }}>{emoji}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{d.type}</div>
+                      <div key={i} style={{ background: st.bg, border: `1px solid ${st.border}`, borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}>
+                        {/* Corps : icône + nom + détails */}
+                        <div style={{ padding: '14px 15px 12px', flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: (d.date || d.entreprise || d.commentaire) ? 8 : 0 }}>
+                            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fff', border: `1px solid ${st.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>
+                              {diagEmoji(d.type)}
+                            </div>
+                            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', textTransform: 'capitalize', lineHeight: 1.25 }}>{d.type}</div>
+                          </div>
                           {(d.date || d.entreprise) && (
-                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                            <div style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.5 }}>
                               {d.date && `Rapport du ${d.date}`}
                               {d.date && d.entreprise && ' — '}
                               {d.entreprise}
                             </div>
                           )}
-                          {d.commentaire && <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{d.commentaire}</div>}
+                          {d.commentaire && <div style={{ fontSize: 12, color: '#475569', marginTop: 5, lineHeight: 1.55 }}>{d.commentaire}</div>}
                         </div>
-                        {d.resultat && (
-                          <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 99, background: '#fff', border: `1px solid ${border}`, color: '#475569', flexShrink: 0 }}>
-                            {d.resultat === 'negatif' ? 'Négatif' : d.resultat === 'positif' ? 'Positif' : 'Non effectué'}
-                          </span>
-                        )}
+                        {/* Statut — bandeau centré en bas, bien visible */}
+                        <div style={{ borderTop: `1px solid ${st.border}`, padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'rgba(255,255,255,0.5)' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: st.dot, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: st.chipText, letterSpacing: '0.01em' }}>{st.label}</span>
+                        </div>
                       </div>
                     );
                   })}
