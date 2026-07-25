@@ -2391,7 +2391,7 @@ async function runPhaseMap(
     console.log(`[analyser-run][MAP] Démarrage — ${files.length} docs en parallèle | analyse ${analyseId}`);
     await supabaseAdmin.from('analyses').update({
       progress_current: 0,
-      progress_total: files.length + 1, // +1 = étape de synthèse
+      progress_total: files.length, // total = nb RÉEL de documents (le +1 "étape de synthèse" créait le faux "Document 6 sur 10" pour 9 docs — la synthèse a désormais son propre libellé côté front)
       progress_message: `Lecture des ${files.length} documents en parallèle...`,
     }).eq('id', analyseId);
 
@@ -2524,7 +2524,11 @@ async function runPhaseReduce(
       text: `Voici les ${oks.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
     });
 
-    await supabaseAdmin.from('analyses').update({ progress_message: 'Synthèse du rapport en cours...' }).eq('id', analyseId);
+    await supabaseAdmin.from('analyses').update({
+      progress_current: nbDocs, // tous les documents sont lus — le front bascule sur le libellé "Synthèse"
+      progress_total: nbDocs,
+      progress_message: 'Synthèse du rapport en cours...',
+    }).eq('id', analyseId);
 
     let msgCount = 0;
     const progressMessages = [
@@ -2602,8 +2606,8 @@ async function runPhaseReduce(
 
     const updateData: Record<string, unknown> = {
       status: 'completed',
-      progress_current: nbDocs + 1,
-      progress_total: nbDocs + 1,
+      progress_current: nbDocs,
+      progress_total: nbDocs,
       progress_message: 'Rapport pr\u00eat !',
       file_ids: [],
       title: (report.titre as string) || 'Analyse immobili\u00e8re',
