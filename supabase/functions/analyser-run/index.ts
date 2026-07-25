@@ -16,6 +16,11 @@ const AI_VERSION = '2023-06-01';
 const FILES_BETA = 'files-api-2025-04-14';
 const MAX_TOKENS_OUTPUT = 64000;
 
+// Message écrit dans progress_message quand un COMPLÉMENT échoue (le rapport d'origine est restauré).
+// ⚠️ MIROIR EXACT : la même chaîne existe dans analyser/index.ts, watchdog-stuck-analyses/index.ts,
+// et le préfixe est détecté côté front dans analyse-client.ts (pollAnalyseStatus) et RapportPage.tsx.
+const COMPLEMENT_FAILED_MSG = 'La mise à jour du dossier n\'a pas abouti — votre rapport d\'origine est conservé. Vous pouvez réessayer via « Compléter mon dossier ».';
+
 // ══════════════════════════════════════════════════════════════
 // 🗺️ SEUIL MAP-REDUCE — analyses complètes uniquement
 // ≤ SEUIL-1 docs → single-call v7 (inchangé)
@@ -749,17 +754,55 @@ async function handleAnalyseFailure(
   alertTitle: string,
   alertSeverity: 'info' | 'warning' | 'critical' = 'warning',
 ): Promise<void> {
-  // 1. Rembourser le crédit
-  const refunded = await refundCredit(analyseId, supabaseAdmin);
-  
-  // 2. Récupérer le user_id pour l'alerte
+  // 0. Récupérer le mode AVANT tout : un échec de COMPLÉMENT ne doit NI rembourser
+  //    (le complément est gratuit — le crédit de l'analyse d'origine a été légitimement
+  //    consommé lors du premier succès), NI passer en failed (ce qui masquerait le
+  //    rapport d'origine pourtant intact en base).
+  //    Garantie : mode='complement' implique qu'un result existait au lancement
+  //    (vérifié par analyser/index.ts qui refuse le complément sans rapport existant).
+  //    ⚠️ MIROIR : même logique dans analyser/index.ts et watchdog-stuck-analyses/index.ts.
   const { data: analyse } = await supabaseAdmin
     .from('analyses')
-    .select('user_id, type')
+    .select('user_id, type, mode')
     .eq('id', analyseId)
     .single();
 
-  // 3. Insérer l'alerte système
+  if (analyse?.mode === 'complement') {
+    // ── ÉCHEC DE COMPLÉMENT : restaurer le rapport d'origine, AUCUN remboursement ──
+    await insertSystemAlert(supabaseAdmin, {
+      type: errorType,
+      severity: alertSeverity,
+      title: `[Complément] ${alertTitle}`,
+      message: `Échec d'un complément de dossier (${errorType}). Rapport d'origine restauré, aucun remboursement (le complément est gratuit).`,
+      analyseId,
+      userId: analyse?.user_id || undefined,
+      metadata: { refunded: false, analyseType: analyse?.type || 'unknown', complement: true },
+    });
+
+    await supabaseAdmin.from('analyses').update({
+      status: 'completed',
+      file_ids: [],
+      progress_message: COMPLEMENT_FAILED_MSG,
+    }).eq('id', analyseId);
+
+    // Notif cloche cliquable vers le rapport (pas de mail : le rapport d'origine reste accessible)
+    if (analyse?.user_id) {
+      await insertNotification(
+        supabaseAdmin,
+        analyse.user_id,
+        'Mise à jour du dossier non aboutie',
+        'L\'ajout de documents à votre dossier n\'a pas abouti suite à un incident technique. Votre rapport d\'origine est intact — vous pouvez réessayer via « Compléter mon dossier ».',
+        analyseId,
+      );
+    }
+    return;
+  }
+
+  // ── ÉCHEC D'ANALYSE CLASSIQUE (comportement inchangé) ──
+  // 1. Rembourser le crédit
+  const refunded = await refundCredit(analyseId, supabaseAdmin);
+
+  // 2. Insérer l'alerte système
   await insertSystemAlert(supabaseAdmin, {
     type: errorType,
     severity: alertSeverity,
@@ -770,7 +813,7 @@ async function handleAnalyseFailure(
     metadata: { refunded, analyseType: analyse?.type || 'unknown' },
   });
 
-  // 4. Mettre à jour le status de l'analyse
+  // 3. Mettre à jour le status de l'analyse
   const finalMsg = refunded 
     ? userMessage 
     : userMessage.replace('Votre crédit a été remboursé automatiquement.', 'Contactez le support pour le remboursement de votre crédit.');
