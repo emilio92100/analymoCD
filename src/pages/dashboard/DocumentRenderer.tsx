@@ -222,8 +222,19 @@ function TableHeader({ cols }: { cols: { label: string; align?: 'left' | 'right'
   );
 }
 
-function stripLeadingEmoji(text: string): string {
-  return text.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}⚠️ℹ️✓✅❌🔴🟠🟡🟢⚠ℹ]+\s*/u, '').trim();
+// 🛡️ Conversion sûre en texte. Le moteur renvoie parfois un nombre ou un objet
+// là où un texte est attendu (points_forts / points_vigilance sont declares
+// comme des tableaux vides dans le prompt, donc sans forme imposee). Sans cette
+// protection, un .replace() sur un non-texte fait tomber TOUTE la page rapport.
+function safeStr(v: unknown): string {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return '';
+}
+
+function stripLeadingEmoji(text: unknown): string {
+  return safeStr(text).replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}⚠️ℹ️✓✅❌🔴🟠🟡🟢⚠ℹ]+\s*/u, '').trim();
 }
 
 function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilances: string[] }) {
@@ -232,7 +243,16 @@ function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilan
   // Découpe un point "Titre — détail" ou "Titre : détail" en deux niveaux,
   // exactement comme l'analyse complète (RapportPage). Si aucun séparateur,
   // le texte entier devient le détail (pas de titre).
-  const splitPoint = (raw: string): { titre: string | null; detail: string } => {
+  // 🛡️ Accepte aussi un OBJET ({titre, detail} / {label, message}...) : le moteur
+  // en renvoie parfois au lieu d'une chaine. Meme logique que RapportPage l.1053.
+  const splitPoint = (raw: unknown): { titre: string | null; detail: string } => {
+    if (raw && typeof raw === 'object') {
+      const o = raw as Record<string, unknown>;
+      const t = safeStr(o.titre ?? o.label ?? o.title).trim();
+      const d = safeStr(o.detail ?? o.message ?? o.description ?? o.texte ?? o.text ?? o.valeur).trim();
+      if (t || d) return { titre: t || null, detail: d };
+      return { titre: null, detail: '' };
+    }
     const clean = stripLeadingEmoji(raw).replace(/^\s*[✓✔✅⚠⚡!•]+[\s:—-]*/u, '').trim();
     const iEm = clean.indexOf(' — ');
     if (iEm > 0 && iEm <= 60) return { titre: clean.slice(0, iEm).trim(), detail: clean.slice(iEm + 3).trim() };
