@@ -246,6 +246,51 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
 /* ═══════════════════════════════════════════
    TOPBAR (inchangé dans la logique)
 ═══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   🗂️ RAPPORT SUPPRIMÉ — pop-up de la cloche
+   Cliquer une notification dont l'analyse a été supprimée envoyait
+   vers une page vide. On vérifie AVANT de naviguer et on explique
+   sur place, sans faire quitter le tableau de bord.
+══════════════════════════════════════════════════════════════ */
+function RapportSupprimeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        style={{ background: '#fff', borderRadius: 18, maxWidth: 400, width: '100%', padding: '30px 26px 24px', textAlign: 'center', boxShadow: '0 18px 50px rgba(15,23,42,0.18)' }}
+      >
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 26 }}>🗂️</div>
+        <div style={{ fontSize: 17, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>Ce rapport n'est plus disponible</div>
+        <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 22 }}>
+          L'analyse a été supprimée de votre espace. Cette notification ne mène donc plus nulle part — vos autres analyses ne sont pas affectées.
+        </div>
+        <button
+          onClick={onClose}
+          autoFocus
+          style={{ width: '100%', padding: '12px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          J'ai compris
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead, onClickNotification }: {
   onMenuClick:()=>void; title:string;
   unreadCount?: number; notifications?: { id: string; analysisId: string; title: string; createdAt: string; read: boolean }[];
@@ -538,6 +583,7 @@ export default function DashboardPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [rapportSupprime, setRapportSupprime] = useState(false);
 
   // ─── Notifications : rapports terminés + notifications BDD ────────────────────
   type PartNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
@@ -701,7 +747,20 @@ export default function DashboardPage() {
             ...notifications,
             ...dbNotifications.map(n => ({ id: n.id, analysisId: n.analysis_id || '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
           ]} onMarkAllRead={markAllRead}
-          onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
+          onClickNotification={async (id) => {
+            // Verifier que l'analyse existe AVANT de naviguer : si elle a ete
+            // supprimee, on l'explique sur place au lieu d'ouvrir une page vide.
+            try {
+              const { data } = await supabase.from('analyses').select('id').eq('id', id).maybeSingle();
+              if (!data) {
+                setRapportSupprime(true);
+                await supabase.from('user_notifications').delete().eq('analysis_id', id);
+                return;
+              }
+            } catch { /* en cas de doute on laisse naviguer */ }
+            window.location.href = `/rapport?id=${id}`;
+          }} />
+        <RapportSupprimeModal open={rapportSupprime} onClose={() => setRapportSupprime(false)} />
         <DashboardBanner/>
         <main className="dashboard-main" style={{ flex:1, padding:'28px 24px', overflowX:'hidden' }}>
           <AnimatePresence mode="wait">
