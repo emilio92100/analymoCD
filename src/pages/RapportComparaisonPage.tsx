@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -1136,6 +1137,20 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 export default function RapportComparaisonPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  // 🆕 Barre compacte sticky (desktop) : quand on scrolle sous les grosses cartes biens,
+  // une version réduite (Bien N ⭐ · score · adresse) descend avec le scroll sous le header
+  // pour garder le mapping colonnes ↔ biens en lisant le détail. Désactivée sur mobile.
+  const [condensed, setCondensed] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      const desktop = window.innerWidth >= 900;
+      setCondensed(desktop && window.scrollY > 280);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
+  }, []);
   const idsParam = searchParams.get('ids') || '';
   // ORDRE CANONIQUE : on trie TOUJOURS les ids. Le backend (comparer v3) trie
   // aussi avant génération → "Bien 1" du verdict = premier id trié = premier
@@ -1368,6 +1383,57 @@ export default function RapportComparaisonPage() {
           <PdfButton />
         </div>
       </div>
+
+      {/* ─── 🆕 Barre compacte sticky (desktop) — suit le scroll sous le header pour garder
+             le mapping colonnes ↔ biens. createPortal sur body : immunisée contre les pièges
+             overflow/transform des parents (leçon barre flottante Compare du 24/07). ─── */}
+      {typeof document !== 'undefined' && !verdictLoading && createPortal(
+        <AnimatePresence>
+          {condensed && (
+            <motion.div
+              initial={{ y: -16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -16, opacity: 0 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              style={{ position: 'fixed', top: 64, left: 0, right: 0, zIndex: 9, pointerEvents: 'none' }}>
+              <div style={{ maxWidth: 1200, margin: '0 auto', padding: '8px 20px 0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 14, pointerEvents: 'auto' }}>
+                  {analysesDisplay.map((a, displayIdx) => {
+                    const isBest = displayIdx === bestDisplayIdx;
+                    const score = a.score != null ? Number(a.score) : null;
+                    return (
+                      <div key={a.id} style={{
+                        background: '#fff',
+                        border: `2px solid ${isBest ? '#16a34a' : '#e6edf2'}`,
+                        borderRadius: 12,
+                        padding: '8px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        boxShadow: '0 8px 22px rgba(15,45,61,0.12)',
+                        minWidth: 0,
+                      }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: isBest ? '#16a34a' : '#94a3b8', letterSpacing: '0.1em', flexShrink: 0 }}>
+                          BIEN {origBienNumber(displayIdx)}{isBest ? ' ⭐' : ''}
+                        </span>
+                        {score != null && (
+                          <span style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', background: getScoreColor(score), padding: '2px 9px', borderRadius: 99, flexShrink: 0 }}>
+                            {score.toFixed(1)}/20
+                          </span>
+                        )}
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                          {a.adresse_bien}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* ─── Body ─── */}
       <div className="rcp-body" style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 48px' }}>
