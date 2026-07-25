@@ -237,17 +237,49 @@ async function handleAnalyseFailure(
   alertSeverity: 'info' | 'warning' | 'critical' = 'warning',
   extraMetadata: Record<string, unknown> = {},
 ): Promise<void> {
-  // 1. Rembourser le crédit
-  const refunded = await refundCredit(analyseId, supabaseAdmin);
-
-  // 2. Récupérer user_id + type pour l'alerte
+  // 0. Récupérer le mode AVANT tout : un échec de COMPLÉMENT ne doit NI rembourser
+  //    (le complément est gratuit), NI passer en failed (le rapport d'origine est intact).
+  //    ⚠️ MIROIR : même logique dans analyser-run/index.ts et watchdog-stuck-analyses/index.ts.
   const { data: analyse } = await supabaseAdmin
     .from('analyses')
-    .select('user_id, type')
+    .select('user_id, type, mode')
     .eq('id', analyseId)
     .single();
 
-  // 3. Insérer l'alerte
+  if (analyse?.mode === 'complement') {
+    // ── ÉCHEC DE COMPLÉMENT : restaurer le rapport d'origine, AUCUN remboursement ──
+    await insertSystemAlert(supabaseAdmin, {
+      type: errorType,
+      severity: alertSeverity,
+      title: `[Complément] ${alertTitle}`,
+      message: `Échec d'un complément de dossier (${errorType}). Rapport d'origine restauré, aucun remboursement (le complément est gratuit).`,
+      analyseId,
+      userId: analyse?.user_id || undefined,
+      metadata: { refunded: false, analyseType: analyse?.type || 'unknown', complement: true, ...extraMetadata },
+    });
+
+    await supabaseAdmin.from('analyses').update({
+      status: 'completed',
+      file_ids: [],
+      progress_message: COMPLEMENT_FAILED_MSG,
+    }).eq('id', analyseId);
+
+    if (analyse?.user_id) {
+      await insertNotification(
+        supabaseAdmin,
+        analyse.user_id,
+        'Mise à jour du dossier non aboutie',
+        'L\'ajout de documents à votre dossier n\'a pas abouti suite à un incident technique. Votre rapport d\'origine est intact — vous pouvez réessayer via « Compléter mon dossier ».',
+      );
+    }
+    return;
+  }
+
+  // ── ÉCHEC D'ANALYSE CLASSIQUE (comportement inchangé) ──
+  // 1. Rembourser le crédit
+  const refunded = await refundCredit(analyseId, supabaseAdmin);
+
+  // 2. Insérer l'alerte
   await insertSystemAlert(supabaseAdmin, {
     type: errorType,
     severity: alertSeverity,
@@ -258,7 +290,7 @@ async function handleAnalyseFailure(
     metadata: { refunded, analyseType: analyse?.type || 'unknown', ...extraMetadata },
   });
 
-  // 4. Update status — adapter le message si remboursement raté
+  // 3. Update status — adapter le message si remboursement raté
   const finalMsg = refunded
     ? userMessage
     : userMessage.replace(
@@ -280,6 +312,10 @@ async function handleAnalyseFailure(
 const QUEUE_MAX_ATTEMPTS = 12; // 12 × 5 min = 1h max
 const QUEUE_USER_MESSAGE = '⏳ Votre dossier a bien été reçu. Notre service connaît un pic d\'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons par email ET par notification dans la cloche 🔔 dès que c\'est terminé.';
 const QUEUE_NOTIF_TITLE = 'Analyse en attente';
+
+// Message écrit dans progress_message quand un COMPLÉMENT échoue (le rapport d'origine est restauré).
+// ⚠️ MIROIR EXACT : même chaîne dans analyser-run/index.ts et watchdog-stuck-analyses/index.ts.
+const COMPLEMENT_FAILED_MSG = 'La mise à jour du dossier n\'a pas abouti — votre rapport d\'origine est conservé. Vous pouvez réessayer via « Compléter mon dossier ».';
 
 async function insertNotification(
   supabaseAdmin: SupabaseClient,
@@ -428,12 +464,18 @@ Deno.serve(async (req) => {
     if (mode === 'complement') {
       const { data: analyse, error: fetchErr } = await supabaseAdmin
         .from('analyses')
-        .select('result, regeneration_deadline, type, type_bien_declare')
+        .select('result, regeneration_deadline, type, type_bien_declare, complement_date')
         .eq('id', analyseId)
         .single();
 
       if (fetchErr || !analyse?.result) {
         return new Response(JSON.stringify({ error: 'no_existing_report' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+
+      // 🔒 One-shot SERVEUR : le front désactive déjà le bouton après un complément,
+      // mais on refuse aussi ici tout second complément (anti-rejeu API direct).
+      if (analyse.complement_date) {
+        return new Response(JSON.stringify({ error: 'already_complemented' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
       }
 
       if (analyse.regeneration_deadline) {
@@ -453,7 +495,11 @@ Deno.serve(async (req) => {
     }
 
     // Marquer en cours + stocker le type_bien déclaré s'il est fourni
-    const updateFields: Record<string, unknown> = { status: 'processing', mode, profil };
+    // 🆕 last_retry_at = tampon de "dernière activité" : le watchdog s'en sert pour NE PAS
+    // tuer une analyse fraîchement (re)lancée sur une ligne ancienne (cas typique : un
+    // COMPLÉMENT sur une analyse vieille de plusieurs jours matchait "processing > 1h"
+    // via created_at et se faisait nettoyer en plein vol par le cron 15 min).
+    const updateFields: Record<string, unknown> = { status: 'processing', mode, profil, last_retry_at: new Date().toISOString() };
     if (typeBienDeclare) updateFields.type_bien_declare = typeBienDeclare;
     await supabaseAdmin.from('analyses').update(updateFields).eq('id', analyseId);
 
