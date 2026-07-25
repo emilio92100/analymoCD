@@ -805,11 +805,11 @@ function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, n
                   const bienLabel = rawMsg.replace(/\s*—\s*(consulter le rapport|voir le rapport mis à jour)\s*$/i, '').trim();
                   return (
                   <button key={n.id}
-                    onClick={() => { setBellOpen(false); if (isAnalysis && onClickNotification) onClickNotification(n.analysisId); }}
+                    onClick={() => { setBellOpen(false); onClickNotification?.(n.analysisId); }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
                       background: n.read ? '#fff' : '#f0f7fb', border: 'none', borderBottom: '1px solid #f0f5f9',
-                      cursor: isAnalysis ? 'pointer' : 'default', textAlign: 'left' as const, transition: 'all 0.1s',
+                      cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.1s',
                     }}
                     onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
                     onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = n.read ? '#fff' : '#f0f7fb'; }}>
@@ -8062,6 +8062,10 @@ export default function DashboardProPage() {
             ...dbNotifications.map(n => ({ id: n.id, analysisId: n.analysis_id || '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
           ]} onMarkAllRead={markAllRead}
           onClickNotification={async (id) => {
+            // Une notification doit TOUJOURS repondre. Sans identifiant d'analyse
+            // (colonne analysis_id vide), le clic ne faisait rien du tout : ni
+            // navigation, ni message. On explique au lieu de rester muet.
+            if (!id) { setRapportSupprime(true); return; }
             // Verifier que l'analyse existe AVANT de naviguer : si elle a ete
             // supprimee, on l'explique sur place au lieu d'ouvrir une page vide.
             try {
