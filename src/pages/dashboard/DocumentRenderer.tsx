@@ -106,7 +106,13 @@ function Resume({ text }: { text: string }) {
 }
 
 function KpiGrid({ children }: { children: React.ReactNode }) {
-  const count = React.Children.count(children);
+  // 🐛 FIX : React.Children.count() comptait AUSSI les enfants absents (les
+  // `{cond && <Kpi/>}` valant false). Une grille avec 1 seul KPI reel se
+  // dessinait sur 3 colonnes → 2 cases vides = les "KPI blancs".
+  // toArray() supprime null / undefined / false.
+  const items = React.Children.toArray(children);
+  const count = items.length;
+  if (count === 0) return null;
   const cols = count === 1 ? 1 : count === 2 ? 2 : 3;
   const justify = count <= 2 ? 'center' : 'stretch';
   return (
@@ -120,11 +126,11 @@ function KpiGrid({ children }: { children: React.ReactNode }) {
         justifyContent: justify,
         justifyItems: justify
       }}>
-        {children}
+        {items}
       </div>
       {/* Mobile — liste dans une card */}
       <div className="dr-kpi-list" style={{ display: 'none', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-        {children}
+        {items}
       </div>
     </>
   );
@@ -139,6 +145,32 @@ function SectionKpi({ icon, label, children }: { icon: string; label: string; ch
       </div>
       <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
         {children}
+      </div>
+    </div>
+  );
+}
+
+type KpiRow = { icon?: string; text: React.ReactNode; strong?: boolean; tone?: 'default' | 'muted' | 'warn' };
+
+/* Carte KPI a lignes. Contrairement a SectionKpi (qui affiche toujours son
+   en-tete meme sans contenu → carte vide), celle-ci disparait s il n y a rien
+   a montrer, ou affiche un texte d absence explicite via `empty`. */
+function KpiCard({ icon, label, rows, empty }: { icon: string; label: string; rows: (KpiRow | null | false | undefined)[]; empty?: string }) {
+  const list = rows.filter(Boolean) as KpiRow[];
+  if (list.length === 0 && !empty) return null;
+  return (
+    <div className="dr-sectionkpi" style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ padding: '11px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{label}</span>
+      </div>
+      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+        {list.length > 0 ? list.map((row, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: row.tone === 'warn' ? 13 : 15, color: row.tone === 'warn' ? C.orange.text : row.tone === 'muted' ? C.textSec : C.text, lineHeight: 1.45 }}>
+            {row.icon && <span style={{ flexShrink: 0 }}>{row.icon}</span>}
+            <span style={{ fontWeight: row.strong ? 600 : 400, minWidth: 0, overflowWrap: 'anywhere' as const }}>{row.text}</span>
+          </div>
+        )) : <div style={{ fontSize: 14, color: C.textSec, fontStyle: 'italic' as const }}>{empty}</div>}
       </div>
     </div>
   );
@@ -850,7 +882,7 @@ function RendererDDT({ r, isShared, hideVerimoBranding }: { r: any; isShared?: b
                               <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                                 <div style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{POSTE_ICONS[t.poste ?? 'autre'] ?? '🔧'}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 2, textTransform: 'capitalize' as const }}>{(t.poste ?? 'autre').replace('_', ' ')}</div>
+                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 2, textTransform: 'capitalize' as const }}>{safeStr(t.poste || 'autre').replace('_', ' ')}</div>
                                   <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.55 }}>{t.description ?? '—'}</div>
                                   {t.performance_cible && <div style={{ fontSize: 11.5, color: '#475569', marginTop: 3, fontStyle: 'italic' as const }}>Performance cible : {t.performance_cible}</div>}
                                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginTop: 6 }}>
@@ -1410,18 +1442,25 @@ function RendererRCP({ r, isShared, hideVerimoBranding }: { r: any; isShared?: b
       {r.parties_communes_categories?.filter((cat: any) => cat.elements?.length > 0).length > 0 && (
         <Card>
           <CardHeader label="PARTIES COMMUNES" color={C.gray.dot} />
-          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
-            {r.parties_communes_categories.filter((cat: any) => cat.elements?.length > 0).map((cat: any, i: number) => (
-              <div key={i}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>{cat.icone}</span>
-                  <span style={{ textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{cat.categorie}</span>
+          {/* Les elements d'un RCP sont des phrases entieres ("Fondations, gros murs
+              de facade de refend, ossature du gros oeuvre...") : les afficher en
+              pastilles produisait des blocs enormes et illisibles. On passe en
+              lignes, avec la categorie en colonne de gauche sur grand ecran. */}
+          <div style={{ padding: '4px 0' }}>
+            {r.parties_communes_categories.filter((cat: any) => cat.elements?.length > 0).map((cat: any, i: number, arr: any[]) => (
+              <div key={i} className="dr-pc-row" style={{ display: 'flex', gap: 20, padding: '14px 20px', borderBottom: i < arr.length - 1 ? `0.5px solid ${C.border}` : 'none', alignItems: 'flex-start' }}>
+                <div style={{ flex: '0 0 168px', display: 'flex', alignItems: 'center', gap: 7, paddingTop: 1 }}>
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>{cat.icone}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.textSec, textTransform: 'uppercase' as const, letterSpacing: '0.06em', lineHeight: 1.3 }}>{safeStr(cat.categorie)}</span>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
-                  {cat.elements.map((el: string, j: number) => (
-                    <span key={j} style={{ fontSize: 14, padding: '4px 12px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.text }}>{el}</span>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                  {cat.elements.map((el: any, j: number) => (
+                    <li key={j} style={{ display: 'flex', gap: 9, fontSize: 14, color: C.text, lineHeight: 1.55 }}>
+                      <span style={{ color: C.gray.dot, flexShrink: 0, lineHeight: 1.55 }}>·</span>
+                      <span style={{ minWidth: 0, overflowWrap: 'anywhere' as const }}>{safeStr(el)}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             ))}
           </div>
@@ -3165,31 +3204,45 @@ function RendererModificatifRCP({ r, isShared, hideVerimoBranding }: { r: any; i
       <Header type="Modificatif de Règlement de Copropriété" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
 
-      {/* 3 encarts */}
-      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <SectionKpi icon="⚖️" label="Notaire">
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.notaire?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>Me {r.notaire.nom}</span></div>}
-            {r.notaire?.etude && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.notaire.etude}</span></div>}
-            {r.notaire?.ville && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.notaire.ville}</span></div>}
-          </div>
-        </SectionKpi>
-        <SectionKpi icon="📋" label="Acte">
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.type_modification && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏷</span><span style={{ fontWeight: 600 }}>{typeLabel[r.type_modification] || r.type_modification}</span></div>}
-            {r.date_acte && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Acte du {formatDate(r.date_acte)}</span></div>}
-            {r.date_acte_rectificatif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.orange.text }}><span>⚠</span><span>Rectificatif du {formatDate(r.date_acte_rectificatif)}</span></div>}
-            {r.copropriete && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏘</span><span>{r.copropriete}</span></div>}
-          </div>
-        </SectionKpi>
-        <SectionKpi icon="🏛" label="Publication foncière">
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.publication_fonciere?.service && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.publication_fonciere.service}</span></div>}
-            {r.publication_fonciere?.date && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Publié le {formatDate(r.publication_fonciere.date)}</span></div>}
-            {!r.publication_fonciere?.service && !r.publication_fonciere?.date && <div style={{ fontSize: 15, color: C.textSec, fontStyle: 'italic' as const }}>À vérifier auprès du service de publicité foncière</div>}
-          </div>
-        </SectionKpi>
+      {/* Encarts d'identification — chaque carte disparait si elle n'a rien a
+          montrer, et la grille s'adapte au nombre de cartes affichees. */}
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <KpiCard icon="⚖️" label="Notaire" rows={[
+          r.notaire?.nom   ? { icon: '👤', text: `Me ${safeStr(r.notaire.nom)}`, strong: true } : null,
+          r.notaire?.etude ? { icon: '🏢', text: safeStr(r.notaire.etude) } : null,
+          r.notaire?.ville ? { icon: '📍', text: safeStr(r.notaire.ville) } : null,
+        ]} />
+        <KpiCard icon="📋" label="Acte" rows={[
+          r.type_modification      ? { icon: '🏷', text: typeLabel[r.type_modification] || safeStr(r.type_modification), strong: true } : null,
+          r.date_acte              ? { icon: '📅', text: `Acte du ${formatDate(r.date_acte)}` } : null,
+          r.date_acte_rectificatif ? { icon: '⚠', text: `Rectificatif du ${formatDate(r.date_acte_rectificatif)}`, tone: 'warn' as const } : null,
+          r.copropriete            ? { icon: '🏘', text: safeStr(r.copropriete) } : null,
+        ]} />
+        <KpiCard icon="🏛" label="Publication foncière" empty="À vérifier auprès du service de publicité foncière" rows={[
+          r.publication_fonciere?.service ? { icon: '📍', text: safeStr(r.publication_fonciere.service) } : null,
+          r.publication_fonciere?.date    ? { icon: '📅', text: `Publié le ${formatDate(r.publication_fonciere.date)}` } : null,
+        ]} />
       </div>
+
+      {/* ⇄ CE QUI CHANGE — un modificatif est avant tout un "avant / apres".
+          Quand les tantiemes sont connus on le montre en tete, plutot que de
+          l'enfouir en bas : c'est l'information que l'acheteur cherche. */}
+      {(r.impact_copropriete?.tantiemes_avant || r.impact_copropriete?.tantiemes_apres) && (
+        <div style={{ border: `0.5px solid ${C.blue.border}`, background: C.blue.bg, borderRadius: 14, padding: '16px 20px', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.blue.text, marginBottom: 12 }}>Ce qui change</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const }}>
+            <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '12px 20px', minWidth: 128 }}>
+              <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4, letterSpacing: '0.04em' }}>Tantièmes avant</div>
+              <div style={{ fontSize: 21, fontWeight: 600, color: C.textSec, textDecoration: r.impact_copropriete?.tantiemes_apres ? 'line-through' : 'none' }}>{safeStr(r.impact_copropriete?.tantiemes_avant) || '—'}</div>
+            </div>
+            <span style={{ fontSize: 22, color: C.blue.dot, fontWeight: 300 }}>→</span>
+            <div style={{ background: C.bg, border: `1px solid ${C.blue.dot}`, borderRadius: 12, padding: '12px 20px', minWidth: 128 }}>
+              <div style={{ fontSize: 11, color: C.blue.text, marginBottom: 4, letterSpacing: '0.04em' }}>Tantièmes après</div>
+              <div style={{ fontSize: 21, fontWeight: 700, color: C.blue.text }}>{safeStr(r.impact_copropriete?.tantiemes_apres) || '—'}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sur quoi porte — teal */}
       {r.sur_quoi_porte?.length > 0 && (
@@ -3222,7 +3275,7 @@ function RendererModificatifRCP({ r, isShared, hideVerimoBranding }: { r: any; i
       )}
 
       {/* Impact — bleu */}
-      {r.impact_copropriete && (
+      {(r.impact_copropriete?.lots_concernes?.length > 0 || r.impact_copropriete?.impact_acheteur) && (
         <MBlock label="Impact sur la copropriété" borderColor="#B5D4F4" headerBg="#E6F1FB" dotColor="#185FA5" labelColor="#0C447C">
           <div style={{ padding: '16px 20px' }}>
             {r.impact_copropriete.lots_concernes?.length > 0 && (
@@ -3235,19 +3288,6 @@ function RendererModificatifRCP({ r, isShared, hideVerimoBranding }: { r: any; i
                       {lot.description && <div style={{ fontSize: 14, color: C.textSec, lineHeight: 1.4 }}>{lot.description}</div>}
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-            {(r.impact_copropriete.tantiemes_avant || r.impact_copropriete.tantiemes_apres) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
-                  <div style={{ fontSize: 11, color: C.textSec, marginBottom: 3 }}>Tantièmes avant</div>
-                  <div style={{ fontSize: 20, fontWeight: 600, color: C.text }}>{r.impact_copropriete.tantiemes_avant}</div>
-                </div>
-                <span style={{ fontSize: 18, color: C.textSec }}>→</span>
-                <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
-                  <div style={{ fontSize: 11, color: C.blue.text, marginBottom: 3 }}>Tantièmes après</div>
-                  <div style={{ fontSize: 20, fontWeight: 600, color: C.blue.text }}>{r.impact_copropriete.tantiemes_apres}</div>
                 </div>
               </div>
             )}
@@ -3620,6 +3660,10 @@ export default function DocumentRenderer({ result, isShared, hideVerimoBranding 
 
           /* ── Wrapper avec marges latérales légères ── */
           .dr-root > div { padding: 0 6px !important; }
+
+          /* ── Parties communes : la categorie passe au-dessus de la liste ── */
+          .dr-pc-row { flex-direction: column !important; gap: 8px !important; padding: 12px 16px !important; }
+          .dr-pc-row > div:first-child { flex: none !important; }
 
           /* ── KpiGrid (Kpi component) → liste sur mobile ── */
           .dr-kpi-list { display: block !important; }
