@@ -24,6 +24,10 @@ const STORAGE_BUCKET = 'analyse-temp';
 const QUEUE_MAX_ATTEMPTS = 12;
 const RETRY_INTERVAL_MIN = 4; // ne retente que si dernière tentative > 4 min
 
+// Message écrit dans progress_message quand un COMPLÉMENT abandonné est restauré.
+// ⚠️ MIROIR EXACT : même chaîne dans analyser/index.ts, analyser-run/index.ts et watchdog-stuck-analyses/index.ts.
+const COMPLEMENT_FAILED_MSG = 'La mise à jour du dossier n\'a pas abouti — votre rapport d\'origine est conservé. Vous pouvez réessayer via « Compléter mon dossier ».';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
@@ -95,47 +99,27 @@ async function uploadToFilesAPI(fileName: string, base64Data: string, apiKey: st
 }
 
 async function refundCredit(analyseId: string, supabaseAdmin: SupabaseClient): Promise<boolean> {
-  const { data: analyse } = await supabaseAdmin
-    .from('analyses')
-    .select('user_id, type, paid')
-    .eq('id', analyseId)
-    .single();
-
-  if (!analyse?.paid) return false;
-
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('role, credits_document, credits_complete')
-    .eq('id', analyse.user_id)
-    .single();
-
-  if (!profile) return false;
-
-  if (profile.role === 'pro') {
-    // Crédit pro via RPC (idempotent côté DB)
-    const { error } = await supabaseAdmin.rpc('refund_pro_credit', {
-      p_user_id: analyse.user_id,
-      p_credit_type: analyse.type === 'document' ? 'document' : 'complete',
-    });
+  try {
+    // 🔒 Remboursement IDEMPOTENT centralisé (verrou analyses.credit_refunded) — aligné sur
+    // analyser / analyser-run / watchdog qui appellent tous refund_analyse_credit.
+    // ⚠️ L'ancienne implémentation directe de ce fichier (refund_pro_credit + UPDATE profiles)
+    // datait d'avant le fix d'idempotence de juillet et CONTOURNAIT le verrou → 4ᵉ rembourseur
+    // oublié, risque de double remboursement. Corrigé : même fonction SQL que les 3 autres.
+    const { data, error } = await supabaseAdmin.rpc('refund_analyse_credit', { p_analyse_id: analyseId });
     if (error) {
-      console.error('[analyser-retry] refund_pro_credit error:', error);
+      console.error('[analyser-retry] Erreur refund_analyse_credit:', error.message);
       return false;
     }
-    return true;
-  }
-
-  // Particulier — UPDATE classique
-  const field = analyse.type === 'document' ? 'credits_document' : 'credits_complete';
-  const current = (profile as Record<string, number>)[field] || 0;
-  const { error } = await supabaseAdmin
-    .from('profiles')
-    .update({ [field]: current + 1 })
-    .eq('id', analyse.user_id);
-  if (error) {
-    console.error('[analyser-retry] refund particulier error:', error);
+    if (data === true) {
+      console.log(`[analyser-retry] ✅ Crédit remboursé (verrou) pour ${analyseId}`);
+      return true;
+    }
+    console.log(`[analyser-retry] Remboursement déjà effectué ou non applicable pour ${analyseId}`);
+    return false;
+  } catch (err) {
+    console.error('[analyser-retry] Erreur remboursement:', err);
     return false;
   }
-  return true;
 }
 
 async function insertSystemAlert(
@@ -534,6 +518,47 @@ async function abandonAnalysis(
   analyse: { id: string; user_id: string; type: string; title: string | null; address: string | null },
   reason: string,
 ): Promise<void> {
+  // 0. Mode : un COMPLÉMENT abandonné ne doit NI rembourser (le complément est gratuit,
+  //    le crédit d'origine a été légitimement consommé au premier succès), NI passer en
+  //    failed (le rapport d'origine est intact dans `result`).
+  //    ⚠️ MIROIR : même logique dans analyser / analyser-run / watchdog (handleAnalyseFailure / cleanupAnalyse).
+  const { data: row } = await supabaseAdmin
+    .from('analyses')
+    .select('mode')
+    .eq('id', analyse.id)
+    .single();
+
+  if (row?.mode === 'complement') {
+    await supabaseAdmin
+      .from('analyses')
+      .update({
+        status: 'completed',
+        file_ids: [],
+        progress_message: COMPLEMENT_FAILED_MSG,
+      })
+      .eq('id', analyse.id);
+
+    await insertNotification(
+      supabaseAdmin,
+      analyse.user_id,
+      'Mise à jour du dossier non aboutie',
+      `L'ajout de documents à votre dossier${analyse.address ? ` « ${analyse.address} »` : ''} n'a pas abouti malgré plusieurs tentatives. Votre rapport d'origine est intact — vous pouvez réessayer via « Compléter mon dossier ».`,
+    );
+
+    await insertSystemAlert(supabaseAdmin, {
+      type: 'overload',
+      severity: 'warning',
+      title: '[Complément] Queue : abandon après échec retries',
+      message: `Un complément de dossier a été abandonné après plusieurs tentatives infructueuses (raison: ${reason}). Rapport d'origine restauré, aucun remboursement (le complément est gratuit).`,
+      analyseId: analyse.id,
+      userId: analyse.user_id,
+      metadata: { reason, complement: true },
+    });
+
+    // Pas d'email d'échec : le rapport d'origine reste pleinement accessible.
+    return;
+  }
+
   const refunded = await refundCredit(analyse.id, supabaseAdmin);
 
   await supabaseAdmin
