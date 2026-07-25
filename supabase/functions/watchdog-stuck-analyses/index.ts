@@ -30,6 +30,10 @@ const SEUIL_QUEUED_MIN = 90;          // 1h30
 const SEUIL_COMPARAISON_MIN = 5;      // 5min — une comparaison dure < 2min en temps normal
 const MAX_ANALYSES_PAR_EXEC = 50;
 
+// Message écrit dans progress_message quand un COMPLÉMENT coincé est nettoyé (rapport d'origine restauré).
+// ⚠️ MIROIR EXACT : même chaîne dans analyser/index.ts et analyser-run/index.ts.
+const COMPLEMENT_FAILED_MSG = 'La mise à jour du dossier n\'a pas abouti — votre rapport d\'origine est conservé. Vous pouvez réessayer via « Compléter mon dossier ».';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
@@ -43,6 +47,7 @@ interface StuckAnalyse {
   user_id: string;
   type: string;
   status: string;
+  mode?: string | null;
   title: string | null;
   address: string | null;
   created_at: string;
@@ -146,8 +151,44 @@ async function cleanupAnalyse(
   ageMinutes: number,
   supabaseAdmin: SupabaseClient
 ): Promise<{ ok: boolean; refunded: boolean }> {
-  console.log(`[watchdog] 🧹 Nettoyage analyse ${analyse.id} — status=${analyse.status}, âge=${ageMinutes}min`);
+  console.log(`[watchdog] 🧹 Nettoyage analyse ${analyse.id} — status=${analyse.status}, mode=${analyse.mode || 'complete'}, âge=${ageMinutes}min`);
 
+  // ══ CAS COMPLÉMENT COINCÉ : restaurer le rapport d'origine, AUCUN remboursement ══
+  // Le complément est gratuit (le crédit d'origine a été légitimement consommé au premier succès)
+  // et le rapport d'origine est toujours intact dans `result` → on rend le dossier consultable
+  // au lieu de le passer en failed (ce qui le masquait côté front).
+  // ⚠️ MIROIR : même logique dans analyser/index.ts et analyser-run/index.ts (handleAnalyseFailure).
+  if (analyse.mode === 'complement') {
+    console.log(`[watchdog] Raison interne du nettoyage ${analyse.id} (complément): ${reason}`);
+    const { error: updateErr } = await supabaseAdmin
+      .from('analyses')
+      .update({
+        status: 'completed',
+        file_ids: [],
+        progress_message: COMPLEMENT_FAILED_MSG,
+      })
+      .eq('id', analyse.id)
+      .in('status', ['processing', 'files_ready', 'queued']); // idempotent : ne touche QUE si toujours bloquée
+
+    if (updateErr) {
+      console.error(`[watchdog] ❌ Erreur restauration complément pour ${analyse.id}:`, updateErr.message);
+      return { ok: false, refunded: false };
+    }
+
+    try {
+      await supabaseAdmin.from('user_notifications').insert({
+        user_id: analyse.user_id,
+        title: 'Mise à jour du dossier non aboutie',
+        message: `L'ajout de documents à votre dossier${analyse.address ? ` « ${analyse.address} »` : ''} n'a pas abouti suite à un incident technique. Votre rapport d'origine est intact — vous pouvez réessayer via « Compléter mon dossier ».`,
+      });
+    } catch (err) {
+      console.error(`[watchdog] Erreur notif complément pour ${analyse.id}:`, err);
+    }
+
+    return { ok: true, refunded: false };
+  }
+
+  // ══ CAS CLASSIQUE (comportement inchangé) ══
   // 1. Marquer en failed
   // 🔧 FIX : on écrit dans progress_message (colonne réellement présente et lue par le front),
   // PAS dans error_message qui n'existe pas dans la table → l'UPDATE plantait et l'analyse
@@ -209,14 +250,18 @@ Deno.serve(async (req) => {
     const queuedThreshold = new Date(now - SEUIL_QUEUED_MIN * 60 * 1000).toISOString();
 
     // ── 3. Chercher les analyses bloquées ────────────────────
-    // On utilise created_at comme référence (updated_at peut ne pas exister)
+    // On utilise created_at comme référence (updated_at peut ne pas exister).
+    // 🆕 Garde last_retry_at : `analyser` tamponne last_retry_at à chaque (re)lancement.
+    // Sans cette garde, un COMPLÉMENT lancé sur une analyse ancienne (created_at > seuil)
+    // était détecté "bloqué" dès le tick suivant du cron et tué en plein vol.
+    // Une analyse n'est bloquée que si created_at ET last_retry_at (si présent) dépassent le seuil.
     const { data: stuck, error: queryErr } = await supabaseAdmin
       .from('analyses')
-      .select('id, user_id, type, status, title, address, created_at')
+      .select('id, user_id, type, status, mode, title, address, created_at')
       .or(
-        `and(status.eq.processing,created_at.lt.${processingThreshold}),` +
-        `and(status.eq.files_ready,created_at.lt.${filesReadyThreshold}),` +
-        `and(status.eq.queued,created_at.lt.${queuedThreshold})`
+        `and(status.eq.processing,created_at.lt.${processingThreshold},or(last_retry_at.is.null,last_retry_at.lt.${processingThreshold})),` +
+        `and(status.eq.files_ready,created_at.lt.${filesReadyThreshold},or(last_retry_at.is.null,last_retry_at.lt.${filesReadyThreshold})),` +
+        `and(status.eq.queued,created_at.lt.${queuedThreshold},or(last_retry_at.is.null,last_retry_at.lt.${queuedThreshold}))`
       )
       .limit(MAX_ANALYSES_PAR_EXEC);
 
