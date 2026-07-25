@@ -17,6 +17,12 @@ import {
 /* ══════════════════════════════════
    UTILITAIRES
 ══════════════════════════════════ */
+// Préfixe du progress_message écrit par le serveur quand un COMPLÉMENT échoue : le statut
+// repasse à 'completed' (rapport d'origine restauré) et ce marqueur permet d'afficher le
+// bandeau "mise à jour non aboutie — réessayez" au-dessus du rapport.
+// ⚠️ MIROIR : chaîne complète définie dans analyser / analyser-run / watchdog (COMPLEMENT_FAILED_MSG).
+const COMPLEMENT_FAILED_PREFIX = 'La mise à jour du dossier n\'a pas abouti';
+
 function getScoreColor(score: number) {
   if (score >= 17) return '#15803d';
   if (score >= 14) return '#16a34a';
@@ -5207,6 +5213,10 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   // - Pro connecté qui consulte son propre rapport
   // - Client qui ouvre un rapport partagé via le système d'envoi pro (report_shares)
   const [hideVerimoBranding, setHideVerimoBranding] = useState(false);
+  // 🆕 Bandeau complément : 'running' = mise à jour en cours (on affiche l'ancien rapport
+  // + polling de rafraîchissement) | 'failed' = dernière mise à jour non aboutie (rapport
+  // d'origine restauré, on invite à réessayer) | null = rien à signaler.
+  const [complementNotice, setComplementNotice] = useState<null | 'running' | 'failed'>(null);
 
   const loadRapport = useCallback(async () => {
     setLoading(true);
@@ -5264,22 +5274,48 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
       setBackUrl(fromComparaison || '/dashboard/analyses');
     }
 
+    // 🆕 Applique une ligne d'analyse au state (factorisé : utilisé par les branches ci-dessous)
+    const applyData = (data: NonNullable<Awaited<ReturnType<typeof fetchAnalyseById>>>) => {
+      const result = data.result as Record<string, unknown>;
+      // Analyse simple document → DocumentRenderer
+      if (data.type === 'document' && result.document_type) {
+        setDocumentResult({ ...result, _profil: data.profil || 'rp' });
+        return;
+      }
+      setRapport(buildRapport(result, {
+        id: data.id, type: data.type, profil: data.profil,
+        created_at: data.created_at, document_names: data.document_names,
+        regeneration_deadline: data.regeneration_deadline, complement_date: data.complement_date || null, complement_doc_names: data.complement_doc_names || null, is_preview: data.is_preview ?? false,
+      }));
+    };
+
     const MAX_ATTEMPTS = 36;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const data = await fetchAnalyseById(id);
-      if (data?.status === 'failed') { setLoading(false); return; }
-      if (data?.result) {
-        const result = data.result as Record<string, unknown>;
-        // Analyse simple document → DocumentRenderer
-        if (data.type === 'document' && result.document_type) {
-          setDocumentResult({ ...result, _profil: data.profil || 'rp' });
+      if (data?.status === 'failed') {
+        // 🆕 FILET : un rapport existe malgré le statut failed (ex : ancien complément échoué
+        // avant le fix serveur) → on AFFICHE le rapport au lieu de l'écran "introuvable",
+        // avec le bandeau invitant à réessayer la mise à jour.
+        if (data?.result) {
+          applyData(data);
+          setComplementNotice('failed');
           setLoading(false); return;
         }
-        setRapport(buildRapport(result, {
-          id: data.id, type: data.type, profil: data.profil,
-          created_at: data.created_at, document_names: data.document_names,
-          regeneration_deadline: data.regeneration_deadline, complement_date: data.complement_date || null, complement_doc_names: data.complement_doc_names || null, is_preview: data.is_preview ?? false,
-        }));
+        setLoading(false); return;
+      }
+      if (data?.result) {
+        applyData(data);
+        const pm = String((data as Record<string, unknown>).progress_message || '');
+        const dataMode = String((data as Record<string, unknown>).mode || '');
+        if (data.status === 'completed' && pm.startsWith(COMPLEMENT_FAILED_PREFIX)) {
+          // Dernière mise à jour non aboutie (rapport d'origine restauré par le serveur)
+          setComplementNotice('failed');
+        } else if ((data.status === 'processing' || data.status === 'files_ready' || data.status === 'queued') && dataMode === 'complement') {
+          // Complément en cours : on montre l'ancien rapport + bandeau + auto-refresh
+          setComplementNotice('running');
+        } else {
+          setComplementNotice(null);
+        }
         setLoading(false); return;
       }
       if (attempt < MAX_ATTEMPTS - 1) await new Promise(r => setTimeout(r, 5000));
@@ -5288,6 +5324,23 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   }, [id, shareToken]);
 
   useEffect(() => { loadRapport(); }, [loadRapport]);
+
+  // 🆕 Complément en cours : polling léger toutes les 8s jusqu'à résolution, puis rechargement
+  // automatique du rapport (le client peut naviguer/revenir : la page se met à jour seule).
+  useEffect(() => {
+    if (complementNotice !== 'running' || !id) return;
+    let ticks = 0;
+    const itv = setInterval(async () => {
+      ticks++;
+      if (ticks > 90) { clearInterval(itv); return; } // filet ~12 min, la cloche prend le relais
+      const { data } = await supabase.from('analyses').select('status').eq('id', id).single();
+      if (data && data.status !== 'processing' && data.status !== 'files_ready' && data.status !== 'queued') {
+        clearInterval(itv);
+        loadRapport(); // recharge : soit rapport mis à jour, soit bandeau échec via le marqueur
+      }
+    }, 8000);
+    return () => clearInterval(itv);
+  }, [complementNotice, id, loadRapport]);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
@@ -5381,6 +5434,46 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
       <div className="rapport-inner" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         <RapportHeader rapport={rapport} isShared={isShared} backUrl={backUrl} hideVerimoBranding={hideVerimoBranding} />
+
+        {/* 🆕 Bandeau complément EN COURS — l'ancien rapport reste consultable pendant la mise à jour */}
+        {!isShared && complementNotice === 'running' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12 }}>
+            <RefreshCw size={16} style={{ color: '#1e40af', flexShrink: 0, animation: 'spin 1.6s linear infinite' }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>Mise à jour du dossier en cours…</div>
+              <div style={{ fontSize: 12, color: '#3b82f6', lineHeight: 1.5, marginTop: 2 }}>
+                Vos nouveaux documents sont en cours d'intégration. Cette page se rafraîchira automatiquement — en attendant, voici votre rapport actuel.
+              </div>
+            </div>
+            <style>{'@keyframes spin { to { transform: rotate(360deg); } }'}</style>
+          </div>
+        )}
+
+        {/* 🆕 Bandeau complément ÉCHOUÉ — rapport d'origine restauré, on invite à réessayer */}
+        {!isShared && complementNotice === 'failed' && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 18px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12 }}>
+            <AlertTriangle size={16} style={{ color: '#b45309', flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>La mise à jour du dossier n'a pas abouti</div>
+              <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.6, marginTop: 2 }}>
+                Un incident technique a interrompu l'ajout de vos documents. Votre rapport d'origine est intact ci-dessous — vous pouvez relancer la mise à jour dès maintenant.
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={() => setShowComplement(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#d97706', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                <RefreshCw size={12} /> Réessayer
+              </button>
+              <button
+                onClick={() => setComplementNotice(null)}
+                title="Masquer"
+                style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #fde68a', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={13} color="#b45309" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Bandeau re-upload */}
         {showReupload && (
