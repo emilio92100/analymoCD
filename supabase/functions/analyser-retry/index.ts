@@ -509,7 +509,7 @@ async function retryQueuedAnalysis(
     body: JSON.stringify({
       analyseId,
       fileIds,
-      mode: meta.mode || 'normal',
+      mode: meta.mode || 'complete', // 🔧 fallback 'complete' (et non 'normal' qui n'existe pas : un gros dossier requeued raterait l'aiguillage MAP-REDUCE et foncerait dans le mur du timeout single-call)
       profil: meta.profil,
       typeBienDeclare: meta.typeBienDeclare,
       existingReport: meta.existingReport || undefined,
