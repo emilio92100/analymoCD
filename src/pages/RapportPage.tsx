@@ -5307,10 +5307,13 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
         applyData(data);
         const pm = String((data as Record<string, unknown>).progress_message || '');
         const dataMode = String((data as Record<string, unknown>).mode || '');
-        if (data.status === 'completed' && pm.startsWith(COMPLEMENT_FAILED_PREFIX)) {
+        // NB : on compare via String() car le type AnalyseDB.status ne liste pas (encore)
+        // 'files_ready' et 'queued' — statuts pourtant réels en base depuis la queue v9.
+        const st = String(data.status);
+        if (st === 'completed' && pm.startsWith(COMPLEMENT_FAILED_PREFIX)) {
           // Dernière mise à jour non aboutie (rapport d'origine restauré par le serveur)
           setComplementNotice('failed');
-        } else if ((data.status === 'processing' || data.status === 'files_ready' || data.status === 'queued') && dataMode === 'complement') {
+        } else if ((st === 'processing' || st === 'files_ready' || st === 'queued') && dataMode === 'complement') {
           // Complément en cours : on montre l'ancien rapport + bandeau + auto-refresh
           setComplementNotice('running');
         } else {
