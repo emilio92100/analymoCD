@@ -1709,15 +1709,33 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const budgetAnnee = fin?.budget_total_copro_annee as string | number | null | undefined;
   const fondsNum = rapport.fonds_travaux > 0 ? rapport.fonds_travaux : 0;
   const fondsAnnee = fin?.fonds_travaux_annee as string | number | null | undefined;
-  const fondsPct = budgetNum > 0 && fondsNum > 0 ? ((fondsNum / budgetNum) * 100) : null;
-  const fondsInsuffisant = rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent';
+  // 🆕 MILLÉSIME-AWARE (fix "4,7 %") : le % se juge cotisation de l'exercice X vs budget du
+  // MÊME exercice X. Priorité : % voté en AG (la résolution adoptée fait foi) > ratio sur le
+  // budget de l'exercice de la cotisation (budgets_historique) > budget principal en dernier
+  // recours. Miroir de la logique serveur (recalculerCategories, analyser-run).
+  const pctVote = typeof (fin as Record<string, unknown> | null)?.fonds_travaux_pct_vote === 'number' ? (fin as Record<string, unknown>).fonds_travaux_pct_vote as number : null;
+  const budgetsHistoFT = Array.isArray(fin?.budgets_historique) ? fin?.budgets_historique as Array<Record<string, unknown>> : [];
+  const fondsAnneeStr = fondsAnnee != null ? String(fondsAnnee) : null;
+  const budgetAnneeStr = budgetAnnee != null ? String(budgetAnnee) : null;
+  const budgetMemeExercice = (() => {
+    if (!fondsAnneeStr) return budgetNum > 0 ? budgetNum : null;
+    if (budgetAnneeStr === fondsAnneeStr && budgetNum > 0) return budgetNum;
+    const h = budgetsHistoFT.find(b => String((b as Record<string, unknown>).annee ?? '') === fondsAnneeStr);
+    const bt = h && typeof (h as Record<string, unknown>).budget_total === 'number' ? (h as Record<string, unknown>).budget_total as number : null;
+    if (bt && bt > 0) return bt;
+    return budgetNum > 0 ? budgetNum : null;
+  })();
+  const fondsPct = pctVote != null ? pctVote : (budgetMemeExercice && fondsNum > 0 ? (fondsNum / budgetMemeExercice) * 100 : null);
+  const fondsInsuffisant = fondsPct != null ? fondsPct < 5 : (rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent');
+  const fondsConstitue = typeof (fin as Record<string, unknown> | null)?.fonds_travaux_total_constitue === 'number' ? (fin as Record<string, unknown>).fonds_travaux_total_constitue as number : null;
+  const fondsConstitueDate = (fin as Record<string, unknown> | null)?.fonds_travaux_total_constitue_date ? String((fin as Record<string, unknown>).fonds_travaux_total_constitue_date) : null;
   const quitusRefuse = participation.some(p => p.quitus?.soumis === true && p.quitus?.approuve === false);
 
   // KPIs bandeau — infos spécifiques à la copropriété (pas au lot perso)
   const kpiItems = [];
   if (budgetNum > 0) kpiItems.push({ emoji: '💰', label: 'Budget annuel copro', value: `${budgetNum.toLocaleString('fr-FR')} €`, sub: budgetAnnee ? `Budget ${budgetAnnee}` : 'Charges totales copropriété', color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Budget prévisionnel voté en AG pour faire fonctionner l'ensemble de la copropriété (entretien, assurance, syndic, fluides communs). Ne correspond pas aux charges de votre lot." });
   if (nbLotsTotal) kpiItems.push({ emoji: '🏢', label: 'Lots dans la copropriété', value: String(nbLotsTotal), sub: nbBatiments ? `${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : undefined, tooltip: "Nombre total de lots (appartements, parkings, caves...) composant la copropriété." });
-  if (fondsPct !== null) kpiItems.push({ emoji: '🔧', label: 'Fonds travaux', value: `${fondsPct.toFixed(1)}%`, sub: fondsPct < 5 ? 'Insuffisant — seuil 5%' : 'Conforme loi ALUR', color: fondsPct < 5 ? '#a16207' : '#16a34a', bg: fondsPct < 5 ? '#fff7ed' : '#f0fdf4', border: fondsPct < 5 ? '#fed7aa' : '#bbf7d0', tooltip: "Réserve obligatoire pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel de la copropriété." });
+  if (fondsPct !== null) kpiItems.push({ emoji: '🔧', label: 'Fonds travaux', value: `${fondsPct.toFixed(1)}%`, sub: fondsPct < 5 ? 'Insuffisant — seuil 5%' : 'Conforme loi ALUR', color: fondsPct < 5 ? '#a16207' : '#16a34a', bg: fondsPct < 5 ? '#fff7ed' : '#f0fdf4', border: fondsPct < 5 ? '#fed7aa' : '#bbf7d0', tooltip: "Cotisation annuelle votée au fonds de travaux (réserve pour les futurs travaux). La loi ALUR impose minimum 5% du budget du même exercice." });
   if (travaux_votes.length > 0) kpiItems.push({ emoji: '⚖️', label: 'Travaux charge vendeur', value: String(travaux_votes.filter((t: Record<string, unknown>) => t.charge_vendeur !== false).length || travaux_votes.length), sub: 'À vérifier notaire', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' });
   if (amiante_ac1) kpiItems.push({ emoji: '⚠️', label: 'Amiante AC1', value: 'Détecté', sub: 'Action corrective requise', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', tooltip: "Des matériaux amiantés nécessitant une action corrective ont été détectés dans les parties communes. Des travaux obligatoires sont à prévoir." });
   else if (participation.length > 0) kpiItems.push({ emoji: '📋', label: 'AG analysées', value: String(participation.length), sub: `sur ${participation.length} PV fourni${participation.length > 1 ? 's' : ''}` });
@@ -2179,19 +2197,24 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             <div style={{ padding: 14, background: fondsInsuffisant ? '#fff7ed' : '#f0fdf4', borderRadius: 10, border: `1px solid ${fondsInsuffisant ? '#fed7aa' : '#bbf7d0'}`, textAlign: 'center' }}>
               <div style={{ fontSize: 19, fontWeight: 700, color: fondsInsuffisant ? '#a16207' : '#16a34a', marginBottom: 3 }}>{fondsNum.toLocaleString('fr-FR')} €</div>
               <div style={{ fontSize: 11, color: fondsInsuffisant ? '#a16207' : '#16a34a', fontWeight: 600 }}>
-                <Tooltip text="Réserve obligatoire de la copropriété pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel.">Fonds travaux copro</Tooltip>
+                <Tooltip text="Cotisation annuelle au fonds de travaux votée en AG pour l'exercice indiqué — à distinguer du capital total constitué par la copropriété et de la part rattachée au lot du vendeur. La loi ALUR impose minimum 5 % du budget du même exercice.">Cotisation fonds travaux votée</Tooltip>
                 {fondsPct && ` — ${fondsPct.toFixed(1)}%`}
                 {fondsAnnee && ` (${fondsAnnee})`}
               </div>
+              {fondsConstitue != null && fondsConstitue > 0 && (
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                  Fonds constitué à ce jour : <strong style={{ color: '#0f172a' }}>{Math.round(fondsConstitue).toLocaleString('fr-FR')} €</strong>{fondsConstitueDate ? ` (au ${fondsConstitueDate})` : ''}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Barre fonds travaux */}
-        {fondsPct !== null && budgetNum > 0 && (
+        {fondsPct !== null && (
           <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', padding: '12px 14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 6 }}>
-              <span>Fonds travaux actuel — {fondsPct.toFixed(1)}%</span>
+              <span>Cotisation fonds travaux — {fondsPct.toFixed(1)}% du budget{fondsAnneeStr ? ` ${fondsAnneeStr}` : ''}</span>
               <span style={{ color: '#16a34a' }}>Seuil légal ALUR — 5%</span>
             </div>
             <div style={{ height: 10, borderRadius: 5, background: '#edf2f7', overflow: 'hidden', position: 'relative' }}>
@@ -2200,7 +2223,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             </div>
             {fondsInsuffisant && (
               <div style={{ marginTop: 8, fontSize: 13, color: '#a16207' }}>
-                La loi ALUR impose minimum 5% ({Math.round(budgetNum * 0.05).toLocaleString('fr-FR')} € requis). Un fonds insuffisant peut entraîner des <strong>appels de fonds exceptionnels imprévus</strong>.
+                La loi ALUR impose minimum 5% du budget{fondsAnneeStr ? ` ${fondsAnneeStr}` : ''} ({Math.round((budgetMemeExercice || budgetNum) * 0.05).toLocaleString('fr-FR')} € requis). Un fonds insuffisant peut entraîner des <strong>appels de fonds exceptionnels imprévus</strong>.
               </div>
             )}
           </div>
