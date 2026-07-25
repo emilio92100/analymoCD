@@ -959,10 +959,17 @@ export default function NouvelleAnalyse() {
       baseMessages;
     const currentRotatingMsg = messagePool[rotatingMsgIdx % messagePool.length];
 
-    // Info "Document X sur Y" si le serveur l'envoie
-    const docInfo = _progressDoc.total > 1 && _progressDoc.current > 0
-      ? `Document ${_progressDoc.current} sur ${_progressDoc.total} en cours d'analyse…`
-      : null;
+    // Info "Document X sur Y" — UNIQUEMENT pendant la lecture des documents.
+    // Quand tous les docs sont lus (current >= total), on bascule sur un libellé de phase :
+    // "Synthèse" en MAP-REDUCE (≥ 6 docs), "Analyse approfondie" en single-call.
+    // (Fix du faux "Document 6 sur 10" pour 9 docs : l'ancien +1 serveur "étape de synthèse"
+    // a été retiré d'analyser-run — les deux côtés parlent désormais du même total.)
+    const lectureEnCours = _progressDoc.total > 1 && _progressDoc.current > 0 && _progressDoc.current < _progressDoc.total;
+    const docInfo = lectureEnCours
+      ? `Document ${Math.min(_progressDoc.current + 1, _progressDoc.total)} sur ${_progressDoc.total} en cours d'analyse…`
+      : (_progressDoc.total > 1 && _progressDoc.current >= _progressDoc.total
+        ? (docsTotal >= 6 ? 'Synthèse du rapport en cours…' : 'Analyse approfondie en cours…')
+        : null);
 
     const etapes = [
       { id: 'upload',      label: 'Envoi des fichiers',         detail: 'Transfert sécurisé vers nos serveurs',           seuil: 0,  fin: 16,  couleur: '#2a7d9c', icon: '📤' },
