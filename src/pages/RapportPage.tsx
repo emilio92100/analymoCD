@@ -1714,6 +1714,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   // budget de l'exercice de la cotisation (budgets_historique) > budget principal en dernier
   // recours. Miroir de la logique serveur (recalculerCategories, analyser-run).
   const pctVote = typeof (fin as Record<string, unknown> | null)?.fonds_travaux_pct_vote === 'number' ? (fin as Record<string, unknown>).fonds_travaux_pct_vote as number : null;
+  const fondsEstime = (fin as Record<string, unknown> | null)?.fonds_travaux_estime === true;
   const budgetsHistoFT = Array.isArray(fin?.budgets_historique) ? fin?.budgets_historique as Array<Record<string, unknown>> : [];
   const fondsAnneeStr = fondsAnnee != null ? String(fondsAnnee) : null;
   const budgetAnneeStr = budgetAnnee != null ? String(budgetAnnee) : null;
@@ -2200,11 +2201,22 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               </div>
             </div>
           )}
+          {fondsNum <= 0 && budgetNum > 0 && (
+            <div style={{ padding: 14, background: '#f8fafc', borderRadius: 10, border: '1px dashed #cbd5e1', textAlign: 'center' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#64748b', marginBottom: 3 }}>Non renseigné</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
+                <Tooltip text="Aucune résolution votant une cotisation au fonds de travaux n'a été identifiée dans les documents fournis. Le rappel du minimum légal de 5 % que l'on trouve dans la plupart des PV n'est pas un vote. À demander au syndic.">Cotisation fonds travaux</Tooltip>
+              </div>
+            </div>
+          )}
           {fondsNum > 0 && (
             <div style={{ padding: 14, background: fondsInsuffisant ? '#fff7ed' : '#f0fdf4', borderRadius: 10, border: `1px solid ${fondsInsuffisant ? '#fed7aa' : '#bbf7d0'}`, textAlign: 'center' }}>
               <div style={{ fontSize: 19, fontWeight: 700, color: fondsInsuffisant ? '#a16207' : '#16a34a', marginBottom: 3 }}>{fondsNum.toLocaleString('fr-FR')} €</div>
               <div style={{ fontSize: 11, color: fondsInsuffisant ? '#a16207' : '#16a34a', fontWeight: 600 }}>
-                <Tooltip text="Cotisation annuelle au fonds de travaux votée en AG pour l'exercice indiqué — à distinguer du capital total constitué par la copropriété et de la part rattachée au lot du vendeur. La loi ALUR impose minimum 5 % du budget du même exercice.">Cotisation fonds travaux votée</Tooltip>
+                <Tooltip text={fondsEstime
+                  ? "Montant ESTIMÉ : aucun euro n'est écrit dans les documents fournis. Il est reconstitué en appliquant le pourcentage voté en AG au budget du même exercice. À confirmer auprès du syndic."
+                  : "Cotisation annuelle au fonds de travaux votée en AG pour l'exercice indiqué — à distinguer du capital total constitué par la copropriété et de la part rattachée au lot du vendeur. La loi ALUR impose minimum 5 % du budget du même exercice."
+                }>{fondsEstime ? 'Cotisation fonds travaux estimée' : 'Cotisation fonds travaux votée'}</Tooltip>
                 {fondsPct && ` — ${fondsPct.toFixed(1)}%`}
                 {fondsAnnee && ` (${fondsAnnee})`}
               </div>
@@ -2238,37 +2250,77 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
         {/* Historique budgets */}
         {(() => {
-          const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number | null; fonds_travaux?: number | null }> | null;
+          type HistRow = { annee: string; budget_total: number | null; charges_reelles?: number | null; fonds_travaux?: number | null };
+          const hist = fin?.budgets_historique as HistRow[] | null;
           if (!hist || hist.length === 0) return null;
-          // Filtrer les entrées avec un budget_total numérique valide (évite crash si Claude renvoie null)
-          const validHist = hist.filter(r => typeof r.budget_total === 'number' && !isNaN(r.budget_total) && r.budget_total > 0) as Array<{ annee: string; budget_total: number; fonds_travaux?: number | null }>;
+          const num = (v: unknown): number | null => (typeof v === 'number' && !isNaN(v) && v > 0 ? v : null);
+          // Une année est retenue si elle a un budget voté OU des charges réelles.
+          const validHist = hist
+            .map(r => ({ annee: String(r.annee ?? ''), budget: num(r.budget_total), reel: num(r.charges_reelles) }))
+            .filter(r => r.annee && (r.budget !== null || r.reel !== null));
           if (validHist.length < 2) return null;
-          const sorted = [...validHist].sort((a, b) => String(a.annee).localeCompare(String(b.annee)));
-          const max = Math.max(...sorted.map(r => r.budget_total));
+          const sorted = [...validHist].sort((a, b) => a.annee.localeCompare(b.annee));
+          const max = Math.max(...sorted.map(r => Math.max(r.budget ?? 0, r.reel ?? 0)));
+          const auMoinsUnReel = sorted.some(r => r.reel !== null);
           return (
             <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-              <div style={{ background: '#2a7d9c', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ background: '#2a7d9c', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 16 }}>📈</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Historique budgets votés en AG</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Budgets et dépenses par exercice</span>
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic', marginLeft: 4 }}>source : PV d'AG</span>
               </div>
+              {/* Le budget est une PREVISION votee, les charges reelles sont la DEPENSE
+                  constatee, approuvee dans le PV de l'annee suivante. Deux choses distinctes. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px', borderBottom: '1px solid #e2e8f0', background: '#f1f5f9' }}>
+                <span style={{ width: 58, flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em' }}>EXERCICE</span>
+                <div style={{ flex: 1 }} />
+                <span style={{ width: 104, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em' }}>
+                  <Tooltip text="Budget prévisionnel voté en assemblée générale pour cet exercice.">BUDGET VOTÉ</Tooltip>
+                </span>
+                {auMoinsUnReel && (
+                  <span style={{ width: 104, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em' }}>
+                    <Tooltip text="Charges réellement dépensées sur cet exercice, telles qu'approuvées en AG. Les comptes d'une année sont approuvés lors de l'assemblée de l'année suivante.">DÉPENSÉ</Tooltip>
+                  </span>
+                )}
+                <span style={{ width: 46, textAlign: 'right', flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em' }}>ÉCART</span>
+              </div>
               {sorted.map((row, i) => {
-                const prev = i > 0 ? sorted[i - 1] : null;
-                const evol = prev && prev.budget_total > 0 ? ((row.budget_total - prev.budget_total) / prev.budget_total * 100) : null;
-                const pct = max > 0 ? (row.budget_total / max) * 100 : 0;
+                const ecart = row.budget !== null && row.reel !== null ? ((row.reel - row.budget) / row.budget) * 100 : null;
+                const pctBudget = max > 0 && row.budget !== null ? (row.budget / max) * 100 : 0;
+                const pctReel = max > 0 && row.reel !== null ? (row.reel / max) * 100 : 0;
+                const dernier = i === sorted.length - 1;
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < sorted.length - 1 ? '1px solid #f1f5f9' : 'none', background: i === sorted.length - 1 ? '#f0f7ff' : 'transparent' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: i === sorted.length - 1 ? '#2a7d9c' : '#0f172a', width: 78, flexShrink: 0, whiteSpace: 'nowrap' }}>{row.annee}</span>
-                    <div style={{ flex: 1, height: 8, background: '#edf2f7', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: i === sorted.length - 1 ? '#2a7d9c' : '#94a3b8', borderRadius: 4, opacity: 0.7 + i * 0.15 }} />
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < sorted.length - 1 ? '1px solid #edf2f7' : 'none', background: dernier ? '#f0f9ff' : 'transparent' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: dernier ? '#2a7d9c' : '#0f172a', width: 58, flexShrink: 0, whiteSpace: 'nowrap' }}>{row.annee}</span>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 40 }}>
+                      <div style={{ height: 7, background: '#edf2f7', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${pctBudget}%`, height: '100%', background: dernier ? '#2a7d9c' : '#94a3b8', borderRadius: 4 }} />
+                      </div>
+                      {auMoinsUnReel && (
+                        <div style={{ height: 7, background: '#edf2f7', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: `${pctReel}%`, height: '100%', background: row.reel === null ? 'transparent' : '#16a34a', borderRadius: 4, opacity: 0.75 }} />
+                        </div>
+                      )}
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: i === sorted.length - 1 ? '#2a7d9c' : '#0f172a', width: 100, textAlign: 'right', flexShrink: 0 }}>{row.budget_total.toLocaleString('fr-FR')} €</span>
-                    <span style={{ fontSize: 11, width: 36, textAlign: 'right', flexShrink: 0, color: evol !== null ? (evol > 5 ? '#dc2626' : evol > 0 ? '#d97706' : '#16a34a') : '#94a3b8', fontWeight: evol !== null ? 700 : 400 }}>
-                      {evol !== null ? `${evol > 0 ? '+' : ''}${evol.toFixed(1)}%` : '—'}
+                    <span style={{ fontSize: 13, fontWeight: 700, color: row.budget === null ? '#cbd5e1' : dernier ? '#2a7d9c' : '#0f172a', width: 104, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      {row.budget !== null ? `${row.budget.toLocaleString('fr-FR')} €` : '—'}
+                    </span>
+                    {auMoinsUnReel && (
+                      <span style={{ fontSize: 13, fontWeight: 600, color: row.reel === null ? '#cbd5e1' : '#16a34a', width: 104, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        {row.reel !== null ? `${row.reel.toLocaleString('fr-FR')} €` : '—'}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 11, width: 46, textAlign: 'right', flexShrink: 0, fontWeight: 600, color: ecart === null ? '#cbd5e1' : ecart > 0 ? '#dc2626' : '#16a34a' }}>
+                      {ecart !== null ? `${ecart > 0 ? '+' : ''}${ecart.toFixed(1)}%` : '—'}
                     </span>
                   </div>
                 );
               })}
+              {auMoinsUnReel && (
+                <div style={{ padding: '9px 14px', fontSize: 11, color: '#64748b', background: '#f8fafc', borderTop: '1px solid #edf2f7', lineHeight: 1.5 }}>
+                  L'écart compare la dépense réelle au budget voté du même exercice. En vert, la copropriété a dépensé moins que prévu.
+                </div>
+              )}
             </div>
           );
         })()}
