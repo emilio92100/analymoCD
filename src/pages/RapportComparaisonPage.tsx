@@ -149,11 +149,35 @@ function getResultData(a: AnalyseLite) {
     }
   }
 
+  // Source des charges : quand elles viennent de finances.charges_annuelles_lot, la cotisation
+  // au fonds de travaux y est DÉJÀ INCLUSE (règle moteur : charges = lignes récurrentes + cotisation FT).
+  // Quand elles sont reconstruites depuis la seule ligne budget du pré-état daté (montant_trimestriel × 4)
+  // ou estimées par tantièmes, la cotisation N'y est PAS → il faut l'ajouter au total dans ces cas-là.
+  const cotisationIncluseDansCharges = parseNum(fin?.charges_annuelles_lot) !== null && chargesAnnuelles === parseNum(fin?.charges_annuelles_lot);
+
+  // Cotisation ANNUELLE au fonds de travaux du lot : champ dédié (appel de charges) prioritaire,
+  // sinon reconstruction depuis le pré-état daté (trimestriel × 4).
   const fondsTravTrimestriel = parseNum(chargesFutures?.fonds_travaux_trimestriel);
-  const fondsTravAnnuel = fondsTravTrimestriel ? fondsTravTrimestriel * 4 : null;
-  const fondsAlurSignature = parseNum(preEtat?.fonds_travaux_alur) || parseNum(lotAchete?.fonds_travaux_alur);
-  const fondsRoulementSignature = parseNum(preEtat?.fonds_roulement_acheteur);
-  const taxeFonciere = parseNum(r.taxe_fonciere) || parseNum((r as Record<string, unknown>).taxe_fonciere_annuelle) || parseNum(fin?.taxe_fonciere);
+  const cotisationAnnuelle = parseNum(fin?.cotisation_fonds_travaux_lot_annuelle) || (fondsTravTrimestriel ? fondsTravTrimestriel * 4 : null);
+
+  // Fonds rattachés au lot (extraits d'un appel de charges quand AUCUN pré-état daté n'est fourni)
+  const fondsRattaches = fin?.fonds_rattaches_lot as Record<string, unknown> | null;
+
+  // Fonds de travaux à rembourser au vendeur à la signature : les DEUX fonds du pré-état daté
+  // s'additionnent (fonds ALUR art. 14-2 + ancien fonds art. 18 — l'acheteur rembourse les deux),
+  // sinon fallback lot_achete puis fonds rattachés (appel de charges).
+  const alurPreEtat = parseNum(preEtat?.fonds_travaux_alur);
+  const ancienPreEtat = parseNum(preEtat?.fonds_travaux_ancien);
+  let fondsAlurSignature: number | null = null;
+  if (alurPreEtat !== null || ancienPreEtat !== null) fondsAlurSignature = (alurPreEtat || 0) + (ancienPreEtat || 0);
+  if (fondsAlurSignature === null) fondsAlurSignature = parseNum(lotAchete?.fonds_travaux_alur);
+  if (fondsAlurSignature === null) fondsAlurSignature = parseNum(fondsRattaches?.fonds_travaux_alur);
+
+  const fondsRoulementSignature = parseNum(preEtat?.fonds_roulement_acheteur) || parseNum(fondsRattaches?.avance_tresorerie);
+
+  // Taxe foncière : le champ canonique du moteur est finances.taxe_fonciere_annuelle
+  // (les autres chemins sont des fallbacks pour d'anciens rapports).
+  const taxeFonciere = parseNum(fin?.taxe_fonciere_annuelle) || parseNum(r.taxe_fonciere) || parseNum((r as Record<string, unknown>).taxe_fonciere_annuelle) || parseNum(fin?.taxe_fonciere);
 
   return {
     titre: (r.titre as string) || a.adresse_bien || '',
@@ -184,12 +208,14 @@ function getResultData(a: AnalyseLite) {
     financier: {
       charges_annuelles: chargesAnnuelles,
       charges_is_estimation: chargesIsEstimation,
-      fonds_travaux_annuel: fondsTravAnnuel,
+      cotisation_annuelle: cotisationAnnuelle,
+      cotisation_incluse: cotisationIncluseDansCharges,
       taxe_fonciere: taxeFonciere,
       fonds_alur_signature: fondsAlurSignature,
       fonds_roulement_signature: fondsRoulementSignature,
-      total_annee_1: (chargesAnnuelles || 0) + (fondsTravAnnuel || 0) + (fondsAlurSignature || 0) + (fondsRoulementSignature || 0) + (taxeFonciere || 0),
-      has_data: !!(chargesAnnuelles || fondsTravAnnuel || fondsAlurSignature || fondsRoulementSignature),
+      // Total année 1 : la cotisation n'est ajoutée QUE si elle n'est pas déjà incluse dans les charges
+      total_annee_1: (chargesAnnuelles || 0) + (cotisationIncluseDansCharges ? 0 : (cotisationAnnuelle || 0)) + (fondsAlurSignature || 0) + (fondsRoulementSignature || 0) + (taxeFonciere || 0),
+      has_data: !!(chargesAnnuelles || cotisationAnnuelle || fondsAlurSignature || fondsRoulementSignature || taxeFonciere),
     },
   };
 }
@@ -1030,11 +1056,11 @@ function ComparaisonDetaillee({ analyses, resultsData, bestIdx, displayOrder }: 
 function ResumeFinancier({ analyses, resultsData, bestIdx, displayOrder }: { analyses: AnalyseLite[]; resultsData: (ReturnType<typeof getResultData>)[]; bestIdx: number; displayOrder?: number[] }) {
   const cols = analyses.length;
   const rows = [
-    { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.charges_annuelles, est: d.financier.charges_is_estimation }) },
-    { label: 'Cotisation trimestrielle fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_travaux_annuel, est: false }) },
-    { label: 'Taxe foncière annuelle', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.taxe_fonciere, est: false }) },
-    { label: 'Fonds de travaux du lot à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_alur_signature, est: false }) },
-    { label: 'Fonds de roulement à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_roulement_signature, est: false }) },
+    { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.charges_annuelles, est: d.financier.charges_is_estimation, note: undefined as string | undefined }) },
+    { label: 'Cotisation annuelle fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.cotisation_annuelle, est: false, note: d.financier.cotisation_incluse ? 'déjà incluse dans les charges' : undefined }) },
+    { label: 'Taxe foncière annuelle', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.taxe_fonciere, est: false, note: undefined as string | undefined }) },
+    { label: 'Fonds de travaux du lot à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_alur_signature, est: false, note: undefined as string | undefined }) },
+    { label: 'Fonds de roulement à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_roulement_signature, est: false, note: undefined as string | undefined }) },
   ];
 
   return (
@@ -1061,13 +1087,14 @@ function ResumeFinancier({ analyses, resultsData, bestIdx, displayOrder }: { ana
             <React.Fragment key={ri}>
               <div style={{ padding: '10px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, borderBottom: '1px solid #f8fafc' }}>{row.label}</div>
               {resultsData.map((d, j) => {
-                const cell = d ? row.get(d) : { val: null, est: false };
+                const cell = d ? row.get(d) : { val: null, est: false, note: undefined as string | undefined };
                 return (
                   <div key={j} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '1px solid #f8fafc', fontSize: 13, fontWeight: 600, color: cell.val ? '#0f172a' : '#94a3b8' }}>
                     {cell.val ? (
                       <span>
                         {cell.est ? '~ ' : ''}{Math.round(cell.val).toLocaleString('fr-FR')} €
                         {cell.est && <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginLeft: 4 }}>estimation</span>}
+                        {cell.note && <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginLeft: 4 }}>({cell.note})</span>}
                       </span>
                     ) : <span style={{ fontSize: 11, fontStyle: 'italic' }}>Non renseigné / non détecté</span>}
                   </div>
@@ -1092,7 +1119,7 @@ function ResumeFinancier({ analyses, resultsData, bestIdx, displayOrder }: { ana
       </div>
       <div style={{ padding: '12px 20px', background: '#fafbfc', borderTop: '1px solid #f1f5f9' }}>
         <p style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-          * Estimation basée sur les éléments présents dans vos documents. Les travaux évoqués non votés et les éventuels appels de fonds exceptionnels ne sont pas inclus. Les montants précédés de « ~ » sont calculés via le budget global × tantièmes du lot.
+          * Estimation basée sur les éléments présents dans vos documents. Les travaux évoqués non votés et les éventuels appels de fonds exceptionnels ne sont pas inclus. Les montants précédés de « ~ » sont calculés via le budget global × tantièmes du lot. Quand la cotisation au fonds de travaux est déjà incluse dans les charges annuelles, elle n'est pas recomptée dans le total.
         </p>
       </div>
     </>
