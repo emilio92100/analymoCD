@@ -1637,7 +1637,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   type SyndicT = { nom?: string; type?: string; gestionnaire?: string; fin_mandat?: string; tensions_detectees?: boolean; tensions_detail?: string };
   type QuitusT = { soumis?: boolean; approuve?: boolean; detail?: string };
   type ParticT = { annee?: string; copropietaires_presents_representes?: string; taux_tantiemes_pct?: string; quorum_note?: string; quitus?: QuitusT };
-  type NbLotsT = { logements?: number | null; parkings?: number | null; caves?: number | null; commerces?: number | null };
+  type NbLotsT = { logements?: number | null; maisons?: number | null; chambres_service?: number | null; parkings?: number | null; caves?: number | null; commerces?: number | null; autres?: number | null };
   type DtgT = { present?: boolean; etat_general?: string | null; budget_urgent_3ans?: number | null; budget_total_10ans?: number | null; travaux_prioritaires?: string[] };
   type RegleT = { label?: string; statut?: string; impact_rp?: boolean; impact_invest?: boolean };
   type ContratEntretienT = { equipement?: string; prestataire?: string | null; date_reconduction?: string | null; periodicite?: string | null };
@@ -1751,14 +1751,20 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           </div>
         )}
 
-        {/* Composition lots */}
-        {nbLotsDetail && (nbLotsDetail.logements || nbLotsDetail.parkings || nbLotsDetail.caves) && (() => {
-          const total = nbLotsTotal || ((nbLotsDetail.logements ?? 0) + (nbLotsDetail.parkings ?? 0) + (nbLotsDetail.caves ?? 0) + (nbLotsDetail.commerces ?? 0));
+        {/* Composition lots — 7 catégories + filet rétrocompatible : les lots non détaillés (anciens rapports ou catégorie ratée) basculent dans "Autres lots" pour que la somme colle toujours au total */}
+        {nbLotsDetail && (nbLotsDetail.logements || nbLotsDetail.maisons || nbLotsDetail.chambres_service || nbLotsDetail.parkings || nbLotsDetail.caves || nbLotsDetail.commerces || nbLotsDetail.autres) && (() => {
+          const sommeDetail = (nbLotsDetail.logements ?? 0) + (nbLotsDetail.maisons ?? 0) + (nbLotsDetail.chambres_service ?? 0) + (nbLotsDetail.parkings ?? 0) + (nbLotsDetail.caves ?? 0) + (nbLotsDetail.commerces ?? 0) + (nbLotsDetail.autres ?? 0);
+          const residu = nbLotsTotal && nbLotsTotal > sommeDetail ? nbLotsTotal - sommeDetail : 0;
+          const autresAffiche = (nbLotsDetail.autres ?? 0) + residu;
+          const total = nbLotsTotal || sommeDetail;
           const rows = [
             { icon: '🏠', label: 'Appartements', count: nbLotsDetail.logements, color: '#2a7d9c' },
+            { icon: '🏡', label: 'Maisons', count: nbLotsDetail.maisons, color: '#2a7d9c' },
+            { icon: '🛏️', label: 'Chambres de service', count: nbLotsDetail.chambres_service, color: '#64748b' },
             { icon: '🚗', label: 'Parkings', count: nbLotsDetail.parkings, color: '#64748b' },
             { icon: '📦', label: 'Caves', count: nbLotsDetail.caves, color: '#64748b' },
             { icon: '🏪', label: 'Commerces', count: nbLotsDetail.commerces, color: '#64748b' },
+            { icon: '🧩', label: 'Autres lots', count: autresAffiche, color: '#94a3b8' },
           ].filter(r => r.count);
           return (
             <div>
@@ -1773,7 +1779,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i < rows.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                       <span style={{ fontSize: 14, width: 20, textAlign: 'center', flexShrink: 0 }}>{row.icon}</span>
-                      <span style={{ fontSize: 13, color: '#0f172a', width: 110, flexShrink: 0 }}>{row.label}</span>
+                      <span style={{ fontSize: 13, color: '#0f172a', width: 140, flexShrink: 0 }}>{row.label}</span>
                       <div style={{ flex: 1, height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: `${pct}%`, height: '100%', background: row.color, borderRadius: 3 }} />
                       </div>
