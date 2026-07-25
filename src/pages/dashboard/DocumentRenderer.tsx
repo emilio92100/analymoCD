@@ -1326,11 +1326,65 @@ function RendererRCP({ r, isShared, hideVerimoBranding }: { r: any; isShared?: b
           <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
             <div style={{ fontSize: 14, color: C.textSec, marginBottom: 8 }}>Total lots</div>
             <div style={{ fontSize: 22, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{r.total_lots} lots</div>
-            {totalAnnexes > 0 && <div style={{ fontSize: 11, color: C.textSec, marginTop: 4 }}>dont {annexesDetail}</div>}
+            {!r.lots_detail && totalAnnexes > 0 && <div style={{ fontSize: 11, color: C.textSec, marginTop: 4 }}>dont {annexesDetail}</div>}
           </div>
         )}
         {usageLabel && <Kpi label="Usage" value={usageLabel} />}
       </KpiGrid>
+
+      {/* Composition de la copropriété — même rendu que l'analyse complète (RapportPage) + filets : résidu → Autres lots si détail < total ; mention à recouper si détail > total */}
+      {r.lots_detail && (r.lots_detail.logements || r.lots_detail.maisons || r.lots_detail.chambres_service || r.lots_detail.parkings || r.lots_detail.caves || r.lots_detail.commerces || r.lots_detail.autres) && (() => {
+        const d = r.lots_detail;
+        const sommeDetail = (d.logements ?? 0) + (d.maisons ?? 0) + (d.chambres_service ?? 0) + (d.parkings ?? 0) + (d.caves ?? 0) + (d.commerces ?? 0) + (d.autres ?? 0);
+        const totalDoc = r.total_lots ?? null;
+        const residu = totalDoc && totalDoc > sommeDetail ? totalDoc - sommeDetail : 0;
+        const autresAffiche = (d.autres ?? 0) + residu;
+        const incoherent = totalDoc != null && sommeDetail > totalDoc;
+        const total = totalDoc || sommeDetail;
+        const basePct = incoherent ? sommeDetail : total;
+        const rows = [
+          { icon: '🏠', label: 'Appartements', count: d.logements, color: '#2a7d9c' },
+          { icon: '🏡', label: 'Maisons', count: d.maisons, color: '#2a7d9c' },
+          { icon: '🛏️', label: 'Chambres de service', count: d.chambres_service, color: '#64748b' },
+          { icon: '🚗', label: 'Parkings', count: d.parkings, color: '#64748b' },
+          { icon: '📦', label: 'Caves', count: d.caves, color: '#64748b' },
+          { icon: '🏪', label: 'Commerces', count: d.commerces, color: '#64748b' },
+          { icon: '🧩', label: 'Autres lots', count: autresAffiche, color: '#94a3b8' },
+        ].filter(row => row.count);
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <span style={{ fontSize: 16 }}>🏠</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Composition de la copropriété</span>
+            </div>
+            <div style={{ border: '1px solid #edf2f7', borderRadius: 10, overflow: 'hidden' }}>
+              {rows.map((row, i) => {
+                const pct = basePct > 0 ? Math.round((row.count! / basePct) * 100) : 0;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i < rows.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                    <span style={{ fontSize: 14, width: 20, textAlign: 'center', flexShrink: 0 }}>{row.icon}</span>
+                    <span style={{ fontSize: 13, color: '#0f172a', width: 140, flexShrink: 0 }}>{row.label}</span>
+                    <div style={{ flex: 1, height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: row.color, borderRadius: 3 }} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: row.color, width: 26, textAlign: 'right', flexShrink: 0 }}>{row.count}</span>
+                    <span style={{ fontSize: 11, color: '#94a3b8', width: 36, textAlign: 'right', flexShrink: 0 }}>{pct}%</span>
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 14px', background: '#f8fafc', fontSize: 12, fontWeight: 700 }}>
+                <span style={{ color: '#64748b' }}>Total</span>
+                <span style={{ color: '#0f172a' }}>{total} lots</span>
+              </div>
+              {incoherent && (
+                <div style={{ padding: '8px 14px', background: '#fffbeb', borderTop: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
+                  ⚠ Le détail par catégorie ({sommeDetail} lots) dépasse le total annoncé ({totalDoc} lots) — à recouper avec l'état descriptif de division.
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Parties communes par catégorie */}
       {r.parties_communes_categories?.filter((cat: any) => cat.elements?.length > 0).length > 0 && (
