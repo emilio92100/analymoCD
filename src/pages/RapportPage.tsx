@@ -5288,6 +5288,7 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   const [showComplement, setShowComplement] = useState(action === 'complement');
   const [activeTab, setActiveTab] = useState<TabId>('synthese');
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [rapport, setRapport] = useState<RapportData | null>(null);
   const [documentResult, setDocumentResult] = useState<Record<string, unknown> | null>(null);
   const [backUrl, setBackUrl] = useState('/dashboard/analyses');
@@ -5374,6 +5375,16 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
     const MAX_ATTEMPTS = 36;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const data = await fetchAnalyseById(id);
+      // 🐛 FIX UX : une analyse SUPPRIMÉE renvoie null. Avant, ni le cas 'failed'
+      // ni le cas 'result' ne matchait : on repartait pour un tour, 36 fois, soit
+      // 3 minutes de roue qui tourne avant d'afficher "introuvable". Depuis une
+      // notification pointant vers une analyse effacée, l'utilisateur était coincé.
+      // Une analyse absente ne réapparaîtra jamais : on arrête tout de suite.
+      if (!data) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
       if (data?.status === 'failed') {
         // 🆕 FILET : un rapport existe malgré le statut failed (ex : ancien complément échoué
         // avant le fix serveur) → on AFFICHE le rapport au lieu de l'écran "introuvable",
@@ -5467,9 +5478,36 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
     );
   }
 
+  // 🚪 Analyse introuvable — cas le plus frequent : elle a ete supprimee depuis
+  // "Mes analyses", et l'utilisateur revient dessus par une notification. On dit
+  // ce qui s'est passe et on donne une sortie, au lieu d'un cul-de-sac.
   if (!rapport) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f9fb' }}>
-      <p style={{ fontSize: 14, color: '#94a3b8' }}>Rapport introuvable.</p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f9fb', padding: 20 }}>
+      <div style={{ maxWidth: 420, width: '100%', background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '32px 28px', textAlign: 'center' }}>
+        <div style={{ fontSize: 34, marginBottom: 14 }}>🗂️</div>
+        <div style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>
+          {notFound ? 'Cette analyse n\'existe plus' : 'Rapport indisponible'}
+        </div>
+        <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 22 }}>
+          {notFound
+            ? 'Elle a été supprimée. Le lien ou la notification qui vous a amené ici pointe vers un rapport effacé — vos autres analyses ne sont pas affectées.'
+            : 'Ce rapport n\'a pas pu être chargé. Il a peut-être été supprimé, ou le lien est incomplet.'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <button
+            onClick={() => { window.location.href = '/dashboard'; }}
+            style={{ padding: '12px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', width: '100%' }}
+          >
+            Revenir à mes analyses
+          </button>
+          <button
+            onClick={() => { window.history.length > 1 ? window.history.back() : (window.location.href = '/'); }}
+            style={{ padding: '11px 18px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%' }}
+          >
+            Page précédente
+          </button>
+        </div>
+      </div>
     </div>
   );
 
