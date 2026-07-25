@@ -1780,7 +1780,9 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           const sommeDetail = (nbLotsDetail.logements ?? 0) + (nbLotsDetail.maisons ?? 0) + (nbLotsDetail.chambres_service ?? 0) + (nbLotsDetail.parkings ?? 0) + (nbLotsDetail.caves ?? 0) + (nbLotsDetail.commerces ?? 0) + (nbLotsDetail.autres ?? 0);
           const residu = nbLotsTotal && nbLotsTotal > sommeDetail ? nbLotsTotal - sommeDetail : 0;
           const autresAffiche = (nbLotsDetail.autres ?? 0) + residu;
+          const incoherent = nbLotsTotal != null && sommeDetail > nbLotsTotal;
           const total = nbLotsTotal || sommeDetail;
+          const basePct = incoherent ? sommeDetail : total;
           const rows = [
             { icon: '🏠', label: 'Appartements', count: nbLotsDetail.logements, color: '#2a7d9c' },
             { icon: '🏡', label: 'Maisons', count: nbLotsDetail.maisons, color: '#2a7d9c' },
@@ -1799,7 +1801,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               </div>
               <div style={{ border: '1px solid #edf2f7', borderRadius: 10, overflow: 'hidden' }}>
                 {rows.map((row, i) => {
-                  const pct = total > 0 ? Math.round((row.count! / total) * 100) : 0;
+                  const pct = basePct > 0 ? Math.round((row.count! / basePct) * 100) : 0;
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i < rows.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                       <span style={{ fontSize: 14, width: 20, textAlign: 'center', flexShrink: 0 }}>{row.icon}</span>
@@ -1816,6 +1818,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                   <span style={{ color: '#64748b' }}>Total</span>
                   <span style={{ color: '#0f172a' }}>{total} lots{nbBatiments ? ` · ${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : ''}</span>
                 </div>
+                {incoherent && (
+                  <div style={{ padding: '8px 14px', background: '#fffbeb', borderTop: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
+                    ⚠ Le détail par catégorie ({sommeDetail} lots) dépasse le total annoncé ({nbLotsTotal} lots) — à recouper avec l'état descriptif de division.
+                  </div>
+                )}
               </div>
             </div>
           );
