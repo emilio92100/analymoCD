@@ -4,6 +4,12 @@ const EDGE_FUNCTION_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk';
 const STORAGE_BUCKET = 'analyse-temp';
 
+// Préfixe du progress_message écrit par le serveur quand un COMPLÉMENT échoue (le statut
+// repasse alors à 'completed' avec le rapport d'origine restauré — il faut donc détecter
+// ce marqueur pour ne PAS afficher "Rapport prêt !" à tort dans le popup).
+// ⚠️ MIROIR : chaîne complète définie dans analyser/analyser-run/watchdog (COMPLEMENT_FAILED_MSG).
+const COMPLEMENT_FAILED_PREFIX = 'La mise à jour du dossier n\'a pas abouti';
+
 export type AnalyseMode = 'complete' | 'document' | 'complement';
 export type TypeBienDeclare = 'appartement' | 'maison' | 'maison_copro' | 'indetermine';
 
@@ -147,6 +153,22 @@ export async function lancerAnalyseEdge(params: {
         }
         if (res.status === 529 || res.status === 503) {
           return { success: false, error: 'overload', errorMessage: 'Notre moteur est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.' };
+        }
+        // 🆕 Erreurs 400 spécifiques au COMPLÉMENT : le statut en base n'a pas bougé
+        // (les vérifications ont lieu AVANT le passage en processing) → si on laissait
+        // le polling tourner, il verrait 'completed' (l'ancien rapport) et afficherait
+        // "Rapport prêt !" à tort. On retourne un message clair immédiatement.
+        if (errText.includes('deadline_expired')) {
+          return { success: false, error: 'unknown', errorMessage: 'Le délai de 7 jours pour compléter ce dossier est dépassé. Les documents ne peuvent plus être ajoutés à ce rapport.' };
+        }
+        if (errText.includes('already_complemented')) {
+          return { success: false, error: 'unknown', errorMessage: 'Ce dossier a déjà été complété — la mise à jour n\'est possible qu\'une seule fois par rapport.' };
+        }
+        if (errText.includes('too_many_docs')) {
+          return { success: false, error: 'unknown', errorMessage: 'Maximum 5 documents pour compléter un dossier. Retirez des fichiers et réessayez.' };
+        }
+        if (errText.includes('no_existing_report')) {
+          return { success: false, error: 'unknown', errorMessage: 'Rapport d\'origine introuvable. Rechargez la page et réessayez.' };
         }
         // Pour les autres erreurs HTTP, on continue quand même le polling
         // car Supabase peut couper la connexion même si la fonction tourne encore
@@ -299,7 +321,15 @@ export async function pollAnalyseStatus(params: {
       });
     }
 
-    if (data.status === 'completed') return { status: 'completed' };
+    if (data.status === 'completed') {
+      // 🆕 Échec de COMPLÉMENT : le serveur restaure status='completed' (rapport d'origine
+      // intact) avec un progress_message marqueur → on le reflète comme un échec dans le
+      // popup pour que le client sache que la mise à jour n'a pas pris et puisse réessayer.
+      if (data.progress_message && String(data.progress_message).startsWith(COMPLEMENT_FAILED_PREFIX)) {
+        return { status: 'failed', errorMessage: String(data.progress_message) };
+      }
+      return { status: 'completed' };
+    }
     if (data.status === 'failed') return { status: 'failed', errorMessage: data.progress_message || undefined };
     // 🆕 v9 — Si l'analyse passe en queued pendant le polling, on retourne tout de suite
     if (data.status === 'queued') {
