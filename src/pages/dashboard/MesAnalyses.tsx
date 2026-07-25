@@ -250,8 +250,15 @@ export default function MesAnalyses() {
   const [simplesOpen, setSimplesOpen] = useState(true);
   const [shareModal, setShareModal] = useState<{ id: string; title: string } | null>(null);
 
-  const deleteAnalyse = async (id: string) => { await supabase.from('analyses').delete().eq('id', id); refetch(); };
-  const deleteSelected = async () => { if (selectedIds.size === 0) return; setDeleting(true); await supabase.from('analyses').delete().in('id', Array.from(selectedIds)); setSelectedIds(new Set()); setSelectionMode(false); setConfirmBulkDelete(false); setDeleting(false); refetch(); };
+  // 🧹 Supprimer une analyse doit AUSSI supprimer ses notifications : sinon la
+  // cloche continue d'afficher "Votre analyse est prête" et le clic mène à un
+  // rapport effacé (roue qui tourne, aucune sortie).
+  const deleteAnalyse = async (id: string) => {
+    await supabase.from('analyses').delete().eq('id', id);
+    try { await supabase.from('user_notifications').delete().eq('analysis_id', id); } catch { /* non bloquant */ }
+    refetch();
+  };
+  const deleteSelected = async () => { if (selectedIds.size === 0) return; setDeleting(true); const ids = Array.from(selectedIds); await supabase.from('analyses').delete().in('id', ids); try { await supabase.from('user_notifications').delete().in('analysis_id', ids); } catch { /* non bloquant */ } setSelectedIds(new Set()); setSelectionMode(false); setConfirmBulkDelete(false); setDeleting(false); refetch(); };
   const toggleSelect = (id: string) => { setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; }); };
   const exitSelectionMode = () => { setSelectionMode(false); setSelectedIds(new Set()); setConfirmBulkDelete(false); };
 
