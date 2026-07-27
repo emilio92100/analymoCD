@@ -4434,6 +4434,27 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
    2) Repli (anciens rapports sans documents_manquants) : si AUCUN diagnostic du lot
       (perimetre lot_privatif) n'est présent, on affiche un item générique.
    Renvoie la liste des diagnostics MANQUANTS (vide = rien à réclamer). */
+/* ──────────────────────────────────────────────────────────────
+   Checklist « Compléter mon dossier » — LECTURE SEULE.
+   Le serveur (construireChecklist dans analyser-run) est la source
+   unique. Le front n'invente plus de règles : fini les 3 copies qui
+   dérivaient. Repli sur l'ancienne logique pour les rapports
+   générés avant ce changement. */
+type ChecklistItemVue = {
+  id: string;
+  label: string;
+  statut: 'ok' | 'insuffisant' | 'manquant';
+  niveau: 'essentiel' | 'secondaire';
+  detail: string | null;
+  tooltip: string | null;
+};
+
+function lireChecklist(rapport: Record<string, unknown>): ChecklistItemVue[] | null {
+  const c = rapport.checklist as { items?: unknown } | undefined;
+  if (!c || !Array.isArray(c.items) || c.items.length === 0) return null;
+  return c.items as ChecklistItemVue[];
+}
+
 function getDiagsEssentielsManquants(rapport: Record<string, unknown>): { label: string; tooltip: string | null }[] {
   const docsManquants = Array.isArray(rapport.documents_manquants) ? (rapport.documents_manquants as string[]) : [];
   const diagItems = docsManquants
@@ -4745,8 +4766,21 @@ function TabDocuments({ rapport, onComplement, isShared, bloque, signale }: { ra
     { label: 'Tout autre document lié à votre futur logement', present: false, tooltip: null },
   ] : [];
 
-  const docsEssentielManquants = docsEssentiels.filter(d => !d.present);
-  const docsSecondairesManquants = docsSecondaires.filter(d => !d.present);
+  // ── Checklist serveur en priorité, ancienne logique en repli ──
+  const checklist = lireChecklist(rapport as unknown as Record<string, unknown>);
+  const enVue = (d: { label: string; tooltip?: string | null }, niveau: 'essentiel' | 'secondaire'): ChecklistItemVue =>
+    ({ id: d.label, label: d.label, statut: 'manquant', niveau, detail: null, tooltip: d.tooltip ?? null });
+
+  const docsEssentielManquants: ChecklistItemVue[] = checklist
+    ? checklist.filter(i => i.niveau === 'essentiel' && i.statut !== 'ok')
+    : docsEssentiels.filter(d => !d.present).map(d => enVue(d, 'essentiel'));
+
+  const docsSecondairesManquants: ChecklistItemVue[] = checklist
+    ? checklist.filter(i => i.niveau === 'secondaire' && i.statut !== 'ok')
+    : docsSecondaires.filter(d => !d.present).map(d => enVue(d, 'secondaire'));
+
+  // Ce qui est bien au dossier — sinon le client ne voit pas ce qu'on a reçu.
+  const docsCouverts: ChecklistItemVue[] = checklist ? checklist.filter(i => i.statut === 'ok') : [];
   const hasDocs = rapport.documents_detectes.length > 0 || docsAnalyses.length > 0;
 
   return (
@@ -4845,13 +4879,28 @@ function TabDocuments({ rapport, onComplement, isShared, bloque, signale }: { ra
             {docsEssentielManquants.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>ESSENTIELS</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {docsEssentielManquants.map((doc, i) => (
-                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', fontWeight: 500 }}>
-                      {doc.label}
-                      {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {docsEssentielManquants.map((doc, i) => {
+                    const partiel = doc.statut === 'insuffisant';
+                    return (
+                      <div key={doc.id || i} style={{
+                        padding: '10px 14px', borderRadius: 12,
+                        background: partiel ? '#fffbeb' : '#eff6ff',
+                        border: `1px solid ${partiel ? '#fcd34d' : '#bfdbfe'}`,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: partiel ? '#92400e' : '#1e40af' }}>
+                          {partiel && (
+                            <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 6, background: '#fde68a', color: '#78350f', letterSpacing: '0.04em' }}>INCOMPLET</span>
+                          )}
+                          <span>{doc.label}</span>
+                          {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
+                        </div>
+                        {doc.detail && (
+                          <div style={{ marginTop: 4, fontSize: 12.5, lineHeight: 1.5, color: partiel ? '#a16207' : '#3b82f6' }}>{doc.detail}</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -4860,9 +4909,22 @@ function TabDocuments({ rapport, onComplement, isShared, bloque, signale }: { ra
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>SECONDAIRES</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {docsSecondairesManquants.map((doc, i) => (
-                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500 }}>
+                    <div key={doc.id || i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500 }}>
                       {doc.label}
                       {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* 🆕 Ce que le client a DEJA fourni — evite de croire a un oubli */}
+            {docsCouverts.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>DÉJÀ AU DOSSIER</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {docsCouverts.map((doc, i) => (
+                    <div key={doc.id || i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 99, background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: 12.5, color: '#166534', fontWeight: 500 }}>
+                      ✓ {doc.label}
                     </div>
                   ))}
                 </div>
@@ -5019,7 +5081,19 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, onBlo
     !hasDoc(['PRE_ETAT_DATE']) ? { emoji: '📋', label: 'Pré-état daté', tooltip: 'Récapitule les sommes dues, les procédures en cours et les charges à venir.' } : null,
   ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [];
 
-  const hasManquants = docsEssentielsManquants.length > 0 || docsSecondairesManquants.length > 0;
+  // ── Checklist serveur : MEME source que l'onglet Documents ──
+  const checklistModal = lireChecklist(rapport as Record<string, unknown>);
+  const emojiStatut = (st: string) => (st === 'insuffisant' ? '⚠️' : '📄');
+  const essentielsAffiches = checklistModal
+    ? checklistModal.filter(i => i.niveau === 'essentiel' && i.statut !== 'ok')
+        .map(i => ({ emoji: emojiStatut(i.statut), label: i.detail ? `${i.label} — ${i.detail}` : i.label, tooltip: i.tooltip }))
+    : docsEssentielsManquants;
+  const secondairesAffiches = checklistModal
+    ? checklistModal.filter(i => i.niveau === 'secondaire' && i.statut !== 'ok')
+        .map(i => ({ emoji: '📄', label: i.label, tooltip: i.tooltip }))
+    : docsSecondairesManquants;
+
+  const hasManquants = essentielsAffiches.length > 0 || secondairesAffiches.length > 0;
 
   const addFiles = (newFiles: FileList | File[]) => {
     const pdfs = Array.from(newFiles).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
@@ -5278,11 +5352,11 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, onBlo
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', letterSpacing: '0.08em', marginBottom: 10 }}>📌 DOCUMENTS SUGGÉRÉS</div>
 
-                    {docsEssentielsManquants.length > 0 && (
+                    {essentielsAffiches.length > 0 && (
                       <div style={{ marginBottom: 12 }}>
                         <div style={{ fontSize: 10, fontWeight: 600, color: '#1e40af', letterSpacing: '0.06em', marginBottom: 6 }}>ESSENTIELS</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          {docsEssentielsManquants.map((doc, i) => (
+                          {essentielsAffiches.map((doc, i) => (
                             <div key={`e${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12, color: '#1e40af' }}>
                               <span>{doc.emoji}</span> <span style={{ flex: 1 }}>{doc.label}</span>
                               {doc.tooltip && <TooltipBubble id={`e${i}`} text={doc.tooltip} />}
@@ -5292,11 +5366,11 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, onBlo
                       </div>
                     )}
 
-                    {docsSecondairesManquants.length > 0 && (
+                    {secondairesAffiches.length > 0 && (
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: '0.06em', marginBottom: 6 }}>SECONDAIRES</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          {docsSecondairesManquants.map((doc, i) => (
+                          {secondairesAffiches.map((doc, i) => (
                             <div key={`s${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 12, color: '#475569' }}>
                               <span>{doc.emoji}</span> <span style={{ flex: 1 }}>{doc.label}</span>
                               {doc.tooltip && <TooltipBubble id={`s${i}`} text={doc.tooltip} />}
@@ -5791,7 +5865,10 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   const baseEssentielsManquants = isCoproForMissing
     ? [(docsAnalysesTypes.filter(t => t === 'PV_AG').length < 3), !hasDocType(['REGLEMENT_COPRO']), !hasDocType(['CARNET_ENTRETIEN']), !hasDocType(['APPEL_CHARGES'])].filter(Boolean).length
     : [!hasDocType(['TAXE_FONCIERE'])].filter(Boolean).length;
-  const missingEssentielsCount = baseEssentielsManquants + getDiagsEssentielsManquants(rapport as Record<string, unknown>).length;
+  const checklistBadge = lireChecklist(rapport as Record<string, unknown>);
+  const missingEssentielsCount = checklistBadge
+    ? checklistBadge.filter(i => i.niveau === 'essentiel' && i.statut !== 'ok').length
+    : baseEssentielsManquants + getDiagsEssentielsManquants(rapport as Record<string, unknown>).length;
 
   // Détection présence d'un compromis dans l'analyse complète
   const lotAcheteObj = (rapport as Record<string, unknown>).lot_achete as Record<string, unknown> | undefined;
