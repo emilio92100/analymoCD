@@ -536,7 +536,7 @@ Deno.serve(async (req) => {
     if (mode === 'complement') {
       const { data: analyse, error: fetchErr } = await supabaseAdmin
         .from('analyses')
-        .select('result, regeneration_deadline, type, type_bien_declare, complement_date')
+        .select('result, regeneration_deadline, type, type_bien_declare, complement_date, complement_attempts')
         .eq('id', analyseId)
         .single();
 
@@ -549,6 +549,26 @@ Deno.serve(async (req) => {
       if (analyse.complement_date) {
         return new Response(JSON.stringify({ error: 'already_complemented' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
       }
+
+      // ══════════════════════════════════════════════════════════
+      // 🆕 PLAFOND DE TENTATIVES (3 max)
+      // Sans ce compteur SERVEUR, chaque clic sur « Réessayer » relançait
+      // un cycle complet facturé, sans aucune limite : un client qui
+      // s'acharne sur un dossier en échec faisait grimper la note.
+      // Au-delà de 3, le front bascule sur le signalement au support et
+      // l'admin peut débloquer (remise à zéro de complement_attempts).
+      // Le compteur n'est PAS incrémenté par un échec de complément côté
+      // analyser-run : il compte les LANCEMENTS, ce qui est le coût réel.
+      // ══════════════════════════════════════════════════════════
+      const tentatives = (analyse.complement_attempts as number) || 0;
+      if (tentatives >= 3) {
+        console.warn(`[analyser] 🚫 Complément bloqué — ${tentatives} tentatives déjà effectuées sur ${analyseId}`);
+        return new Response(JSON.stringify({ error: 'complement_blocked', attempts: tentatives }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      await supabaseAdmin.from('analyses')
+        .update({ complement_attempts: tentatives + 1 })
+        .eq('id', analyseId);
+      console.log(`[analyser] Complément — tentative ${tentatives + 1}/3 sur ${analyseId}`);
 
       if (analyse.regeneration_deadline) {
         const deadline = new Date(analyse.regeneration_deadline);
@@ -740,8 +760,10 @@ Deno.serve(async (req) => {
       typeBienDeclare: effectiveTypeBienDeclare,
     };
 
-    if (mode === 'complement' && existingReport) {
-      runPayload.existingReport = existingReport;
+    // 🆕 COMPLEMENT V2 : analyser-run relit le rapport directement depuis la base.
+    // On évite de faire transiter ~12 000 tokens de JSON dans le corps HTTP.
+    // (existingReport reste utilisé plus haut dans metadata_queue pour le cron retry.)
+    if (mode === 'complement') {
       runPayload.complementDocNames = fileIds.map(f => f.name);
     }
 
