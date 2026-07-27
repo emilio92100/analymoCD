@@ -263,7 +263,264 @@ function recalculerCategoriesMaison(rapport: RapportShape, _profil: string, anne
   return { ...rapport, score: scoreMaison, score_niveau: getScoreNiveau(scoreMaison), categories: categoriesRecalculees };
 }
 
+/* ══════════════════════════════════════════════════════════════
+   🔢 COMPTAGE DETERMINISTE DES LOTS (code, pas IA)
+   ──────────────────────────────────────────────────────────────
+   Meme principe que le recalcul du score plus bas : le moteur
+   TRANSCRIT la liste (il sait faire, c est de la recopie), le CODE
+   COMPTE (il ne se trompe jamais). Un modele de langage n est pas
+   fiable pour tenir un compteur exact sur 39 entrees reparties sur
+   15 pages — c est structurel, aucune consigne ne le corrige.
+
+   Deux filtres tuent les faux lots observes en production :
+     • entree SANS numero  → artefact de saut de page (bloc orphelin
+       type "Jouissance de la partie du jardin... 1.211/10.000emes"
+       qui est la fin du lot precedent) → ignoree
+     • numero deja vu      → doublon de report de page → ignore
+
+   SECURITE : retourne null si la liste est absente ou vide. Les
+   rapports sans lots_enumeres gardent exactement le comportement
+   actuel — aucune regression possible.
+══════════════════════════════════════════════════════════════ */
+type LotEnumere = { numero?: string | number | null; designation?: string | null; categorie?: string | null; tantiemes?: string | null };
+
+const CATEGORIES_LOTS = ['logements', 'maisons', 'chambres_service', 'parkings', 'caves', 'commerces', 'autres'];
+
+// Classement de secours si "categorie" est absente ou hors liste.
+function classerLotParDesignation(designation: string): string {
+  const d = (designation || '').toLowerCase();
+  if (/\bcave\b|\bcaves\b/.test(d)) return 'caves';
+  if (/parking|emplacement de voiture|emplacement voiture|\bgarage|\bbox\b|stationnement/.test(d)) return 'parkings';
+  if (/chambre de service|chambre de bonne|chambre avec salle d|chambre isolee/.test(d)) return 'chambres_service';
+  if (/commerce|boutique|local commercial|local professionnel/.test(d)) return 'commerces';
+  if (/\bmaison\b|pavillon/.test(d)) return 'maisons';
+  if (/appartement|logement|studio/.test(d)) return 'logements';
+  return 'autres';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ♻️ LOTS REMPLACÉS PAR UN MODIFICATIF
+   ──────────────────────────────────────────────────────────────
+   Quand un modificatif divise un lot (un duplex devient deux
+   appartements, une cave devient "7" et "7 bis"), les nouveaux lots
+   sont numerotes A LA SUITE. L'etat descriptif d'origine et le
+   modificatif coexistent dans le meme acte : le lot d'origine ET ses
+   remplacants figurent tous les deux, et la liste compte double.
+
+   Le document donne lui-meme la reponse : les tantiemes de TOUS les
+   lots font toujours le denominateur (100000/100000). Si la somme
+   depasse, l'excedent vaut EXACTEMENT les tantiemes des lots
+   remplaces. On les identifie donc par le calcul, pas au jugement.
+
+   Cas reel : 42 lots pour 120023/100000. Excedent 20023 = le duplex
+   (19973) + une cave (50). Retires => 40 lots, 100000/100000, soit
+   le chiffre annonce par le pre-etat date du syndic.
+══════════════════════════════════════════════════════════════ */
+function retirerLotsRemplaces(lots: LotEnumere[]): { gardes: LotEnumere[]; retires: LotEnumere[]; somme: number; denominateur: number | null } {
+  const parse = (l: LotEnumere): { num: number; den: number } | null => {
+    const t = typeof l?.tantiemes === 'string' ? l.tantiemes.replace(/\s/g, '') : '';
+    const m = t.match(/^(\d+)\s*\/\s*(\d+)$/);
+    return m ? { num: parseInt(m[1], 10), den: parseInt(m[2], 10) } : null;
+  };
+
+  const parsed = lots.map(l => ({ lot: l, t: parse(l) }));
+  if (parsed.some(x => !x.t)) return { gardes: lots, retires: [], somme: 0, denominateur: null }; // tantiemes incomplets → on ne touche a rien
+
+  const den = parsed[0].t!.den;
+  if (!den || parsed.some(x => x.t!.den !== den)) return { gardes: lots, retires: [], somme: 0, denominateur: null };
+
+  const somme = parsed.reduce((a, x) => a + x.t!.num, 0);
+  const excedent = somme - den;
+  if (excedent <= 0) return { gardes: lots, retires: [], somme, denominateur: den };
+
+  // Les lots d'origine portent les numeros les plus bas : on les teste en premier.
+  const tries = [...parsed].sort((a, b) => Number(a.lot.numero ?? 0) - Number(b.lot.numero ?? 0));
+  const chercher = (taille: number): typeof tries | null => {
+    const rec = (start: number, reste: number, acc: typeof tries): typeof tries | null => {
+      if (reste === 0) return acc;
+      if (acc.length === taille || start >= tries.length) return null;
+      for (let i = start; i < tries.length; i++) {
+        if (tries[i].t!.num > reste) continue;
+        const r = rec(i + 1, reste - tries[i].t!.num, [...acc, tries[i]]);
+        if (r) return r;
+      }
+      return null;
+    };
+    return rec(0, excedent, []);
+  };
+
+  for (let taille = 1; taille <= 3; taille++) {
+    const trouve = chercher(taille);
+    if (trouve) {
+      const aRetirer = new Set(trouve.map(x => x.lot));
+      const gardes = lots.filter(l => !aRetirer.has(l));
+      console.log(`[analyser-run] ♻️ Modificatif détecté — ${somme}/${den}, excédent ${excedent} = lot(s) n°${trouve.map(x => x.lot.numero).join(', n°')} remplacé(s). ${lots.length} → ${gardes.length} lots.`);
+      return { gardes, retires: trouve.map(x => x.lot), somme, denominateur: den };
+    }
+  }
+  console.warn(`[analyser-run] ⚠️ Tantièmes ${somme}/${den} (excédent ${excedent}) — aucun lot ne l'explique, liste conservée telle quelle`);
+  return { gardes: lots, retires: [], somme, denominateur: den };
+}
+
+function recompterLots(
+  lots: unknown,
+  totalAnnonce: number | null,
+): { detail: Record<string, number>; total: number; nbTranscrits: number; tantiemesJustes: boolean; tantiemesVerifiables: boolean; sommeTantiemes: number; denominateur: number | null; horsPlage: number; nonClasses: number } | null {
+  if (!Array.isArray(lots) || lots.length === 0) return null;
+
+  // ♻️ Retirer d'abord les lots remplaces par un modificatif : sans ca, un lot
+  // divise est compte deux fois (l'original + ses remplacants).
+  const nettoyage = retirerLotsRemplaces(lots as LotEnumere[]);
+  lots = nettoyage.gardes;
+
+  const detail: Record<string, number> = {
+    logements: 0, maisons: 0, chambres_service: 0,
+    parkings: 0, caves: 0, commerces: 0, autres: 0,
+  };
+  const numerosVus = new Set<string>();
+  const horsPlage: number[] = [];
+  let nonClasses = 0;
+
+  for (const brut of lots as LotEnumere[]) {
+    if (!brut || typeof brut !== 'object') continue;
+
+    const numero = brut.numero != null ? String(brut.numero).replace(/[^0-9]/g, '') : '';
+    if (!numero) continue;                 // filtre 1 : pas de numero = pas un lot
+    if (numerosVus.has(numero)) continue;  // filtre 2 : doublon de report de page
+    // filtre 3 : hors de la plage annoncee par le document. Un etat descriptif
+    // francais numerote ses lots de 1 a N sans trou. Si l acte ecrit "divise en
+    // 38 lots numerotes de 1 a 38", un lot n°41 n existe pas — c est un doublon
+    // de la description en prose (frequent : le RCP decrit les lots deux fois,
+    // en prose puis en tableau, et les deux ne comptent pas la meme chose).
+    const n = parseInt(numero, 10);
+    if (totalAnnonce && (n < 1 || n > totalAnnonce)) { horsPlage.push(n); continue; }
+    numerosVus.add(numero);
+
+    const catFournie = brut.categorie && CATEGORIES_LOTS.includes(brut.categorie) ? brut.categorie : null;
+    const catDeduite = catFournie ?? classerLotParDesignation(String(brut.designation || ''));
+    // Un lot classe "autres" SANS categorie fournie et SANS designation exploitable
+    // n'est pas classe : c'est un echec, pas un resultat. On le compte a part.
+    if (!catFournie && catDeduite === 'autres' && !String(brut.designation || '').trim()) nonClasses++;
+    detail[catDeduite]++;
+  }
+
+  const nbTranscrits = numerosVus.size;
+  if (nbTranscrits === 0) return null;
+  if (horsPlage.length) console.warn(`[analyser-run] 🚫 Lots hors plage 1-${totalAnnonce} ignorés : ${horsPlage.join(', ')}`);
+
+  // ── 🔎 VERIFICATION PAR LES TANTIEMES ─────────────────────────────
+  // La somme des quotes-parts de TOUS les lots vaut toujours le denominateur
+  // (100000/100000, 10000/10000...). C'est le controle qu'un professionnel fait
+  // a la main. Si la somme tombe juste, la liste est complete et exacte : aucun
+  // lot invente, aucun oublie. Si elle ne tombe pas, on le signale.
+  let sommeTantiemes = 0;
+  let denominateur: number | null = null;
+  let tantiemesLisibles = 0;
+  for (const brut of lots as LotEnumere[]) {
+    const t = typeof brut?.tantiemes === 'string' ? brut.tantiemes.replace(/\s/g, '') : '';
+    const m = t.match(/^(\d+)\s*\/\s*(\d+)$/);
+    if (!m) continue;
+    sommeTantiemes += parseInt(m[1], 10);
+    const den = parseInt(m[2], 10);
+    if (denominateur === null) denominateur = den;
+    else if (denominateur !== den) denominateur = -1; // denominateurs incoherents
+    tantiemesLisibles++;
+  }
+  const tantiemesVerifiables = denominateur !== null && denominateur > 0 && tantiemesLisibles === nbTranscrits;
+  const tantiemesJustes = tantiemesVerifiables && sommeTantiemes === denominateur;
+  if (tantiemesVerifiables) {
+    console.log(`[analyser-run] 🔎 Contrôle tantièmes : ${sommeTantiemes}/${denominateur} sur ${nbTranscrits} lots → ${tantiemesJustes ? 'EXACT ✅' : 'ÉCART ⚠️'}`);
+  }
+
+  // Filet : si le document annonce PLUS de lots que la liste transcrite,
+  // l ecart part dans "autres" plutot que de disparaitre silencieusement.
+  let total = nbTranscrits;
+  if (totalAnnonce && totalAnnonce > nbTranscrits) {
+    detail.autres += totalAnnonce - nbTranscrits;
+    total = totalAnnonce;
+  }
+
+  return { detail, total, nbTranscrits, tantiemesJustes, tantiemesVerifiables, sommeTantiemes, denominateur, horsPlage: horsPlage.length, nonClasses };
+}
+
+/* Applique le recomptage sur un rapport COMPLET (vie_copropriete). */
+function appliquerRecomptageComplet(rapport: Record<string, unknown>): void {
+  const vie = rapport?.vie_copropriete as Record<string, unknown> | undefined;
+  if (!vie) return;
+  const totalAnnonce = typeof vie.nb_lots_total === 'number' ? vie.nb_lots_total : null;
+  const res = recompterLots(vie.lots_enumeres, totalAnnonce);
+  if (!res) return;
+
+  // 🛡️ NE PAS ECRASER UNE BONNE REPARTITION PAR UNE MAUVAISE.
+  // Si les lots transcrits n'ont ni "categorie" ni "designation" exploitable, mon
+  // recomptage les met tous dans "autres" — c'est un echec de classement, pas un
+  // resultat. Observe en production (mode complement) : le moteur proposait
+  // 12 caves / 14 parkings / 12 logements, et on ecrasait par 38 "autres".
+  const detailIA = vie.nb_lots_detail as Record<string, number> | null | undefined;
+  const sommeIA = detailIA && typeof detailIA === 'object'
+    ? Object.values(detailIA).reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0) : 0;
+  const iaEstVentile = sommeIA > 0 && Object.entries(detailIA ?? {}).some(([k, v]) => k !== 'autres' && typeof v === 'number' && v > 0);
+  const recomptageRate = res.nonClasses > res.nbTranscrits / 2;
+
+  if (recomptageRate && iaEstVentile) {
+    console.warn(`[analyser-run] 🛡️ Recomptage non concluant (${res.nonClasses}/${res.nbTranscrits} lots sans catégorie ni désignation) — répartition du moteur conservée :`, JSON.stringify(detailIA));
+    if (totalAnnonce == null) vie.nb_lots_total = res.total;
+  } else {
+    console.log(`[analyser-run] 🔢 Lots recomptes (complet) — ${res.nbTranscrits} lots transcrits | total annonce: ${totalAnnonce ?? 'null'} | detail IA remplace:`, JSON.stringify(vie.nb_lots_detail), '=>', JSON.stringify(res.detail));
+    vie.nb_lots_detail = res.detail;
+  }
+  // 🏷️ La repartition est VERIFIEE seulement si le nombre de lots transcrits
+  // egale le total annonce par le document, et que les tantiemes tombent juste
+  // quand ils sont lisibles. Sinon l'affichage doit le dire au lieu de presenter
+  // des barres nettes comme un fait etabli.
+  vie.nb_lots_detail_verifie = (totalAnnonce == null || res.nbTranscrits === totalAnnonce)
+    && (!res.tantiemesVerifiables || res.tantiemesJustes);
+  if (totalAnnonce == null) vie.nb_lots_total = res.total;
+
+  // ⚠️ Desaccord entre le nombre de lots transcrits et le total annonce par le
+  // document : l'un des deux est faux. On ne tranche pas a la place du lecteur,
+  // on le DIT — un chiffre douteux signale vaut mieux qu'un chiffre faux tu.
+  if (totalAnnonce != null && res.nbTranscrits !== totalAnnonce) {
+    const msg = `Nombre de lots à vérifier — le règlement annonce ${totalAnnonce} lots mais ${res.nbTranscrits} lots ont été relevés dans l'état descriptif de division. La répartition par type affichée peut donc être imprécise : à recouper avec le tableau récapitulatif du règlement.`;
+    const pv = Array.isArray(rapport.points_vigilance) ? rapport.points_vigilance as unknown[] : [];
+    if (!pv.some(x => typeof x === 'string' && x.includes('Nombre de lots à vérifier'))) pv.push(msg);
+    rapport.points_vigilance = pv;
+    console.warn(`[analyser-run] ⚠️ Lots : ${res.nbTranscrits} transcrits vs ${totalAnnonce} annoncés — point de vigilance ajouté`);
+  }
+  if (res.tantiemesVerifiables && !res.tantiemesJustes) {
+    console.warn(`[analyser-run] ⚠️ Tantièmes : somme ${res.sommeTantiemes} ≠ ${res.denominateur} — liste probablement incomplète ou surnuméraire`);
+  }
+}
+
+/* Applique le recomptage sur une analyse de document seul (RCP). */
+function appliquerRecomptageDocument(doc: Record<string, unknown>): void {
+  if (!doc || doc.document_type !== 'RCP') return;
+  const totalAnnonce = typeof doc.total_lots === 'number' ? doc.total_lots : null;
+  const res = recompterLots(doc.lots_enumeres, totalAnnonce);
+  if (!res) return;
+
+  const detailDocIA = doc.lots_detail as Record<string, number> | null | undefined;
+  const docVentile = detailDocIA && Object.entries(detailDocIA).some(([k, v]) => k !== 'autres' && typeof v === 'number' && v > 0);
+  if (res.nonClasses > res.nbTranscrits / 2 && docVentile) {
+    console.warn(`[analyser-run] 🛡️ Recomptage RCP non concluant (${res.nonClasses}/${res.nbTranscrits} lots non classables) — répartition du moteur conservée`);
+    if (totalAnnonce == null) doc.total_lots = res.total;
+    return;
+  }
+  console.log(`[analyser-run] 🔢 Lots recomptes (RCP document) — ${res.nbTranscrits} lots transcrits | total annonce: ${totalAnnonce ?? 'null'} | detail IA remplace:`, JSON.stringify(doc.lots_detail), '=>', JSON.stringify(res.detail));
+  doc.lots_detail = res.detail;
+  if (totalAnnonce == null) doc.total_lots = res.total;
+}
+
 function recalculerCategories(rapport: RapportShape, profil: string): RapportShape {
+  // 🔢 Recomptage deterministe des lots — AVANT tout le reste et pour TOUS les
+  // types de bien (une maison en copro a aussi une composition de copropriete).
+  // Sans effet si lots_enumeres est absent ou vide.
+  try {
+    appliquerRecomptageComplet(rapport as unknown as Record<string, unknown>);
+  } catch (e) {
+    console.error('[analyser-run] Recomptage lots (non bloquant):', e);
+  }
+
   const diagnostics = rapport.diagnostics || [];
   const diagsPrivatifs = diagnostics.filter(d => d.perimetre === 'lot_privatif');
   const diagsCommuns = diagnostics.filter(d => d.perimetre === 'parties_communes');
@@ -339,11 +596,36 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
     return bt && bt > 0 ? bt : null; // null = millésimes différents sans correspondance => pas d'écrasement
   })();
 
+  // 🛡️ GARDE-FOU CODE — le montant du fonds de travaux du VENDEUR (pre-etat date,
+  // Partie III) ne doit jamais se retrouver au niveau COPRO. Si les deux champs
+  // portent la meme valeur, c est une recopie : on efface la version copro.
+  // Observe en production : 438,30 € (part du vendeur) affiche comme cotisation
+  // annuelle de la copropriete, alors que 5% de 38 000 € font 1 900 €.
+  const ped = (rapport as unknown as Record<string, unknown>).pre_etat_date as Record<string, unknown> | undefined;
+  const ftVendeur = typeof ped?.fonds_travaux_alur === 'number' ? ped.fonds_travaux_alur as number : null;
+  if (ftVendeur != null && ftVendeur > 0) {
+    if (typeof fin.fonds_travaux === 'number' && Math.abs(fin.fonds_travaux - ftVendeur) < 1) {
+      console.warn(`[analyser-run] 🛡️ fonds_travaux (${fin.fonds_travaux} €) = part du vendeur — champ copro vidé`);
+      fin.fonds_travaux = null;
+    }
+    const totalC = (fin as unknown as Record<string, unknown>).fonds_travaux_total_constitue;
+    if (typeof totalC === 'number' && Math.abs(totalC - ftVendeur) < 1) {
+      console.warn(`[analyser-run] 🛡️ fonds_travaux_total_constitue (${totalC} €) = part du vendeur — champ copro vidé`);
+      (fin as unknown as Record<string, unknown>).fonds_travaux_total_constitue = null;
+    }
+  }
+
   let ftMontant = typeof fin.fonds_travaux === 'number' ? fin.fonds_travaux : null;
+  // 🏷️ Le montant peut etre RECONSTITUE (pct voté × budget) et non lu dans un document.
+  // On marque alors le chiffre comme estimé : l'affichage ne doit pas le presenter
+  // comme "voté", sinon on donne pour lu un chiffre qui a ete calcule.
   if (ftMontant == null && pctVote != null && budgetMemeExercice) {
     ftMontant = Math.round(budgetMemeExercice * pctVote / 100);
     fin.fonds_travaux = ftMontant;
-    console.log(`[analyser-run] Fonds travaux reconstitué: ${ftMontant} € (${pctVote}% du budget ${ftAnnee || '?'})`);
+    (fin as unknown as Record<string, unknown>).fonds_travaux_estime = true;
+    console.log(`[analyser-run] Fonds travaux reconstitué: ${ftMontant} € (${pctVote}% du budget ${ftAnnee || '?'}) — marqué estimé`);
+  } else if (ftMontant != null) {
+    (fin as unknown as Record<string, unknown>).fonds_travaux_estime = false;
   }
 
   if (pctVote != null) {
@@ -481,8 +763,13 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
 // ══════════════════════════════════════════════════════════════════════
 function validateDiagsManquants(rapport: RapportShape): RapportShape {
   const r = rapport as Record<string, unknown>;
-  const typeBien = (r.type_bien as string) || '';
-  const anneeStr = (r.annee_construction as string) || '';
+  // 🐛 FIX : `as string` est un CAST TypeScript, pas une conversion. Le schema
+  // autorise annee_construction en nombre ("annee_construction": 1976) — dans ce
+  // cas .match() n'existe pas et la fonction plantait. L'erreur etait rattrapee
+  // (non bloquante) mais la validation des diagnostics obligatoires ne tournait
+  // JAMAIS : le rapport ne signalait aucun diagnostic manquant.
+  const typeBien = String(r.type_bien ?? '');
+  const anneeStr = String(r.annee_construction ?? '');
   const anneeMatch = anneeStr.match(/\d{4}/);
   const annee = anneeMatch ? parseInt(anneeMatch[0]) : null;
 
@@ -604,6 +891,74 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
 // on relance UN appel IA ciblé (1 seul, jamais en boucle) avec un mini-prompt.
 // Coût additionnel : ~0,02-0,05€ par retry, déclenché uniquement si besoin.
 // ══════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
+   📋 EXTRACTION DEDIEE DE L'ETAT DESCRIPTIF DE DIVISION
+   ──────────────────────────────────────────────────────────────
+   Meme motif que retryDpeCarrez : un appel court, UN seul sujet,
+   qui retourne voir le PDF d'origine.
+
+   POURQUOI. La liste des lots etait demandee a l'interieur du grand
+   prompt (~16000 tokens en analyse simple, ~21700 en synthese), parmi
+   ~200 autres champs. Observe en production : 41 lots au lieu de 39,
+   42 au lieu de 38, categories a 14/14/14. Le total, lui, tombe juste :
+   c'est UN nombre demande UNE fois. Le probleme n'est pas la lecture,
+   c'est le volume de la tache.
+
+   Ici : ~500 tokens de consigne, un seul travail, une seule sortie.
+   Non bloquant : en cas d'echec on garde ce qu'on avait.
+══════════════════════════════════════════════════════════════ */
+async function extraireLotsRCP(
+  fileIds: string[],
+  apiKey: string,
+  totalAnnonce: number | null,
+): Promise<LotEnumere[] | null> {
+  if (!fileIds.length) return null;
+
+  const borne = totalAnnonce
+    ? `Le document annonce ${totalAnnonce} lots : ta liste doit en contenir EXACTEMENT ${totalAnnonce}, numerotes de 1 a ${totalAnnonce}, sans trou ni doublon.`
+    : `Lis d'abord le nombre total annonce ("divise en N lots numerotes de 1 a N", souvent ecrit en toutes lettres ET en chiffres), puis produis exactement autant d'entrees.`;
+
+  const miniPrompt = `Tu as UNE seule tache : recopier l'etat descriptif de division de ce reglement de copropriete. Tu ne resumes pas, tu ne juges pas, tu RECOPIES.
+
+${borne}
+
+Une entree par lot NUMEROTE ("LOT NUMERO UN", "LOT 1", ou une ligne du tableau recapitulatif). Rien d'autre.
+
+PIEGES A EVITER (observes sur des actes reels) :
+1. Le reglement decrit souvent les lots DEUX FOIS : une description generale en prose ("au 1er sous-sol 8 caves et 10 emplacements de stationnement"), puis l'etat descriptif ou le tableau recapitulatif. Ce sont LES MEMES locaux. Ne compter QUE l'etat descriptif / le tableau. La prose peut compter des PLACES la ou le tableau compte des LOTS (un emplacement double = 1 lot, 2 places).
+2. Un bloc de texte orphelin en haut de page, sans numero ("Jouissance de la partie du jardin... 1.211/10.000emes"), est la FIN du lot precedent, PAS un nouveau lot.
+3. Un lot rappele en report de page = une seule entree.
+
+Reponds UNIQUEMENT avec ce JSON, sans markdown ni commentaire :
+{"total_annonce":<nombre ecrit dans le document ou null>,"lots":[{"numero":1,"designation":"texte recopie","categorie":"logements|maisons|chambres_service|parkings|caves|commerces|autres","tantiemes":"116/100000"}]}
+
+CATEGORIES : logements = appartements/studios · maisons = maisons ou pavillons · chambres_service = chambre de service, chambre de bonne, chambre avec salle d'eau constituee en lot · parkings = emplacements de voiture, garages, boxes · caves = caves · commerces = locaux commerciaux ou professionnels · autres = local de reserve, debarras, grenier, cellier, local technique.`;
+
+  const userContent: unknown[] = fileIds.map(id => ({ type: 'document', source: { type: 'file', file_id: id } }));
+  userContent.push({ type: 'text', text: "Recopie l'etat descriptif de division, un lot par entree." });
+
+  let res: { text: string; error?: string };
+  try {
+    res = await Promise.race([
+      callAI({ system: miniPrompt, userContent, maxTokens: 16000, apiKey }),
+      new Promise<{ text: string; error: string }>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout_90s')), 90000)
+      ),
+    ]) as { text: string; error?: string };
+  } catch (e) {
+    console.error('[analyser-run] extraireLotsRCP: appel echoue (non bloquant):', e);
+    return null;
+  }
+  if (res.error || !res.text) return null;
+
+  const parsed = parseJson<{ total_annonce?: number | null; lots?: LotEnumere[] }>(res.text);
+  const lots = Array.isArray(parsed?.lots) ? parsed!.lots : null;
+  if (!lots || lots.length === 0) return null;
+
+  console.log(`[analyser-run] 📋 Extraction dédiée EDD : ${lots.length} lots | total annoncé lu : ${parsed?.total_annonce ?? 'null'}`);
+  return lots;
+}
+
 async function retryDpeCarrez(
   rapport: RapportShape,
   fileIds: string[],
@@ -1300,7 +1655,7 @@ function buildDocumentPrompt(p: string): string {
   parts.push('- avance_tresorerie et fonds_travaux_alur : si l appel contient un cadre "Rappel pour memoire de votre participation aux fonds" (colonnes Avances / Fonds ALUR / Prov. travaux / Provisions), remplir avance_tresorerie = colonne Avances et fonds_travaux_alur = colonne Fonds ALUR. Ce sont des montants de CAPITAL deja verses, rattaches au lot, a REMBOURSER AU VENDEUR a la signature (en sus du prix) — PAS des charges recurrentes, ne PAS les ajouter aux totaux. Laisser null si le cadre est absent.');
   parts.push('- points_vigilance : mentionner le solde débiteur si présent. Si un poste représente plus de 40% du total de l appel, le signaler comme poste à surveiller.');
   parts.push('');
-  parts.push('RCP : {"document_type":"RCP","titre":"...","resume":"2-3 phrases synthétiques utiles pour un acheteur","date_reglement":null,"modificatifs":[],"usage":"habitation|mixte|commercial","total_lots":null,"lots_detail":{"logements":null,"maisons":null,"chambres_service":null,"parkings":null,"caves":null,"commerces":null,"autres":null},"lots_caves":null,"lots_parkings":null,"lots_commerces":null,"parties_communes_categories":[{"categorie":"Structure","icone":"🏗","elements":["..."]},{"categorie":"Accès et circulations","icone":"🚪","elements":["..."]},{"categorie":"Équipements","icone":"⚙️","elements":["..."]},{"categorie":"Espaces extérieurs","icone":"🌿","elements":["..."]}],"regles_usage":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"restrictions_importantes":[{"label":"...","detail":"1 phrase claire en langage simple","bloquant":false}],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
+  parts.push('RCP : {"document_type":"RCP","titre":"...","resume":"2-3 phrases synthétiques utiles pour un acheteur","date_reglement":null,"modificatifs":[],"usage":"habitation|mixte|commercial","total_lots":null,"lots_enumeres":[{"numero":null,"designation":"...","categorie":"logements|maisons|chambres_service|parkings|caves|commerces|autres","tantiemes":null}],"lots_detail":{"logements":null,"maisons":null,"chambres_service":null,"parkings":null,"caves":null,"commerces":null,"autres":null},"lots_caves":null,"lots_parkings":null,"lots_commerces":null,"parties_communes_categories":[{"categorie":"Structure","icone":"🏗","elements":["..."]},{"categorie":"Accès et circulations","icone":"🚪","elements":["..."]},{"categorie":"Équipements","icone":"⚙️","elements":["..."]},{"categorie":"Espaces extérieurs","icone":"🌿","elements":["..."]}],"regles_usage":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"restrictions_importantes":[{"label":"...","detail":"1 phrase claire en langage simple","bloquant":false}],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('');
   parts.push('REGLES RCP :');
   parts.push('- resume : 2-3 phrases max, ce qui est utile pour prendre une décision d achat. Pas de copie du contenu juridique.');
@@ -1310,6 +1665,7 @@ function buildDocumentPrompt(p: string): string {
   parts.push('- lots_detail (répartition des lots par type) : logements = appartements + studios (lots d habitation principaux) ; maisons = maisons/pavillons inclus dans la copropriété ; chambres_service = chambres de service / chambres de bonne (lots d une pièce avec ou sans salle d eau) ; parkings = emplacements, garages, boxes ; caves = caves ; commerces = locaux commerciaux ou professionnels ; autres = tout autre lot (local de réserve, grenier, cellier, pièce isolée, local technique, jardin constitué en lot...).');
   parts.push('- SOURCE EXCLUSIVE DU COMPTAGE : compter UNIQUEMENT l état descriptif de division (la liste lot par lot "LOT NUMERO UN...", "LOT NUMERO DEUX..." ou le tableau récapitulatif des lots). NE JAMAIS compter en plus la description générale de l immeuble en préambule ("l ensemble comprendra : ... un appartement et une chambre à chaque étage...") : elle décrit LES MEMES locaux que l état descriptif et les compter deux fois crée des lots fantômes. Chaque lot numéroté = 1 unité dans UNE seule catégorie.');
   parts.push('- AUTO-CONTROLE OBLIGATOIRE : la SOMME des catégories de lots_detail DOIT être EXACTEMENT égale à total_lots écrit dans le document (ex : "divisé en 39 lots numérotés de 1 à 39"). Si l addition ne tombe pas juste, relire l état descriptif lot par lot et ranger chaque lot dans sa catégorie (ou dans autres) — aucun lot ne doit disparaître ni être compté deux fois. Si le règlement ne détaille pas les lots, remplir uniquement total_lots et laisser lots_detail à null — ne jamais inventer une répartition.');
+  parts.push('- lots_enumeres (PRIORITAIRE, RCP avec etat descriptif de division) : TRANSCRIRE la liste des lots, UNE ENTREE PAR LOT NUMEROTE, dans l ordre. Tu TRANSCRIS, tu ne comptes pas : le comptage est fait ensuite par le systeme. Pour chaque lot : "numero" = le numero seul en chiffres (LOT NUMERO VINGT SEPT => 27), "designation" = la designation recopiee du document, "categorie" = la case qui convient, "tantiemes" = la quote-part de CE lot au format "num/den" telle qu ecrite (ex "116/100000"), null si absente. REGLES ABSOLUES : (1) une entree = un "LOT NUMERO X" du document, jamais autre chose ; (2) NE JAMAIS creer d entree sans numero — un bloc de texte orphelin en haut de page (suite d une description coupee par un saut de page, type "Jouissance de la partie du jardin... 1.211/10.000emes") est la FIN du lot precedent, PAS un nouveau lot ; (3) ⚠️ MODIFICATIF INTEGRE A L ACTE : si un lot a ete DIVISE par un modificatif (un duplex devenu deux appartements, une cave devenue "7" et "7 bis"), les nouveaux lots sont numerotes A LA SUITE des anciens. Le lot d ORIGINE n existe plus : ne PAS le lister en plus de ses remplacants, sinon la copropriete compte deux fois les memes m². Indice : la somme des tantiemes depasse le denominateur. Dans le doute, transcrire quand meme les deux et laisser le systeme trancher par les tantiemes ; (4) ne jamais compter la description generale de l immeuble en preambule ("l ensemble comprendra un appartement et une chambre a chaque etage") : elle decrit les memes locaux ; (5) un lot cite deux fois (report de page) = une seule entree ; (6) le nombre d entrees doit correspondre au total annonce par le document lui-meme : si l acte ecrit "divise en N lots numerotes de 1 a N", la liste contient N entrees, numerotees de 1 a N, sans trou et sans doublon. Ce N est TOUJOURS lu dans le document en cours — ne jamais reprendre un nombre vu ailleurs ni un nombre donne en exemple. CATEGORIES : logements = appartements/studios · maisons = maisons ou pavillons · chambres_service = chambres de service, chambres de bonne, "chambre avec salle d eau" constituee en lot autonome · parkings = emplacements de voiture, garages, boxes · caves = caves · commerces = locaux commerciaux ou professionnels · autres = local de reserve, debarras, grenier, cellier, local technique, piece isolee. Si le document ne contient PAS de liste lot par lot : laisser lots_enumeres a []. GARDE-FOU TAILLE : si le document annonce plus de 150 lots, laisser lots_enumeres a [] et remplir lots_detail comme avant — transcrire des centaines de lignes ferait depasser le temps maximum de generation.');
   parts.push('- MODIFICATIFS et composition : le chiffre EXPLICITEMENT écrit le plus RECENT fait foi, sans jamais calculer soi-même. Si le règlement intègre déjà son modificatif dans le même acte (mention "et de son modificatif de ce jour"), ses chiffres sont à jour : les recopier. Si un modificatif mentionné change les lots SANS donner de nouveau total, ne PAS faire l arithmétique : garder les chiffres de l état descriptif et le signaler en points_vigilance.');
   parts.push('- lots_caves, lots_parkings, lots_commerces : recopier les valeurs correspondantes de lots_detail (compatibilité), sinon null.');
   parts.push('');
@@ -1451,8 +1807,33 @@ function buildComplementPrompt(profil: string, typeBienDeclare?: string | null):
       'un bien immobilier';
     typeBienHint = `\n\nTYPE DE BIEN : ${labelBien}. Conserve type_bien = "${typeBienDeclare}" dans le JSON.`;
   }
+  // 🐛 FIX MAJEUR — le prompt de complément faisait ~617 tokens contre ~22 000
+  // pour l'analyse complète. Il disait "applique les mêmes règles que pour une
+  // analyse complète" SANS JAMAIS LES FOURNIR. Le moteur devait donc remplir la
+  // même structure sans connaître les catégories de lots, le carnet d'entretien,
+  // les règles de comptage, la notation /20... D'où les lots qui tombaient tous
+  // dans "autres" et les blocs à moitié vides après un complément.
+  // On lui donne désormais le référentiel complet, puis les règles de fusion.
+  // ⚠️ 27/07 — REGRESSION CORRIGEE : injecter buildSystemPrompt complet ici
+  // (617 -> ~21900 tokens) a fait TIMEOUT en production sur un dossier reel.
+  // Cause : le complement est SINGLE-CALL et recoit deja le rapport existant
+  // (JSON tres gros pour un dossier MAP-REDUCE) + jusqu'a 5 PDFs. Ajouter 21000
+  // tokens de consignes ET demander la structure complete a regenerer a fait
+  // exploser le temps de generation, seul facteur qui compte face au mur des
+  // ~400s. On revient a un prompt COURT, enrichi seulement des regles metier
+  // indispensables (categories de lots), sans le referentiel entier.
+  const reglesLots = `
+REGLE CATEGORIES DE LOTS (vie_copropriete.nb_lots_detail) — 7 cles obligatoires :
+logements (appartements + studios) · maisons · chambres_service (chambre de service,
+chambre de bonne, chambre avec salle d eau constituee en lot) · parkings (emplacements
+de voiture, garages, boxes) · caves · commerces · autres (local de reserve, debarras,
+grenier, cellier, local technique). NE JAMAIS tout mettre dans "autres".
+Si vie_copropriete.lots_enumeres existe deja dans le rapport, le CONSERVER tel quel
+et remplir "categorie" et "designation" pour chaque lot qui en manque.`;
+
   return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
 Tu n utilises jamais les mots Claude, Anthropic ou IA.${typeBienHint}
+${reglesLots}
 
 MODE COMPLEMENT : Tu recois un rapport d analyse existant (JSON) et de NOUVEAUX documents PDF.
 Ta mission : produire un NOUVEAU rapport complet qui FUSIONNE les donnees existantes avec les nouvelles informations.
@@ -1676,9 +2057,21 @@ REGLES IMPORTANTES :
   3. PV D AG + TANTIEMES : si seulement un PV d AG fourni avec budget total ET tantiemes du lot connus (lot_achete.quote_part_tantiemes), calculer estimation = budget_total × tantiemes_lot / total_tantiemes. Source = "Estimation depuis PV d AG × tantiemes".
   4. PV D AG SEUL : si ni tantiemes ni appel de charges, laisser charges_annuelles_lot = null et signaler dans avis_verimo : "Charges du lot non determinables — uploader un appel de charges ou le pre-etat date pour obtention du montant precis."
 - RÈGLE COTISATION FONDS TRAVAUX DU LOT (finances.cotisation_fonds_travaux_lot_annuelle) : si un appel de charges (ou un pre-etat date) distingue une ligne propre au lot "Fonds de travaux loi ALUR" / "cotisation fonds travaux", remplir finances.cotisation_fonds_travaux_lot_annuelle = montant trimestriel de cette ligne x 4 (ex : 26,27/trim => 105). IMPORTANT : ce montant doit deja etre INCLUS dans finances.charges_annuelles_lot (qui = total general appele du lot = charges courantes + cotisation fonds travaux). Sert a afficher "dont X euros/an de cotisation au fonds de travaux" sous les charges annuelles. Laisser null si la cotisation n est pas distinguable.
+- RÈGLE FONDS DE TRAVAUX ALUR DE LA COPRO (finances.fonds_travaux / fonds_travaux_pct_vote / fonds_travaux_resolution_adoptee) — DISTINGUER UN VOTE D UN RAPPEL DE LA LOI :
+  (RAPPEL nb_lots_total : ce nombre se LIT dans le document — formulation type "l immeuble sera divise en TRENTE HUIT (38) lots numerotes de 1 a 38", souvent ecrite en toutes lettres ET en chiffres. Il ne se DEDUIT JAMAIS en comptant les lignes transcrites : si ton comptage ne tombe pas sur le nombre ecrit, c est TON comptage qui est faux, pas le document. Recopier le nombre ecrit et transcrire exactement autant de lots.)
+  * finances.fonds_travaux = le montant ANNUEL de la cotisation, en euros, UNIQUEMENT s il est ECRIT dans un document. Ne JAMAIS le calculer soi-meme a partir d un pourcentage.
+  * finances.fonds_travaux_pct_vote = un pourcentage UNIQUEMENT si une resolution l a REELLEMENT VOTE (formulation type : "l assemblee decide de fixer la cotisation au fonds de travaux a X% du budget", "resolution adoptee"). 
+  * ⚠️ PIEGE FREQUENT : la phrase "il est fait rappel de la cotisation au fonds travaux obligatoire a hauteur de minimum 5% du budget annuel" est un RAPPEL DE LA LOI ALUR, PAS UN VOTE. Elle figure dans presque tous les PV, sans qu aucune resolution ne porte sur le fonds de travaux. Dans ce cas : fonds_travaux = null, fonds_travaux_pct_vote = null, fonds_travaux_resolution_adoptee = false, fonds_travaux_statut = "non_mentionne". Idem pour toute formule generique citant le minimum legal ("minimum 5%", "au moins 5%", "conformement a la loi ALUR").
+  * Un pourcentage n est PAS un montant : ne jamais transformer une regle en euros. Si seul le minimum legal est rappele, l information a retenir est "aucune cotisation votee identifiee dans les documents fournis" — c est une information utile pour l acheteur, pas un vide a combler.
 - RÈGLE FONDS RATTACHES AU LOT (finances.fonds_rattaches_lot) : UNIQUEMENT si AUCUN pre-etat date / etat date n est fourni (si un pre-etat date est fourni, laisser null : il est prioritaire via pre_etat_date.fonds_travaux_alur / fonds_roulement_acheteur). Le montant du fonds de travaux rattache aux lots = la somme DEJA COTISEE par le coproprietaire vendeur (capital constitue), presentee dans le DERNIER appel de charges sous un rappel type "pour memoire", "situation de vos fonds", "fonds constitues", "participation aux fonds" (quelle que soit la denomination exacte du syndic). Ce n est JAMAIS la cotisation appelee pour le trimestre en cours. Si plusieurs lots ont chacun leur montant : ADDITIONNER pour afficher le total. Extraire de meme l avance de tresorerie si distinguee. fonds_rattaches_lot.source = "Appel de charges [periode]". Si aucun rappel de ce type n apparait clairement dans le document : null (le pre-etat date le confirmera). Ces montants sont du CAPITAL a rembourser au vendeur a la signature — PAS des charges recurrentes, ne JAMAIS les ajouter a charges_annuelles_lot.
 - RÈGLE AFFICHAGE FINANCES LOT (UI) : NE JAMAIS mentionner "taxe fonciere" dans les labels ou textes concernant les finances copro du lot. La taxe fonciere est un impot, pas une charge copro. Si l onglet affiche un texte d aide, il doit etre : "Uploadez un appel de charges OU un pre-etat date pour obtenir ces informations." (Sans mention de taxe fonciere.)
-- finances.budgets_historique = tableau des budgets annuels extraits de CHAQUE PV d'AG disponible : [{annee: "2023", budget_total: 180000, fonds_travaux: 9000, charges_lot: 3200}]. Laisser null si aucun PV fourni.
+- finances.budgets_historique = un objet PAR ANNEE reellement documentee : [{annee: "2023", budget_total: 184000, charges_reelles: 176420, fonds_travaux: 12500, charges_lot: 3200}]. Laisser null si aucun PV fourni.
+  REGLE ABSOLUE — NE JAMAIS CONFONDRE CES DEUX CHIFFRES :
+  * budget_total = le budget PREVISIONNEL **VOTE** pour cet exercice. Formulation type : "l assemblee generale fixe le budget de l exercice du 01/01/N au 31/12/N a X euros". C est une PREVISION.
+  * charges_reelles = les comptes REELLEMENT depenses sur cet exercice, tels qu approuves. Formulation type : "approuve les comptes de charges dudit exercice [01/01/N au 31/12/N] pour un montant de X euros". C est une DEPENSE CONSTATEE.
+  Les comptes d une annee N sont approuves dans le PV de l annee N+1 : un PV de 2024 qui approuve les comptes 2023 renseigne donc charges_reelles de l ANNEE 2023, jamais budget_total de 2024. Ranger chaque chiffre dans SA colonne et dans SON annee. Ne JAMAIS recopier un montant de comptes approuves dans budget_total.
+  INTERDICTION D INVENTER UNE ANNEE : une annee n apparait dans budgets_historique que si au moins un des deux chiffres est ECRIT dans un document fourni. Deux PV d AG ne peuvent pas produire quatre annees de budgets votes. Si une annee n a qu un seul des deux chiffres, remplir ce champ et laisser l autre a null — ne jamais completer par deduction, ni recopier la valeur d une annee voisine.
+  BUDGET VOTE DEUX FOIS POUR LE MEME EXERCICE (courant avec le vote "par exercice d avance") : garder le montant du PV le PLUS RECENT dans budget_total, et signaler la revision dans points_vigilance avec les deux montants et leurs dates d AG.
 - diagnostics : perimetre OBLIGATOIRE = "lot_privatif" ou "parties_communes"
 - diagnostics DPE : le champ "resultat" doit contenir la classe energetique ET la classe GES sous la forme "Classe E - 281 kWh/m2/an. GES: Classe D - 61 kg CO2/m2/an."
 - dpe_recommandations : si un DDT contient un DPE avec sa section "Recommandations d amelioration de la performance", recopier ICI les donnees extraites dans le DDT (dpe.recommandations + dpe.version_methode). Mettre present=true. Si aucun DPE n est fourni dans le dossier OU si le DPE n a pas de section recommandations exploitable, mettre present=false et laisser pack_1/pack_2/evolution_etiquette vides. Cette section est destinee a l onglet logement du rapport.
@@ -1690,7 +2083,7 @@ REGLES IMPORTANTES :
 - RÈGLE PROCÉDURES — cadrage strict de procedures[] : ce tableau ne contient QUE des procédures réelles et formalisées ayant un impact concret pour l acheteur. SONT des procédures, et il faut les inclure TOUTES sans jamais en omettre une : contentieux judiciaire en cours ou non clos, procédure de recouvrement d impayés ENGAGÉE (mise en demeure formelle, injonction de payer, commandement de payer, saisie), litige copropriété contre syndic ou copropriété contre tiers porté devant une juridiction, expertise judiciaire, arrêté de péril ou d insalubrité, injonction administrative de travaux, administration provisoire, action en garantie décennale judiciarisée. NE SONT PAS des procédures et ne doivent JAMAIS figurer dans procedures[] : un refus de quitus, un désaccord ou une tension non judiciarisée, un simple changement de syndic, une réserve ou une erreur comptable, un vote contre une résolution, des impayés de charges non encore en recouvrement judiciaire. Précisions sur le champ type : "contentieux" = action en justice ; "copro_vs_syndic" = litige FORMALISÉ porté devant une instance, PAS un simple vote de défiance ; "impayes" = recouvrement judiciairement engagé. Le refus de quitus est DÉJÀ traité dans vie_copropriete.participation_ag[].quitus et impacte déjà le score : s il est significatif, le signaler dans points_vigilance, jamais dans procedures[]. EN CAS DE DOUTE : si l élément est une VRAIE procédure mais de gravité incertaine, le CONSERVER (gravité au niveau le plus prudent) ; si l élément est un signal de gouvernance, un désaccord ou une tension non judiciarisée, NE PAS le créer comme procédure.
 - documents_analyses : lister TOUS les documents avec leur type detecte
 - En cas de contexte tres long, priorise : PV AG > DDT > diagnostics > appels charges > RCP articles 1-30
-- lot_achete.parties_privatives : lister TOUS les lots privatifs vendus (appartement + cave + parking + grenier...) avec leur numero et leur tantieme PROPRE si mentionne (format "num/den", ex "235/10070"). Chaque lot = son tantieme general PROPRE, lu sur SA ligne du tableau des lots (en-tete de l appel de charges, RCP, etat descriptif de division ou pre-etat date). REGLE ANTI-DOUBLON CRITIQUE : NE JAMAIS prendre le tantieme de la ligne "Charges communes generales" (ou "charges communes", "base de repartition", "total tantiemes") d un appel de charges comme le tantieme d un lot — cette valeur est la SOMME des lots du vendeur (ex : 255 = appartement 235 + cave 20) et l attribuer a un seul lot fausse le total par double comptage. Toujours descendre au tantieme INDIVIDUEL de chaque lot.
+- lot_achete.parties_privatives : lister TOUS les lots privatifs vendus (appartement + cave + parking + grenier...). NOMS DE CHAMPS OBLIGATOIRES, aucun autre nom accepte : "numero_lot" (le numero seul, ex "30" — sans le mot "lot"), "designation" (la designation lue dans le document, ex "Appartement de 5 pieces au 2eme etage, aile A" / "Cave C1 au sous-sol" / "Emplacement de voiture P13"), "tantiemes" (son tantieme PROPRE au format "num/den", ex "235/10070"). Les trois champs sont a remplir pour chaque lot ; "designation" ne doit JAMAIS etre vide des lors que le document decrit le lot. Chaque lot = son tantieme general PROPRE, lu sur SA ligne du tableau des lots (en-tete de l appel de charges, RCP, etat descriptif de division ou pre-etat date). REGLE ANTI-DOUBLON CRITIQUE : NE JAMAIS prendre le tantieme de la ligne "Charges communes generales" (ou "charges communes", "base de repartition", "total tantiemes") d un appel de charges comme le tantieme d un lot — cette valeur est la SOMME des lots du vendeur (ex : 255 = appartement 235 + cave 20) et l attribuer a un seul lot fausse le total par double comptage. Toujours descendre au tantieme INDIVIDUEL de chaque lot.
 - lot_achete.quote_part_tantiemes : tantiemes TOTAUX du lot = SOMME des tantiemes propres de tous les lots vendus (meme denominateur). Ex : appartement 235/10070 + cave 20/10070 => "255/10070emes". AUTO-CONTROLE : ce total doit etre EGAL a la base "charges communes generales" quand elle figure dans un appel de charges. S ils different, c est qu un tantieme a ete mal lu — recommencer la lecture lot par lot.
 - vie_copropriete.syndic.type : "professionnel" si cabinet syndic, "benevole" si copropriétaire gérant lui-même.
 - vie_copropriete.syndic.gestionnaire : nom de la personne qui gere le dossier au sein du cabinet syndic, si mentionne. REGLES DE PRIORITE STRICTE (choisir le PREMIER trouve dans cet ordre) : 1) gestionnaire principal de copropriete (personne designee comme "gestionnaire de copropriete", "gestionnaire principal", "chargee de copropriete", signataire regulier des convocations et PV) ; 2) gestionnaire associe ou adjoint si aucun principal clair ; 3) laisser null sinon. INTERDICTIONS : NE JAMAIS mettre le president du conseil syndical (c est un coproprietaire, pas un employe du syndic) ; NE JAMAIS mettre le secretaire de seance (role ponctuel) ; NE JAMAIS mettre uniquement le gerant ou PDG du cabinet sauf s il est aussi explicitement designe comme gestionnaire du dossier ; NE JAMAIS inventer un nom.
@@ -1721,6 +2114,7 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
 - Si statut = "stable" sur 2+ AGs, mentionner dans points_forts : "Gouvernance stable : meme syndic en place sur les X dernieres AGs analysees."
 
 - vie_copropriete.nb_lots_total / nb_lots_detail / nb_batiments : extraire depuis PV d'AG, carnet d'entretien, RCP ou pré-état daté. Ne jamais additionner nb_lots_total si non mentionné : si aucun document ne donne le total, laisser null.
+- vie_copropriete.lots_enumeres (PRIORITAIRE des qu un etat descriptif de division est disponible) : TRANSCRIRE la liste des lots, UNE ENTREE PAR LOT NUMEROTE, dans l ordre. Tu TRANSCRIS, tu ne comptes pas : le comptage est fait ensuite par le systeme. Pour chaque lot : "numero" = le numero seul en chiffres (LOT NUMERO VINGT SEPT => 27), "designation" = la designation recopiee, "categorie" = la case qui convient (memes categories que nb_lots_detail), "tantiemes" = la quote-part de CE lot au format "num/den" telle qu ecrite (ex "116/100000"), null si absente. REGLES ABSOLUES : (1) une entree = un "LOT NUMERO X", jamais autre chose ; (2) NE JAMAIS creer d entree sans numero — un bloc orphelin en haut de page (suite d une description coupee, type "Jouissance de la partie du jardin... 1.211/10.000emes") est la FIN du lot precedent, PAS un nouveau lot ; (3) ⚠️ MODIFICATIF INTEGRE A L ACTE : si un lot a ete DIVISE par un modificatif (un duplex devenu deux appartements, une cave devenue "7" et "7 bis"), les nouveaux lots sont numerotes A LA SUITE des anciens. Le lot d ORIGINE n existe plus : ne PAS le lister en plus de ses remplacants, sinon la copropriete compte deux fois les memes m². Indice : la somme des tantiemes depasse le denominateur. Dans le doute, transcrire quand meme les deux et laisser le systeme trancher par les tantiemes ; (4) ne jamais compter la description generale de l immeuble en preambule ; (5) un lot cite deux fois (report de page) = une seule entree ; (6) le nombre d entrees doit correspondre au total annonce par le document lui-meme : si l acte ecrit "divise en N lots numerotes de 1 a N", la liste contient N entrees, numerotees de 1 a N, sans trou ni doublon. Ce N est TOUJOURS lu dans le document en cours — ne jamais reprendre un nombre vu ailleurs ni un nombre donne en exemple. En SYNTHESE SUR EXTRAITS, chaque fait "LOT <numero> | <designation> | <tantiemes>" donne exactement une entree, et tout fait "PREAMBULE NON COMPTABLE" est ignore. Si aucun etat descriptif n est disponible : laisser lots_enumeres a [] et remplir nb_lots_detail comme avant. GARDE-FOU TAILLE : si le document annonce plus de 150 lots, laisser lots_enumeres a [] et remplir nb_lots_detail comme avant — transcrire des centaines de lignes ferait depasser le temps maximum de generation.
 - RÈGLE CATEGORIES nb_lots_detail (repartition des lots par type) :
   * logements = appartements + studios (lots d habitation principaux du batiment)
   * maisons = maisons individuelles ou pavillons inclus dans la copropriete (frequent : 2-3 maisons a l arriere d un immeuble)
@@ -1729,6 +2123,8 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
   * caves = caves
   * commerces = locaux commerciaux ou professionnels
   * autres = tout lot ne rentrant dans aucune categorie ci-dessus : piece isolee rattachable a un appartement contigu, grenier, cellier, debarras, local technique, local velos, jardin constitue en lot, local de reserve...
+  BLOCS A NE JAMAIS OUBLIER : si un COMPROMIS / promesse / acte de vente figure parmi les documents, les blocs "compromis" ET "bien" DOIVENT etre remplis a partir de ses extraits — ce sont les blocs les plus importants pour l acheteur. Ne jamais les laisser a null quand le document est present. Idem pour "pre_etat_date" si un pre-etat date est fourni.
+  SYNTHESE SUR EXTRAITS (gros dossier) : si tu ne recois pas les documents mais des extraits de faits, les faits commencant par "LOT <numero> |" CONSTITUENT l etat descriptif de division — ils sont ta source de comptage. Les compter UN PAR UN (1 fait "LOT ..." = 1 lot = 1 unite dans UNE seule categorie), classer chacun d apres sa designation, et poser nb_lots_detail sur ce comptage. IGNORER TOTALEMENT tout fait prefixe "PREAMBULE NON COMPTABLE" : il redecrit les memes locaux et creerait des lots fantomes. Si le nombre de faits "LOT ..." est inferieur au total annonce, ne pas completer au jugement : ranger l ecart dans "autres".
   SOURCE EXCLUSIVE DU COMPTAGE : quand le detail vient d un RCP, compter UNIQUEMENT l etat descriptif de division (la liste lot par lot "LOT NUMERO UN...", "LOT NUMERO DEUX..." ou le tableau recapitulatif des lots). NE JAMAIS compter en plus la description generale de l immeuble en preambule ("l ensemble comprendra : ... un appartement et une chambre a chaque etage...") : elle decrit LES MEMES locaux que l etat descriptif et les compter deux fois cree des lots fantomes. Chaque lot numerote = 1 unite dans UNE seule categorie, rien d autre.
   AUTO-CONTROLE OBLIGATOIRE : quand un document liste TOUS les lots (RCP avec division par lots, etat descriptif de division, tableau recapitulatif), la SOMME des categories de nb_lots_detail DOIT etre EXACTEMENT egale a nb_lots_total. Si l addition ne tombe pas juste, relire le tableau des lots ligne par ligne et ranger chaque lot oublie dans sa categorie (ou dans autres) — aucun lot ne doit disparaitre de la repartition. Exemple : RCP de 49 lots = 13 caves + 13 garages + 7 chambres de service + 13 logements (12 appartements + 1 studio) + 3 pieces isolees => logements=13, chambres_service=7, parkings=13, caves=13, autres=3, somme=49. Si les documents ne detaillent PAS les lots (ex : PV d AG donnant seulement "88 lots"), remplir uniquement nb_lots_total et laisser les categories a null — ne jamais inventer une repartition.
 - RÈGLE COMPOSITION vs MODIFICATIFS RCP : le chiffre EXPLICITEMENT ECRIT le plus RECENT fait foi, sans jamais calculer soi-meme :
@@ -1805,7 +2201,9 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
 - RÈGLE CRITIQUE — FONDS TRAVAUX : NE PAS CONFONDRE LOT ET COPRO :
   * finances.fonds_travaux = montant ANNUEL de la cotisation fonds travaux ALUR au niveau COPRO (extrait du PV d AG ou de la fiche synthetique : budget_vote.fonds_travaux). C est le budget global voté en AG pour alimenter le fonds.
   * pre_etat_date.fonds_travaux_alur = montant ACQUIS rattache au LOT du vendeur, a rembourser par l acheteur a la signature. C est la part capitalisee dans le fonds, PAS une cotisation annuelle.
-  * Si SEUL un pre-etat date est fourni (pas de PV d AG ni fiche synthetique), NE PAS recopier pre_etat_date.fonds_travaux_alur dans finances.fonds_travaux — ce sont deux donnees DIFFERENTES. finances.fonds_travaux doit rester null si aucun PV d AG ou fiche synthetique ne fournit le budget annuel copro du fonds.
+  * ⛔ INTERDICTION ABSOLUE, SANS AUCUNE CONDITION : pre_etat_date.fonds_travaux_alur ne doit JAMAIS etre recopie dans finances.fonds_travaux NI dans finances.fonds_travaux_total_constitue. C est un montant qui concerne LE VENDEUR, pas la copropriete. Cette interdiction s applique QUEL QUE SOIT le reste du dossier (avec ou sans PV d AG, avec ou sans fiche synthetique). finances.fonds_travaux reste null si aucun document ne donne la cotisation ANNUELLE de la COPROPRIETE.
+  * ⚠️ PIEGE DE LA PARTIE III DU PRE-ETAT DATE : cette partie enchaine des lignes de PORTEES DIFFERENTES sans le signaler. "Etat global des impayes de charges au sein de la copropriete" et "Etat global de la dette du Syndicat vis-a-vis des Fournisseurs" sont bien des montants COPRO. Mais la ligne suivante, "Fonds de travaux (Art 14-2...)", est la part rattachee AUX LOTS CEDES — c est ce que le decret impose d y faire figurer — et la ligne d apres, "Montant de la derniere cotisation appelee au cedant", concerne aussi le vendeur. Ne JAMAIS supposer que tout le bloc est au niveau copro : ces deux montants vont dans pre_etat_date.fonds_travaux_alur et pre_etat_date.fonds_travaux_trimestriel, jamais dans finances.
+  * CONTROLE DE VRAISEMBLANCE : le fonds de travaux d une COPROPRIETE se compare a son budget annuel (minimum legal 5%). Un montant de quelques centaines d euros face a un budget de plusieurs dizaines de milliers est forcement une part de lot, jamais un total copro. En cas de doute sur la portee d un montant : le ranger dans pre_etat_date (vendeur), jamais dans finances (copro).
   * Consequence scoring : fonds_travaux_statut se juge TOUJOURS cotisation de l exercice X contre budget du MEME exercice X (voir RÈGLE RESOLUTION FONDS TRAVAUX ci-dessous), JAMAIS a partir de pre_etat_date.fonds_travaux_alur (capital lot), et JAMAIS en croisant deux exercices differents. Si finances.fonds_travaux est null et non reconstituable, mettre fonds_travaux_statut = "non_mentionne", PAS "insuffisant".
 
 - RÈGLE RESOLUTION FONDS TRAVAUX (la resolution ADOPTEE fait foi) : quand un PV d AG contient une resolution ADOPTEE fixant la cotisation au fonds de travaux :
@@ -1959,7 +2357,7 @@ REGLE ANTI-DOUBLON avec points_forts et points_vigilance :
 - L avis_verimo ne refait PAS ces listes. Il synthetise en une lecture globale (verdict) + cadrage (contexte) + pistes pour approfondir (demarches).
 
 
-{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"cotisation_fonds_travaux_lot_annuelle":null,"fonds_rattaches_lot":{"avance_tresorerie":null,"fonds_travaux_alur":null,"source":null},"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_pct_vote":null,"fonds_travaux_resolution_adoptee":null,"fonds_travaux_total_constitue":null,"fonds_travaux_total_constitue_date":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|HISTORIQUE_TRAVAUX|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"asl_mentionnee":{"detectee":false,"statut":null,"source":null},"vie_asl":{"present":false,"structures":[]},"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"maisons":null,"chambres_service":null,"parkings":null,"caves":null,"commerces":null,"autres":null},"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]},"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}},"historique_travaux":{"present":false,"entreprise":{"nom":null,"siret":null,"contact":null,"assurance_decennale":null},"travaux":[{"poste":null,"description":null,"montant":null,"date":null}],"montant_total":null,"date_plus_recente":null,"garantie_decennale_possible":null},"assainissement":{"present":false,"type_reseau":"collectif|non_collectif|null","conforme":null,"date_controle":null,"observations":null},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
+{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"cotisation_fonds_travaux_lot_annuelle":null,"fonds_rattaches_lot":{"avance_tresorerie":null,"fonds_travaux_alur":null,"source":null},"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_pct_vote":null,"fonds_travaux_resolution_adoptee":null,"fonds_travaux_total_constitue":null,"fonds_travaux_total_constitue_date":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|HISTORIQUE_TRAVAUX|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"asl_mentionnee":{"detectee":false,"statut":null,"source":null},"vie_asl":{"present":false,"structures":[]},"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"maisons":null,"chambres_service":null,"parkings":null,"caves":null,"commerces":null,"autres":null},"lots_enumeres":[{"numero":null,"designation":"...","categorie":"logements|maisons|chambres_service|parkings|caves|commerces|autres","tantiemes":null}],"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[{"numero_lot":null,"designation":"...","tantiemes":null}],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]},"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}},"historique_travaux":{"present":false,"entreprise":{"nom":null,"siret":null,"contact":null,"assurance_decennale":null},"travaux":[{"poste":null,"description":null,"montant":null,"date":null}],"montant_total":null,"date_plus_recente":null,"garantie_decennale_possible":null},"assainissement":{"present":false,"type_reseau":"collectif|non_collectif|null","conforme":null,"date_controle":null,"observations":null},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
 }
 
 // Attend que le status soit files_ready puis lance l'analyse
@@ -2086,6 +2484,34 @@ async function runAnalyseWithData(
     // 🆕 RETRY CIBLE DPE/CARREZ — Avant suppression RGPD car on a encore besoin des fileIds.
     // Filet de sécurité si l'IA a oublié des détails critiques (1 seul appel max, non bloquant).
     if (mode !== 'document' && report && !result.error) {
+
+    // 📋 ETAT DESCRIPTIF — appel dedie AVANT la suppression RGPD des fichiers.
+    // On ne se fie pas a la liste produite par le grand prompt : elle est noyee
+    // parmi ~200 champs. Un appel court et cible la remplace quand elle manque
+    // ou qu'elle ne colle pas au total annonce par le document.
+    try {
+      const vieR = (report as Record<string, unknown>)?.vie_copropriete as Record<string, unknown> | undefined;
+      const docR = report as Record<string, unknown>;
+      const totalAnn = typeof vieR?.nb_lots_total === 'number' ? vieR.nb_lots_total as number
+                     : typeof docR?.total_lots === 'number' ? docR.total_lots as number : null;
+      const listeActuelle = Array.isArray(vieR?.lots_enumeres) ? vieR!.lots_enumeres as unknown[]
+                          : Array.isArray(docR?.lots_enumeres) ? docR.lots_enumeres as unknown[] : [];
+      const aUnRcp = JSON.stringify(docR?.documents_analyses ?? '').includes('REGLEMENT_COPRO')
+                  || JSON.stringify(docR?.documents_analyses ?? '').includes('RCP')
+                  || docR?.document_type === 'RCP' || docR?.document_type === 'MODIFICATIF_RCP';
+      const listeDouteuse = listeActuelle.length === 0 || (totalAnn != null && listeActuelle.length !== totalAnn);
+      if (aUnRcp && listeDouteuse && fileIds.length > 0) {
+        console.log(`[analyser-run] 📋 Liste des lots douteuse (${listeActuelle.length} vs ${totalAnn ?? '?'} annoncés) — extraction dédiée lancée`);
+        const lotsDedies = await extraireLotsRCP(fileIds, apiKey, totalAnn);
+        if (lotsDedies && lotsDedies.length > 0) {
+          if (vieR) vieR.lots_enumeres = lotsDedies; else docR.lots_enumeres = lotsDedies;
+          console.log(`[analyser-run] 📋 Liste remplacée : ${listeActuelle.length} → ${lotsDedies.length} lots`);
+        }
+      }
+    } catch (e) {
+      console.error('[analyser-run] Extraction dédiée EDD (non bloquant):', e);
+    }
+
       try {
         report = await retryDpeCarrez(report as RapportShape, fileIds, apiKey) as Record<string, unknown>;
       } catch (e) {
@@ -2118,6 +2544,18 @@ async function runAnalyseWithData(
     // (uniquement pour les modes complete et complement qui produisent
     //  la structure complete avec categories)
     // ══════════════════════════════════════════════════════════
+    // 🔢 MODE DOCUMENT — recomptage deterministe des lots d'un RCP analyse seul.
+    // Le mode document ne passe pas par recalculerCategories : il a donc son
+    // propre point d'entree, sinon l'analyse simple d'un RCP garderait le
+    // comptage approximatif du moteur (bug 41 lots au lieu de 39).
+    if (mode === 'document') {
+      try {
+        appliquerRecomptageDocument(report as Record<string, unknown>);
+      } catch (e) {
+        console.error('[analyser-run] Recomptage lots RCP (non bloquant):', e);
+      }
+    }
+
     if (mode !== 'document') {
       try {
         report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
@@ -2261,6 +2699,34 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
 
     // 🆕 RETRY CIBLE DPE/CARREZ — Avant suppression RGPD (non bloquant).
     if (mode !== 'document' && report && !result.error) {
+
+    // 📋 ETAT DESCRIPTIF — appel dedie AVANT la suppression RGPD des fichiers.
+    // On ne se fie pas a la liste produite par le grand prompt : elle est noyee
+    // parmi ~200 champs. Un appel court et cible la remplace quand elle manque
+    // ou qu'elle ne colle pas au total annonce par le document.
+    try {
+      const vieR = (report as Record<string, unknown>)?.vie_copropriete as Record<string, unknown> | undefined;
+      const docR = report as Record<string, unknown>;
+      const totalAnn = typeof vieR?.nb_lots_total === 'number' ? vieR.nb_lots_total as number
+                     : typeof docR?.total_lots === 'number' ? docR.total_lots as number : null;
+      const listeActuelle = Array.isArray(vieR?.lots_enumeres) ? vieR!.lots_enumeres as unknown[]
+                          : Array.isArray(docR?.lots_enumeres) ? docR.lots_enumeres as unknown[] : [];
+      const aUnRcp = JSON.stringify(docR?.documents_analyses ?? '').includes('REGLEMENT_COPRO')
+                  || JSON.stringify(docR?.documents_analyses ?? '').includes('RCP')
+                  || docR?.document_type === 'RCP' || docR?.document_type === 'MODIFICATIF_RCP';
+      const listeDouteuse = listeActuelle.length === 0 || (totalAnn != null && listeActuelle.length !== totalAnn);
+      if (aUnRcp && listeDouteuse && fileIds.length > 0) {
+        console.log(`[analyser-run] 📋 Liste des lots douteuse (${listeActuelle.length} vs ${totalAnn ?? '?'} annoncés) — extraction dédiée lancée`);
+        const lotsDedies = await extraireLotsRCP(fileIds, apiKey, totalAnn);
+        if (lotsDedies && lotsDedies.length > 0) {
+          if (vieR) vieR.lots_enumeres = lotsDedies; else docR.lots_enumeres = lotsDedies;
+          console.log(`[analyser-run] 📋 Liste remplacée : ${listeActuelle.length} → ${lotsDedies.length} lots`);
+        }
+      }
+    } catch (e) {
+      console.error('[analyser-run] Extraction dédiée EDD (non bloquant):', e);
+    }
+
       try {
         report = await retryDpeCarrez(report as RapportShape, fileIds, apiKey) as Record<string, unknown>;
       } catch (e) {
@@ -2291,6 +2757,18 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     // ══════════════════════════════════════════════════════════
     // RECALCUL DETERMINISTE DES NOTES DE CATEGORIES
     // ══════════════════════════════════════════════════════════
+    // 🔢 MODE DOCUMENT — recomptage deterministe des lots d'un RCP analyse seul.
+    // Le mode document ne passe pas par recalculerCategories : il a donc son
+    // propre point d'entree, sinon l'analyse simple d'un RCP garderait le
+    // comptage approximatif du moteur (bug 41 lots au lieu de 39).
+    if (mode === 'document') {
+      try {
+        appliquerRecomptageDocument(report as Record<string, unknown>);
+      } catch (e) {
+        console.error('[analyser-run] Recomptage lots RCP (non bloquant):', e);
+      }
+    }
+
     if (mode !== 'document') {
       try {
         report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
@@ -2360,6 +2838,52 @@ interface ExtraitDoc {
   extraction?: Record<string, unknown>;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   📋 LOTS RECONSTRUITS DEPUIS LES EXTRAITS (gros dossier)
+   ──────────────────────────────────────────────────────────────
+   L'etape de LECTURE ecrit un fait par lot, au format impose :
+       "LOT 27 | Aile A, RDC, appartement... | 1115/10000"
+   Elle lit UN document a la fois avec un prompt court (~1200 tokens) :
+   c'est l'etape la plus fiable de la chaine.
+
+   L'etape de SYNTHESE, elle, doit remplir ~200 champs avec un prompt
+   de ~21700 tokens. Lui redemander de recopier 38 lignes au milieu de
+   tout ca, c'est la ou la liste se deforme (observe : 42 lots au lieu
+   de 38, categories a 14/14/14).
+
+   Donc on ne lui redemande pas : le CODE relit les faits "LOT n | ..."
+   et reconstruit la liste. Zero appel supplementaire, zero cout,
+   deterministe. Le moteur n'intervient plus sur ce champ.
+══════════════════════════════════════════════════════════════ */
+function construireLotsDepuisExtraits(extraits: ExtraitDoc[]): LotEnumere[] {
+  const lots: LotEnumere[] = [];
+  const vus = new Set<string>();
+  for (const ex of extraits) {
+    if (ex?.statut !== 'ok' || !ex.extraction) continue;
+    // 🎯 FILTRE SOURCE : seul un REGLEMENT DE COPROPRIETE (ou son modificatif)
+    // porte l'etat descriptif de division. Un pre-etat date ou un compromis
+    // listent les lots DU VENDEUR (2 ou 3) — les prendre pour la composition de
+    // l'immeuble donnait "4 lots" sur une copro de 38. Observe en production.
+    const typeDoc = String((ex.extraction as Record<string, unknown>).type_detecte ?? '').toUpperCase();
+    if (typeDoc !== 'REGLEMENT_COPRO' && typeDoc !== 'MODIFICATIF_RCP') continue;
+    const faits = Array.isArray((ex.extraction as Record<string, unknown>).faits)
+      ? (ex.extraction as Record<string, unknown>).faits as Array<Record<string, unknown>>
+      : [];
+    for (const f of faits) {
+      const d = typeof f?.description === 'string' ? f.description.trim() : '';
+      if (!d || /^PREAMBULE NON COMPTABLE/i.test(d)) continue;
+      // "LOT 27 | designation | tantiemes"  (le separateur | est impose par le prompt)
+      const m = d.match(/^LOT\s+(\d+)\s*\|\s*([^|]*?)\s*(?:\|\s*(.*))?$/i);
+      if (!m) continue;
+      const numero = m[1];
+      if (vus.has(numero)) continue;
+      vus.add(numero);
+      lots.push({ numero, designation: (m[2] || '').trim(), tantiemes: (m[3] || '').trim() || null });
+    }
+  }
+  return lots;
+}
+
 function buildMapPrompt(): string {
   return `Tu es le moteur d'extraction documentaire de Verimo, service d'analyse de biens immobiliers.
 On te donne UN SEUL document. Ta mission : retranscrire TOUS les faits qu'il contient, sans jugement d'importance. Tu n'écris pas de rapport, tu ne donnes pas d'avis — tu extrais.
@@ -2378,6 +2902,16 @@ PRÉCISIONS PAR TYPE (si applicable) :
 - DDT / Carrez : surface Carrez totale ET le détail pièce par pièce si présent (nom de pièce + surface). Chaque diagnostic du dossier (électricité, gaz, amiante, plomb, termites, ERP) avec son résultat et ses anomalies.
 - Pré-état daté / état daté : TOUTES les rubriques financières (impayés vendeur, fonds travaux ALUR du lot, avances, honoraires syndic, charges par exercice N-1/N-2, impayés globaux copro, dettes fournisseurs, procédures).
 - Règlement de copro / modificatifs : destination de l'immeuble, clauses restrictives (location, activité, travaux), tantièmes du lot si identifiable, servitudes.
+- ÉTAT DESCRIPTIF DE DIVISION (dans un RCP, un modificatif ou un acte) — EXTRACTION OBLIGATOIRE LOT PAR LOT : si le document contient la liste numérotée des lots ("LOT NUMERO UN...", "LOT NUMERO DEUX...", ou un tableau récapitulatif des lots), créer UN fait PAR LOT NUMÉROTÉ, sans exception et sans regroupement, au format exact : "LOT <numéro> | <désignation textuelle du document> | <tantièmes>". Exemple : "LOT 1 | Au sous-sol, une cave C1 | 5/10000", "LOT 27 | Aile A, rez-de-chaussée, appartement : entrée, cuisine, séjour, trois chambres | 1115/10000". Ne jamais s'arrêter en cours de liste, ne jamais écrire "et ainsi de suite" : un immeuble divisé en N lots donne N faits, quel que soit N. Le nombre de lots est celui écrit dans le document en cours — jamais un nombre vu ailleurs. Noter aussi le total annoncé s'il est écrit (formulation type "divisé en N lots numérotés de 1 à N") dans chiffres_cles.
+  ⚠️ NE PAS extraire comme des lots la description générale de l'immeuble en préambule (type "l'ensemble comprendra un appartement et une chambre à chaque étage") : elle décrit LES MÊMES locaux que l'état descriptif. Si ce préambule existe, le noter en UN SEUL fait explicitement préfixé "PREAMBULE NON COMPTABLE : ..." pour qu'il ne soit jamais confondu avec la liste des lots.
+- CARNET D ENTRETIEN : date de mise a jour, equipements de l immeuble (chauffage, ascenseur, VMC, toiture...) avec pour chacun son etat, son annee de pose et son contrat d entretien ; TRAVAUX REALISES un par un (nature, annee, montant, entreprise) ; contrats en cours (prestataire, objet, echeance) ; diagnostics techniques des parties communes ; references des assurances de l immeuble.
+- DTG / PPT (diagnostic technique global, plan pluriannuel de travaux) : date et auteur du diagnostic, etat apparent de chaque poste du bati, liste des TRAVAUX PRECONISES avec pour chacun le montant estime, l echeance et le degre d urgence, montant TOTAL des travaux projetes, situation du fonds de travaux au regard de ce montant.
+- FICHE SYNTHETIQUE DE COPROPRIETE : nombre total de lots et sa ventilation, numero d immatriculation au registre, identite du syndic, budget previsionnel, montant du fonds de travaux constitue, impayes de charges, nombre de coproprietaires debiteurs, presence de procedures en cours.
+- TAXE FONCIERE : annee, montant total, part communale / departementale / TEOM, references cadastrales, identite du redevable.
+- ASL / AFUL / UNION D ASL : denomination, objet, perimetre, cotisation annuelle appelee et sa base de repartition, organes de gestion, travaux ou charges votes, obligations imposees aux membres.
+- ASSURANCE (immeuble ou dommages-ouvrage) : assureur, numero de police, garanties couvertes, montant de la prime, franchises, periode de validite, sinistres declares.
+- TITRE DE PROPRIETE / ACTE DE VENTE ANTERIEUR : date de l acte et notaire, identite du precedent vendeur et de l acquereur, prix payé, designation des lots, servitudes et charges grevant le bien, origine de propriete anterieure.
+- COMPROMIS / PROMESSE DE VENTE / ACTE DE VENTE — EXTRACTION OBLIGATOIRE, ce document est central pour l acheteur : identite du VENDEUR et de l ACHETEUR, notaire du vendeur, notaire de l acquereur, agence immobiliere et montant de ses honoraires (a la charge de qui), PRIX DE VENTE (net vendeur, frais d agence, prix total), montant du depot de garantie / sequestre, date de signature du compromis, date limite de reiteration chez le notaire, duree du delai de retractation, CONDITIONS SUSPENSIVES une par une (pret : montant, taux max, duree, date butoir de l offre ; urbanisme ; servitudes ; autres) avec pour chacune sa date butoir, designation du BIEN vendu (adresse complete, numeros de lots, surface, etage, annexes cedees), mobilier inclus et sa valeur, clauses particulieres et penalites. Reprendre les montants EXACTEMENT comme ecrits, sans arrondir.
 - Appels de charges / budgets : montants par période, budget total copro, fonds travaux.
 
 FORMAT DE SORTIE — JSON STRICT, rien d'autre (pas de markdown, pas de commentaire) :
@@ -2623,6 +3157,36 @@ async function runPhaseReduce(
       return;
     }
 
+    // 📋 LOTS — on ne fait PAS confiance a la synthese pour recopier la liste :
+    // elle doit remplir ~200 champs et la deforme (42 lots au lieu de 38 observe
+    // en production). L'etape de lecture, elle, a traite le RCP seul avec un
+    // prompt court. On reconstruit donc la liste depuis SES faits, en code.
+    try {
+      const lotsLus = construireLotsDepuisExtraits(extraits);
+      const vie = (report as Record<string, unknown>).vie_copropriete as Record<string, unknown> | undefined;
+      if (vie && lotsLus.length > 0) {
+        const listeSynthese = Array.isArray(vie.lots_enumeres) ? vie.lots_enumeres as LotEnumere[] : [];
+        const totalAnn = typeof vie.nb_lots_total === 'number' ? vie.nb_lots_total as number : null;
+        // 🧭 ARBITRAGE — on ne remplace pas aveuglement. Le total annonce par le
+        // document tranche ; a defaut, la liste la plus fournie l'emporte. Une
+        // liste courte ne doit JAMAIS ecraser une liste longue : c'est ce qui a
+        // transforme 38 lots en 4.
+        let choisie = listeSynthese;
+        let motif = 'synthèse conservée';
+        if (totalAnn != null && lotsLus.length === totalAnn && listeSynthese.length !== totalAnn) {
+          choisie = lotsLus; motif = `lecture (colle au total annoncé ${totalAnn})`;
+        } else if (totalAnn != null && listeSynthese.length === totalAnn) {
+          motif = `synthèse (colle au total annoncé ${totalAnn})`;
+        } else if (lotsLus.length > listeSynthese.length) {
+          choisie = lotsLus; motif = 'lecture (liste plus complète)';
+        }
+        if (choisie.length > 0) vie.lots_enumeres = choisie;
+        console.log(`[analyser-run][REDUCE] 📋 Lots — lecture: ${lotsLus.length} | synthèse: ${listeSynthese.length} | annoncé: ${totalAnn ?? '?'} → ${motif}`);
+      }
+    } catch (e) {
+      console.error('[analyser-run][REDUCE] Reconstruction lots (non bloquant):', e);
+    }
+
     // Post-traitement déterministe — STRICTEMENT identique au v7
     try {
       report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
@@ -2689,6 +3253,23 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+
+  // ══════════════════════════════════════════════════════════
+  // 🔒 FONCTION INTERNE — appelable uniquement par :
+  //    • analyser        (l.~662)
+  //    • analyser-retry  (l.~487)
+  //    • elle-même       (self-invoke phase REDUCE, l.~2498)
+  // Ces trois appelants envoient DÉJÀ la clé service_role :
+  // aucun autre fichier n'est à modifier.
+  // Sans ce contrôle, l'URL est ouverte à tout Internet → analyses
+  // gratuites illimitées sur la facture Anthropic + écrasement du
+  // rapport de n'importe quel client.
+  // ══════════════════════════════════════════════════════════
+  const bearer = (req.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
+  if (!supabaseServiceKey || bearer !== supabaseServiceKey) {
+    console.warn('[analyser-run] 🚫 Appel externe refusé');
+    return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...CORS, 'Content-Type': 'application/json' } });
+  }
 
   if (!apiKey) return new Response(JSON.stringify({ error: 'config_error' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
