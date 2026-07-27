@@ -4538,7 +4538,10 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
   const counts = {
     all: analyses.length,
     completed: analyses.filter(a => a.status === 'completed').length,
-    processing: analyses.filter(a => a.status === 'processing' || a.status === 'pending' || a.status === 'queued').length,
+    // 🆕 'files_ready' = PDF envoyes, analyse lancee. Il manquait ici et dans les
+    // badges : toute analyse dans cette fenetre tombait dans la branche par defaut
+    // et s'affichait "Échouée" avant de basculer en "Complétée". Trompeur.
+    processing: analyses.filter(a => a.status === 'processing' || a.status === 'pending' || a.status === 'queued' || a.status === 'files_ready').length,
     failed: analyses.filter(a => a.status === 'failed' || a.status === 'error').length,
   };
 
@@ -4634,7 +4637,7 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
                     {
                       a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge>
                       : a.status === 'queued' ? <Badge color="#d97706" bg="#fffbeb">⏳ En queue</Badge>
-                      : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
+                      : (a.status === 'processing' || a.status === 'pending' || a.status === 'files_ready') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
                       : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>
                     }
                     {isFailed && a.progress_message && (
@@ -4785,7 +4788,7 @@ function AnalysisDetailView({ analysis, onBack, onOpenUser, onReload }: {
                 <span style={{ fontSize: 12, color: '#64748b' }}>État</span>
                 {analysis.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge>
                   : analysis.status === 'queued' ? <Badge color="#d97706" bg="#fffbeb">⏳ En queue</Badge>
-                  : (analysis.status === 'processing' || analysis.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
+                  : (analysis.status === 'processing' || analysis.status === 'pending' || analysis.status === 'files_ready') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
                   : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>}
               </div>
               {analysis.score != null && (
@@ -5896,8 +5899,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setProSubscriptions(subMap);
     setProCancelScheduled(cancelScheduled);
     setProCanceled(canceled);
+    // 🆕 Un compte peut etre actif SANS invitation acceptee : mot de passe deja
+    // defini, lien de reinitialisation, activation manuelle depuis l'admin...
+    // accepted_at n'est ecrit que par le parcours setup_pro_account. On retient
+    // donc les DEUX signaux, sinon des comptes bien actifs restent sans badge.
     const activatedSet = new Set<string>();
     (invs || []).forEach((inv: any) => activatedSet.add(inv.profile_id));
+    (data || []).forEach((c: any) => { if (c.pro_onboarding_done === true) activatedSet.add(c.id); });
     setProActivated(activatedSet);
 
     // 🏛 Map des infos agence par user_id
@@ -6955,7 +6963,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 })()}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-                {invitations.some(inv => inv.accepted_at) ? (
+                {(invitations.some(inv => inv.accepted_at) || selected.pro_onboarding_done === true) ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 700 }}>
                     <CheckCircle size={12} /> Compte activé
                   </span>
@@ -7170,17 +7178,23 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             </div>
 
             {/* Invitations */}
-            {invitations.length > 0 && (
-              <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: invitations[0].accepted_at ? '#f0fdf4' : '#fffbeb', border: `1px solid ${invitations[0].accepted_at ? '#bbf7d0' : '#fde68a'}` }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: invitations[0].accepted_at ? '#16a34a' : '#d97706' }}>
-                  {invitations[0].accepted_at
-                    ? `✅ Compte activé le ${fmtDateTime(invitations[0].accepted_at)}`
-                    : invitations[0].sent_at
-                      ? `📧 Mail envoyé le ${fmtDateTime(invitations[0].sent_at)} — en attente d'activation`
-                      : '⏳ Invitation créée, mail non encore envoyé'}
-                </div>
-              </div>
-            )}
+            {invitations.length > 0 && (() => {
+                /* 🆕 Actif = invitation acceptée OU onboarding terminé par une autre voie. */
+                const actif = !!invitations[0].accepted_at || selected.pro_onboarding_done === true;
+                return (
+                  <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: actif ? '#f0fdf4' : '#fffbeb', border: `1px solid ${actif ? '#bbf7d0' : '#fde68a'}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: actif ? '#16a34a' : '#d97706' }}>
+                      {invitations[0].accepted_at
+                        ? `✅ Compte activé le ${fmtDateTime(invitations[0].accepted_at)}`
+                        : actif
+                          ? '✅ Compte actif (activé sans passer par le lien d\'invitation)'
+                          : invitations[0].sent_at
+                            ? `📧 Mail envoyé le ${fmtDateTime(invitations[0].sent_at)} — en attente d'activation`
+                            : '⏳ Invitation créée, mail non encore envoyé'}
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
 
           {/* 🆕 Bloc Demandes de rappel */}
