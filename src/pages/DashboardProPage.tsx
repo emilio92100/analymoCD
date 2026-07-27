@@ -23,6 +23,7 @@ import CallbackRequestModal from '../components/CallbackRequestModal';
 import NouvelleAnalyse from './dashboard/NouvelleAnalyse';
 import Compare from './dashboard/Compare';
 import Support from './dashboard/Support';
+import Notifications from './dashboard/Notifications';
 import Aide from './dashboard/Aide';
 import MonEquipePage from './MonEquipePage';
 
@@ -788,11 +789,11 @@ function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, n
         <AnimatePresence>
         {bellOpen && (
           <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
-            style={{ position: 'absolute', right: -60, top: 'calc(100% + 8px)', width: 320, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+            style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 440, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
             </div>
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
               {(!notifications || notifications.length === 0) ? (
                 <div style={{ padding: '24px 16px', textAlign: 'center' }}>
                   <Bell size={20} style={{ color: '#e2e8f0', marginBottom: 8 }} />
@@ -832,6 +833,13 @@ function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, n
                 })
               )}
             </div>
+            {/* 🆕 Acces a l'historique complet */}
+            <button onClick={() => { setBellOpen(false); window.location.href = '/dashboard/notifications'; }}
+              style={{ width: '100%', padding: '13px 16px', borderTop: '1px solid #f0f5f9', background: '#fbfdff', border: 'none', borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: '#f0f5f9', color: '#2a7d9c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' }}
+              onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; }}
+              onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fbfdff'; }}>
+              Consulter toutes les notifications →
+            </button>
           </motion.div>
         )}
         </AnimatePresence>
@@ -8010,7 +8018,8 @@ export default function DashboardProPage() {
   const path = location.pathname;
   const dossierMatch = path.match(/^\/dashboard\/dossier\/(.+)$/);
   const title = dossierMatch ? 'Détail du dossier'
-    : proNavItems.find(i => i.to === path)?.label || 'Mon espace pro';
+    : proNavItems.find(i => i.to === path)?.label
+    || (path === '/dashboard/notifications' ? 'Notifications' : 'Mon espace pro');
 
   // Titres raccourcis pour la topbar mobile
   const MOBILE_TITLES: Record<string, string> = {
@@ -8059,6 +8068,7 @@ export default function DashboardProPage() {
     if (path === '/dashboard/compte') return <ComptePro proProfile={proProfile} onUpdate={loadData} />;
     if (path === '/dashboard/aide') return <Aide />;
     if (path === '/dashboard/support') return <Support />;
+    if (path === '/dashboard/notifications') return <Notifications/>;
     return <HomeViewPro proProfile={proProfile} subscription={subscription} proCredits={proCredits} analyses={analyses} shares={shares} folders={folders} hasEverSubscribed={hasEverSubscribed} />;
   };
 
