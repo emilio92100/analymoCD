@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle, RefreshCw, Search } from 'lucide-react';
+import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle, RefreshCw, Search, Check, X } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import DocumentRenderer from './DocumentRenderer';
 import { createAnalyse, markAnalyseFailed, type TypeBien } from '../../lib/analyses';
@@ -863,11 +863,47 @@ export default function NouvelleAnalyse() {
         <Sparkles size={16} /> Lancer l&apos;analyse {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
       </button>
 
-      {/* Formats acceptés — déplacé après le bouton pour ne pas encombrer */}
-      <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
-        ✅ <strong>Formats acceptés :</strong> PDF natif ou scanné<br />
-        ❌ <strong>Non supportés :</strong> Word (.doc/.docx) — convertissez-les en PDF d'abord<br />
-        🔒 Les PDF protégés par mot de passe doivent être déverrouillés avant l'upload
+      {/* Conditions de dépôt — trois règles, trois lignes lisibles.
+          Avant : trois <br /> dans un bloc gris pâle en 12px, illisible et
+          confondu avec du texte d'aide facultatif. Ce sont pourtant les trois
+          causes n°1 de document rejeté. */}
+      <div style={{ marginBottom: 18, padding: '16px 18px', borderRadius: 14, background: '#fff', border: '1px solid #e8eef3', boxShadow: '0 1px 3px rgba(15,45,61,0.04)' }}>
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 13 }}>
+          Avant de déposer vos documents
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 11 }}>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Check size={13} style={{ color: '#16a34a' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>PDF natif ou scanné</span>
+              <span style={{ fontSize: 13.5, color: '#64748b' }}> — les deux fonctionnent</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <X size={13} style={{ color: '#dc2626' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>Word et images refusés</span>
+              <span style={{ fontSize: 13.5, color: '#64748b' }}> — convertissez-les en PDF avant de les déposer</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: '#fff7ed', border: '1px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Lock size={13} style={{ color: '#c2410c' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>PDF protégé par mot de passe</span>
+              <span style={{ fontSize: 13.5, color: '#64748b' }}> — déverrouillez-le, sinon il ne pourra pas être lu</span>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {/* Fichiers sélectionnés — blocs en bas */}
