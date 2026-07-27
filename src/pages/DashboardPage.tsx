@@ -293,8 +293,10 @@ function RapportSupprimeModal({ open, onClose }: { open: boolean; onClose: () =>
 
 function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead, onClickNotification }: {
   onMenuClick:()=>void; title:string;
-  unreadCount?: number; notifications?: { id: string; analysisId: string; title: string; createdAt: string; read: boolean }[];
-  onMarkAllRead?: () => void; onClickNotification?: (analysisId: string) => void;
+  unreadCount?: number; notifications?: { id: string; analysisId: string; title: string; createdAt: string; read: boolean; link?: string }[];
+  // 🆕 `link` : certaines notifications ne pointent pas vers un rapport (message
+  // du support par ex.). Le clic doit alors mener a la page indiquee.
+  onMarkAllRead?: () => void; onClickNotification?: (analysisId: string, link?: string) => void;
 }) {
   const { name, email } = useUser();
   const navigate = useNavigate();
@@ -368,13 +370,13 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
                 </div>
               ) : (
                 notifications.slice(0, 10).map(n => {
-                  const isAnalysis = !!n.analysisId;
+                  const isAnalysis = !!n.analysisId || !!n.link;
                   const rawMsg = (n as unknown as Record<string, string>).message || '';
                   const isUpdate = isAnalysis && (/mis à jour/i.test(n.title || '') || /mis à jour/i.test(rawMsg));
                   const bienLabel = rawMsg.replace(/\s*—\s*(consulter le rapport|voir le rapport mis à jour)\s*$/i, '').trim();
                   return (
                   <button key={n.id}
-                    onClick={() => { setBellOpen(false); onClickNotification?.(n.analysisId); }}
+                    onClick={() => { setBellOpen(false); onClickNotification?.(n.analysisId, n.link); }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
                       background: n.read ? '#fff' : '#f0f7fb', border: 'none', borderBottom: '1px solid #f0f5f9',
@@ -586,9 +588,9 @@ export default function DashboardPage() {
   const [rapportSupprime, setRapportSupprime] = useState(false);
 
   // ─── Notifications : rapports terminés + notifications BDD ────────────────────
-  type PartNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
+  type PartNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean; link?: string };
   const [notifications, setNotifications] = useState<PartNotification[]>([]);
-  const [dbNotifications, setDbNotifications] = useState<Array<{ id: string; title: string; message: string | null; read: boolean; created_at: string; analysis_id: string | null }>>([]);
+  const [dbNotifications, setDbNotifications] = useState<Array<{ id: string; title: string; message: string | null; read: boolean; created_at: string; analysis_id: string | null; link?: string | null }>>([]);
   const [notifToast, setNotifToast] = useState<string | null>(null);
   const prevAnalysesRef = useRef<{ id: string; status: string }[]>([]);
 
@@ -745,9 +747,12 @@ export default function DashboardPage() {
         <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}
           unreadCount={unreadCount} notifications={[
             ...notifications,
-            ...dbNotifications.map(n => ({ id: n.id, analysisId: n.analysis_id || '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
+            ...dbNotifications.map(n => ({ id: n.id, analysisId: n.analysis_id || '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read, link: n.link || '' })),
           ]} onMarkAllRead={markAllRead}
-          onClickNotification={async (id) => {
+          onClickNotification={async (id, link) => {
+            // 🆕 Notification porteuse d'un lien (message du support...) : on y va
+            // directement, sans passer par la verification d'existence d'un rapport.
+            if (link) { window.location.href = link; return; }
             // Une notification doit TOUJOURS repondre. Sans identifiant d'analyse
             // (colonne analysis_id vide), le clic ne faisait rien du tout : ni
             // navigation, ni message. On explique au lieu de rester muet.
