@@ -8,6 +8,7 @@ import type { AnalyseProgress } from '../lib/analyse-client';
 import { supabase } from '../lib/supabase';
 import DocumentRenderer, { RendererCompromis } from './dashboard/DocumentRenderer';
 import SignalementComplementModal from '../components/SignalementComplementModal';
+import DocumentsNonTraitesModal, { type DocNonTraite } from '../components/DocumentsNonTraitesModal';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
   Shield, FileText, FileSignature, Gavel, Info, Star, Paperclip,
@@ -5374,6 +5375,9 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   // 🆕 Un ticket support est déjà ouvert pour ce dossier : on n'invite plus à
   // signaler, on indique que la demande est en cours de traitement.
   const [signalementEnvoye, setSignalementEnvoye] = useState(false);
+  // 🆕 Documents que le moteur n'a pas pu exploiter (envoi, lecture ou complement).
+  const [docsNonTraites, setDocsNonTraites] = useState<DocNonTraite[]>([]);
+  const [showDocsNonTraites, setShowDocsNonTraites] = useState(false);
 
   const loadRapport = useCallback(async () => {
     setLoading(true);
@@ -5448,6 +5452,14 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
       // 🆕 L'état « bloqué » doit être connu DÈS LE CHARGEMENT. Sans ça, un simple
       // rafraîchissement de page redonnait au client un bouton « Compléter mon
       // dossier » actif qui ne pouvait que se faire refuser par le serveur.
+      // 🆕 Documents non traités : la popup ne s'ouvre qu'une fois (drapeau `vu`),
+      // pour informer sans harceler à chaque consultation du rapport.
+      const dnt = (data as Record<string, unknown>).documents_non_traites as
+        { vu?: boolean; items?: DocNonTraite[] } | null | undefined;
+      const items = Array.isArray(dnt?.items) ? dnt!.items! : [];
+      setDocsNonTraites(items);
+      if (items.length > 0 && !dnt?.vu && !isShared) setShowDocsNonTraites(true);
+
       const tentatives = Number((data as Record<string, unknown>).complement_attempts || 0);
       const bloque = tentatives >= 3;
       setComplementBloque(bloque);
@@ -5822,6 +5834,19 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
               onSuccess={() => { setShowComplement(false); loadRapport(); }}
               onBlocked={() => { setComplementBloque(true); setComplementNotice('failed'); }}
               backUrl={backUrl}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* 🆕 Popup « documents non analysés » — à l'ouverture du rapport */}
+        <AnimatePresence>
+          {showDocsNonTraites && rapport && (
+            <DocumentsNonTraitesModal
+              analyseId={rapport.id}
+              documents={docsNonTraites}
+              complementDisponible={!rapport.complement_date && !complementBloque && !!rapport.regeneration_deadline && new Date(rapport.regeneration_deadline).getTime() > Date.now()}
+              onComplement={() => { setShowDocsNonTraites(false); setShowComplement(true); }}
+              onClose={() => setShowDocsNonTraites(false)}
             />
           )}
         </AnimatePresence>
