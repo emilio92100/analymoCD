@@ -7,11 +7,12 @@ import { lancerAnalyseEdge } from '../lib/analyse-client';
 import type { AnalyseProgress } from '../lib/analyse-client';
 import { supabase } from '../lib/supabase';
 import DocumentRenderer, { RendererCompromis } from './dashboard/DocumentRenderer';
+import SignalementComplementModal from '../components/SignalementComplementModal';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
   Shield, FileText, FileSignature, Gavel, Info, Star, Paperclip,
   RefreshCw, ChevronDown, Copy, Check,
-  Home, TrendingDown, Upload, X, Clock, Landmark,
+  Home, TrendingDown, Upload, X, Clock, Landmark, LifeBuoy,
 } from 'lucide-react';
 
 /* ══════════════════════════════════
@@ -4773,12 +4774,13 @@ function toTravaux(arr: unknown[]): any[] {
 /* ══════════════════════════════════
    POPUP COMPLÉTER LE DOSSIER
 ══════════════════════════════════ */
-function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backUrl }: {
+function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, onBlocked, backUrl }: {
   analyseId: string;
   profil: 'rp' | 'invest';
   rapport: Record<string, unknown>;
   onClose: () => void;
   onSuccess: () => void;
+  onBlocked?: () => void;
   backUrl?: string;
 }) {
   const [files, setFiles] = useState<File[]>([]);
@@ -4873,6 +4875,11 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess, backU
       // 🆕 Surcharge Claude — mise en queue, l'analyse sera retentée automatiquement
       // Le client sera prévenu par email dès que c'est prêt
       setQueued(result.queuedMessage || '⏳ Votre dossier a bien été reçu. Notre service connaît un pic d\'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons par email dès que c\'est terminé.');
+    } else if (result.error === 'complement_blocked') {
+      // 🆕 Plafond de 3 tentatives : on ferme ce popup et on laisse le bandeau
+      // proposer le signalement au support (le rapport d'origine reste intact).
+      onBlocked?.();
+      onClose();
     } else {
       setError(result.errorMessage || 'Une erreur est survenue. Réessayez.');
       setUploading(false);
@@ -5345,6 +5352,10 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   // + polling de rafraîchissement) | 'failed' = dernière mise à jour non aboutie (rapport
   // d'origine restauré, on invite à réessayer) | null = rien à signaler.
   const [complementNotice, setComplementNotice] = useState<null | 'running' | 'failed'>(null);
+  // 🆕 Après 3 tentatives de complément, le serveur refuse (complement_blocked) :
+  // le bandeau bascule du bouton « Réessayer » vers « Signaler au support ».
+  const [complementBloque, setComplementBloque] = useState(false);
+  const [showSignalement, setShowSignalement] = useState(false);
 
   const loadRapport = useCallback(async () => {
     setLoading(true);
@@ -5628,11 +5639,19 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <button
-                onClick={() => setShowComplement(true)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#d97706', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                <RefreshCw size={12} /> Réessayer
-              </button>
+              {complementBloque ? (
+                <button
+                  onClick={() => setShowSignalement(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#0f2d3d', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  <LifeBuoy size={12} /> Signaler au support
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowComplement(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#d97706', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  <RefreshCw size={12} /> Réessayer
+                </button>
+              )}
               <button
                 onClick={() => setComplementNotice(null)}
                 title="Masquer"
@@ -5735,7 +5754,19 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
               rapport={rapport as unknown as Record<string, unknown>}
               onClose={() => setShowComplement(false)}
               onSuccess={() => { setShowComplement(false); loadRapport(); }}
+              onBlocked={() => { setComplementBloque(true); setComplementNotice('failed'); }}
               backUrl={backUrl}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* 🆕 Popup de signalement au support (après 3 tentatives) */}
+        <AnimatePresence>
+          {showSignalement && rapport && (
+            <SignalementComplementModal
+              analyseId={rapport.id}
+              adresse={safeStr(rapport.adresse)}
+              onClose={() => setShowSignalement(false)}
             />
           )}
         </AnimatePresence>
