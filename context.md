@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 25 juillet 2026
+# VERIMO — Contexte projet — 27 juillet 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -26,7 +26,92 @@
 
 ---
 
-## 🆕 DERNIÈRE SESSION — 25 juillet 2026 ⭐⭐⭐
+## 🆕 DERNIÈRE SESSION — 27 juillet 2026 ⭐⭐⭐
+
+> Session longue : audit sécurité + fiabilisation lots + UX. ⚠️ Fichiers **CUMULATIFS** — toujours déployer la DERNIÈRE version livrée.
+> 🧭 **Leçon de méthode n°1** : plusieurs faux diagnostics posés sur captures d'écran avant d'interroger la base. **Requêter `analyses.result` en SQL AVANT de corriger.**
+> 🧭 **Leçon de méthode n°2** : une régression a été introduite EN PRODUCTION pendant la session (prompt de complément gonflé → timeout client). **Mesurer l'impact TEMPS d'un ajout de prompt avant de livrer.**
+
+### ✅ Chantiers livrés
+
+**1. SÉCURITÉ — 3 failles fermées 🔴🔴**
+- `analyser` : le header `Authorization` était testé en **présence seulement** (`Bearer nimportequoi` passait). Ajout `supabaseAdmin.auth.getUser(jwt)` réel + contrôle de **propriété** de l'analyse (client service_role = RLS bypassée) étendu aux **collègues de la même agence** (`agence_members`, `removed_at is null`) + validation des `storagePaths` (préfixe `analyseId/` imposé, `..` refusé) : le body pouvait désigner les PDF d'une autre analyse → download **et `.remove()`** en service_role.
+- `analyser-run` : aucune auth → URL ouverte à tout Internet (analyses gratuites sur la facture Anthropic + écrasement de rapport via `mode:'complement'`). Ajout d'un contrôle `Authorization === SERVICE_ROLE_KEY`. Les 3 appelants (`analyser`, `analyser-retry`, self-invoke REDUCE) l'envoient déjà → **aucun autre fichier à modifier**.
+- `admin-user-management` : `generateToken()` utilisait `Math.random()` (xorshift128+, prédictible) pour les **share_token de rapports**, les **tokens d'invitation pro** ET les **mots de passe temporaires** (8 appels). Remplacé par `crypto.getRandomValues()` avec rejet des octets ≥ 228 (anti-biais modulo). Testé 20 000 tirages : 48 car., 100 % uniques, 57/57 caractères, écart max 2,15 %.
+- ⚠️ Le verrou d'`analyser-run` s'appuie sur la clé service_role **toujours pas tournée** (item de mai). Poser le verrou reste utile, mais **la rotation devient prioritaire**.
+
+**2. Composition des lots — chaîne complète (cas réels : Floralies d'Auteuil 39→38, Solférino 38 vs 40)**
+- Le moteur **lisait bien** l'état descriptif ; il **comptait mal**. Principe appliqué (identique au recalcul de score) : **le moteur transcrit, le code compte**.
+- `analyser-run` : nouveau champ `vie_copropriete.lots_enumeres[]` `{numero, designation, categorie, tantiemes}` (idem `lots_detail` en mode document) + `recompterLots()` déterministe.
+- **Filtres** : entrée sans numéro = artefact de saut de page (bloc orphelin type « Jouissance de la partie du jardin… 1.211/10.000èmes » = fin du lot précédent) · numéro déjà vu = report de page · numéro hors plage `1..nb_lots_total`.
+- **♻️ Lots remplacés par modificatif** (découverte majeure) : quand un modificatif divise un lot (duplex → 2 apparts, cave → « 7 » et « 7 bis »), les nouveaux lots sont numérotés **à la suite** et l'original coexiste dans l'acte → double comptage. **Détection par les tantièmes** : la somme doit valoir le dénominateur ; l'excédent identifie exactement les lots remplacés. Cas réel Solférino : 42 lots / **120 023 sur 100 000** → excédent 20 023 = duplex (19 973) + cave (50) → **40 lots, 100 000/100 000**, chiffre confirmé par le pré-état daté du syndic.
+- **🛡️ Garde-fou anti-écrasement** (bug introduit puis corrigé le jour même) : si > 50 % des lots n'ont ni `categorie` ni `designation`, le recomptage les mettait tous dans « autres » et **écrasait une bonne répartition du moteur** (observé en complément : 12/14/12 écrasé par 38 « autres »). On ne remplace que si le recomptage est **meilleur**.
+- `RapportPage` : mention « **Répartition indicative** » quand `nb_lots_detail_verifie === false`. Le total reste présenté comme fiable, la ventilation comme à vérifier.
+
+**3. ⚠️ Prompt de COMPLÉMENT — modif faite PUIS ANNULÉE le même jour (régression prod) 🔴**
+- Constat de départ (juste) : `buildComplementPrompt` faisait **617 tokens** contre 22 173 pour l'analyse complète, et disait *« applique les mêmes règles de notation »* **sans les fournir**. D'où lots dans « autres » et blocs à moitié vides.
+- Correction tentée : injecter `buildSystemPrompt('complete_ref')` → **~21 900 tokens**.
+- 💥 **RÉSULTAT EN PRODUCTION : 2 TIMEOUTS sur un dossier client** (602a51fa, 15h21 et 15h45). Le complément est **single-call** et reçoit déjà le rapport existant en JSON (énorme pour un dossier MAP-REDUCE) + jusqu'à 5 PDFs. +21 000 tokens de consignes ET demande de régénérer la structure complète → temps de génération explosé, seul facteur qui compte face au mur des ~400 s.
+- ✅ **ÉTAT FINAL : prompt court restauré (~1 060 tokens)** = version d'origine + **uniquement la règle des 7 catégories de lots** (celle qui manquait vraiment) + consigne de conserver `lots_enumeres` existant.
+- **Compromis assumé** : le complément reste moins complet qu'une analyse complète sur les documents complexes, mais **il aboutit**.
+- ✅ Confirmé par les logs : le complément passe bien par `recalculerCategories` + `validateDiagsManquants` (garde `mode !== 'document'`) — score recalculé, catégories, diags manquants fonctionnent déjà.
+- 🎯 **Piste pour plus tard** : le complément a besoin des règles métier mais ne peut pas absorber 22 000 tokens. Solution possible = n'injecter que les blocs concernés par les documents ajoutés (détectés à l'upload).
+
+**4. Prompt de LECTURE (MAP) — 6 → 13 types de documents couverts**
+- ⚠️ **Nuance importante** : le prompt MAP a une règle générale d'**extraction exhaustive** — les documents non listés SONT lus (taxe foncière, appels de charges… remontent correctement). La liste « PRÉCISIONS PAR TYPE » ne fait qu'**orienter** la recherche.
+- Le manque se voit sur les documents **complexes et très structurés** : `compromis` et `bien` restaient `null` sur un dossier réel (14 docs, MAP-REDUCE) alors que le compromis était détecté et non en échec. Les faits libres ne se mappaient pas sur les ~20 champs du bloc.
+- Ajout de 7 types : **COMPROMIS** (vendeur, acheteur, 2 notaires, agence + honoraires, prix, dépôt de garantie, dates signature/réitération, rétractation, **chaque condition suspensive avec sa date butoir**, désignation du bien, mobilier, clauses), **CARNET D'ENTRETIEN**, **DTG/PPT**, **FICHE SYNTHÉTIQUE**, **TAXE FONCIÈRE**, **ASL/AFUL**, **ASSURANCE**, **TITRE DE PROPRIÉTÉ**. Prompt MAP : ~1 200 → ~1 860 tokens.
+- ✅ **Sans risque de timeout** : ce prompt est utilisé par doc, en parallèle, avec son propre budget de 350 s.
+
+**5. Fonds de travaux — part du VENDEUR ≠ chiffre COPRO 🔴 (cas réel : pré-état daté SUSINI, 438,30 €)**
+- Le rapport affichait « Cotisation fonds travaux **votée** : 438,30 € » pour une copro dont 5 % de 38 000 € = **1 900 €/an**. 438,30 € = la part rattachée **aux lots vendus** (Partie III du PED).
+- **Piège de la Partie III** nommé dans le prompt : elle enchaîne des lignes de **portées différentes** sans le signaler — « impayés au sein de la copropriété » (copro), « dette du Syndicat » (copro), puis « Fonds de travaux » (**vendeur**) et « cotisation appelée au cédant » (**vendeur**).
+- Interdiction rendue **inconditionnelle** (elle était conditionnée à « si SEUL un PED est fourni », donc inactive dès qu'un PV d'AG existait) + contrôle de vraisemblance + **garde-fou code** : si `finances.fonds_travaux` == `pre_etat_date.fonds_travaux_alur`, le champ copro est vidé.
+- ⚠️ **Origine du 438 € identifiée** : ce n'est PAS le moteur — c'est le code (`analyser-run` ~l.452, commentaire « demande Alex : afficher le montant attendu ») qui reconstitue montant = % × budget. Le défaut était en amont (« 5 % » n'était pas voté, c'était le **rappel légal**) et en aval (affiché comme « votée »). Le montant reconstitué est marqué `fonds_travaux_estime = true`.
+- `RapportPage` — 3 états : **votée** (montant écrit) · **estimée** (reconstitué, tooltip explicite) · **Non renseigné** (encadré pointillé + « le rappel du minimum légal n'est pas un vote, à demander au syndic »).
+
+**6. Budgets — budget VOTÉ vs charges RÉELLES**
+- Le rapport affichait 4 lignes identiques à 38 000 € (dont 2021 **inventée**) avec « 0,0 % » partout, alors que les PV disent : budget 2022 = 37 000 €, comptes 2022 = 35 801,42 €, budget 2024 = 38 000 €.
+- Prompt : `budgets_historique` = un objet par année **réellement documentée**, avec `budget_total` (prévisionnel **voté**) ET `charges_reelles` (comptes **approuvés**) séparés. Règle **N/N+1** : les comptes de N sont approuvés au PV de N+1 → ligne de l'année N. **Interdiction d'inventer une année.** Détection du budget voté 2× pour le même exercice (37 000 en mars 2023 puis 38 000 en février 2024) → point de vigilance.
+- ⚠️ Exemple du prompt corrigé : `fonds_travaux: 9000` valait pile 5 % de `budget_total: 180000` → le moteur en déduisait une règle inexistante. **Ne jamais mettre de nombres en rapport rond dans les exemples de prompt.**
+- `RapportPage` : 2 colonnes **BUDGET VOTÉ** / **DÉPENSÉ**, écart calculé sur le **même exercice** (2022 : −3,2 % en vert), barre verte sous la bleue, note explicative.
+
+**7. `validateDiagsManquants` réparé — bug silencieux 🔴**
+- `const anneeStr = (r.annee_construction as string) || ''` : `as string` est un **cast**, pas une conversion. Le schéma autorise un nombre → `.match()` inexistant → `TypeError` rattrapé (« non bloquant ») mais **la fonction ne tournait jamais**. Conséquence : **aucun diagnostic obligatoire manquant n'était signalé**, silencieusement. Fix `String(… ?? '')`.
+
+**8. `DocumentRenderer` — crash de page entière + KPI blancs**
+- 🔴 `TypeError: e.replace is not a function` → **toute la page rapport** tombait (Error Boundary). Cause : `points_forts`/`points_vigilance` déclarés `[]` sans forme → le moteur renvoyait des **objets** ; `stripLeadingEmoji` appelait `.replace()` dessus. **7 types exposés** (RCP, DTG_PPT, CARNET_ENTRETIEN, PRE_ETAT_DATE, ETAT_DATE, MODIFICATIF_RCP, AUTRE) : tous ont un tableau d'objets juste **avant** `points_forts` → effet d'entraînement. Fix : `safeStr()` + `splitPoint` acceptant les objets (portage de `RapportPage` l.1053, déjà blindé en juin) → protège les **17 renderers**. 2ᵉ `.replace()` non protégé corrigé (l.853).
+- 🐛 **KPI blancs** : `React.Children.count()` compte **aussi** les enfants absents (`{cond && <Kpi/>}` valant `false`) → 1 KPI réel dessiné sur 3 colonnes. Fix `React.Children.toArray()`. **Touche tous les types de documents.**
+- Modificatif RCP : `KpiCard` (disparaît si vide) + bloc « **Ce qui change** » remonté en tête (tantièmes avant barrés → après) ; parties communes du RCP en liste 2 colonnes au lieu de pastilles (les éléments sont des phrases entières).
+- **Compromis détecté mais bloc `null`** : la section s'ouvrait sur du vide (titre + en-têtes, rien dedans). Nouveau test `compromisDataUtile` (contenu réel, pas simple présence) → encart « Ce document a été identifié mais ses données n'ont pas pu être extraites ».
+
+**9. UX — notifications de rapports supprimés**
+- Cliquer une notif d'analyse supprimée : la boucle de polling ne testait que `failed` et `result` → `null` ne matchait rien → **36 tentatives = 3 min de roue** puis « Rapport introuvable. » sans bouton. Fix : sortie immédiate + écran avec explication et 2 sorties.
+- Cause racine : `deleteAnalyse` ne supprimait pas `user_notifications` → la cloche continuait d'annoncer « Votre analyse est prête ». Fix unitaire **et** en lot.
+- 2ᵉ passe : `if (isAnalysis && onClickNotification)` bloquait le clic quand `analysis_id` était vide → **aucune réaction du tout**. Fix : handler appelé dans tous les cas, **pop-up** « Ce rapport n'est plus disponible » (fond flouté, Échap, clic dehors) + suppression de la notif orpheline en base. Monté sur les 2 dashboards.
+
+**10. Infobulle du 0/20 — message inversé 🔴**
+- `{isZero && …}` affichait toujours « aucun document pertinent n'a été détecté », y compris quand le 0 venait de **risques trouvés**. Sur « Risques juridiques 0/4 » avec procédures détectées, le rapport disait **l'inverse de la réalité** — et laissait croire qu'ajouter des documents ferait remonter la note.
+- Fix `zeroParRisque` : message distinct pour `procedures` (si `nbProcedures > 0`), `travaux`/`travaux_bati` (si `travaux_votes`), `finances` (si bloc présent).
+
+### 📦 Déploiement du 27/07
+- **GitHub (Vercel auto)** : `RapportPage.tsx` · `DocumentRenderer.tsx` · `MesAnalyses.tsx` · `DashboardPage.tsx` · `DashboardProPage.tsx`
+- **Supabase Studio — redéploiement MANUEL ×3** : `analyser-run` (cumule les 8 chantiers serveur, **version finale = prompt de complément COURT**) · `analyser` · `admin-user-management`
+- **Aucun SQL.**
+- Nettoyage optionnel des notifs orphelines :
+  `delete from user_notifications where analysis_id is not null and analysis_id not in (select id from analyses);`
+
+### 🧪 Tests à faire par Alex (post-déploiement)
+- **🔴 En priorité — complément sur le dossier client 602a51fa** : doit ABOUTIR (2 timeouts en v151, corrigé en version finale).
+- Analyse complète + analyse simple : rien de cassé côté sécurité (le front envoie déjà le vrai JWT).
+- Dossier Solférino relancé : chercher `♻️ Modificatif détecté — 120023/100000` et `40 lots` dans les logs.
+- Complément avec carnet d'entretien : lots ventilés (ou `🛡️ Recomptage non concluant` = garde-fou actif).
+- Dossier avec compromis en **analyse complète ≥ 6 docs** : bloc compromis rempli (avant : `null`).
+- Notif d'un rapport supprimé : pop-up immédiate, notif disparue ensuite.
+- Rapport avec procédures : infobulle « des risques ont été identifiés » et non « aucun document ».
+
+---
+## 📌 SESSION — 25 juillet 2026 ⭐⭐⭐
 
 > Grosse session fiabilisation : 6 chantiers livrés (2 signalés par Alex en test réel), tous buildés au pipeline Vercel complet. ⚠️ Les fichiers du jour sont **CUMULATIFS** : `analyser-run` livré en fin de session = v4 du jour (cumule les 4 chantiers serveur), `RapportPage.tsx` et `RapportComparaisonPage.tsx` cumulent aussi — toujours déployer la DERNIÈRE version livrée de chaque fichier.
 
@@ -581,29 +666,64 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ---
 
-## ⚙️ Architecture ANALYSE — ÉTAT ACTUEL (vérifié dans le code le 25 juillet) ⭐⭐⭐
+## ⚙️ Architecture ANALYSE — ÉTAT ACTUEL (vérifié dans le code le 27 juillet) ⭐⭐⭐
 
-> Source de vérité = le code du repo, relu intégralement le 25/07. Remplace les anciennes sections « MAP-REDUCE 03 juin » et « CHANTIER 400 SECONDES » (résolu — historique condensé en bas de section).
+> Source de vérité = le code du repo. Remplace les anciennes sections « MAP-REDUCE 03 juin » et « CHANTIER 400 SECONDES ».
 
 ### Pipeline
-1. **`analyser` (étape 1)** : télécharge les PDFs du bucket `analyse-temp`, upload Files API. Surcharge Anthropic à l'upload → **queue v9** (`tryEnqueueOrFail` : `status='queued'` + `metadata_queue` {storagePaths, mode, profil, existingReport} + fichiers CONSERVÉS en Storage) ; sinon `files_ready` puis fire-and-forget vers analyser-run. Mode complément : rapport existant lu en base, deadline 7 j serveur, cap 5 docs, one-shot serveur, gratuit. Tamponne `last_retry_at` (anti-watchdog).
-2. **`analyser-run` (étape 2)** — aiguillage : `mode='complete'` **ET ≥ 6 docs** (`SEUIL_MAP_REDUCE = 6`) → **MAP-REDUCE v2** ; sinon (dont `document` et `complement`, toujours) → **single-call v7**.
-   - **MAP** : lecture parallèle de tous les docs, résumé **texte libre concis** par doc (préférence Alex, pas de grille JSON), suppression du PDF Files API au fil de l'eau (RGPD) APRÈS sauvegarde du résumé en base (`map_resultats` jsonb), progression `done/total`.
-   - **REDUCE** (self-invoke, service-role) : empile les résumés, 1 appel avec `buildSystemPrompt('complete')`, post-traitement déterministe, écrit `result`, nettoie `map_resultats`, notifie (cloche + email particulier).
-   - **Post-traitement déterministe** (tous modes complets) : `retryDpeCarrez` (mini-appel ciblé si DPE E-G sans recos ou Carrez sans détail pièces), `recalculerCategories` (copro — score = somme des 5 catégories) / `recalculerCategoriesMaison` (maison/ASL), `validateDiagsManquants`.
-3. **Échec** : `handleAnalyseFailure` — analyse classique → refund idempotent (`refund_analyse_credit`, verrou `credit_refunded`) + `failed` + notif ; **complément → 0 refund + `completed` restauré + marqueur** (25/07).
-4. **Filets** : cron `analyser-retry` (5 min, 12 tentatives ≈ 1h, réupload depuis Storage, relance analyser-run avec mode+existingReport, abandon propre) ; cron `watchdog-stuck-analyses` (15 min, seuils 60/30/90 min sur created_at **ET** last_retry_at).
+1. **`analyser` (étape 1)** : télécharge les PDFs du bucket `analyse-temp`, upload Files API. Surcharge Anthropic à l'upload → **queue v9** (`tryEnqueueOrFail`) ; sinon `files_ready` puis fire-and-forget vers analyser-run. Mode complément : rapport existant lu en base, deadline 7 j serveur, cap 5 docs, one-shot serveur, gratuit. Tamponne `last_retry_at` (anti-watchdog). **🔒 27/07 : JWT réellement vérifié + propriété de l'analyse (self OU même agence) + storagePaths bornés à `analyseId/`.**
+2. **`analyser-run` (étape 2)** — **🔒 27/07 : fonction INTERNE**, exige `Authorization === SERVICE_ROLE_KEY`. Aiguillage : `mode='complete'` **ET ≥ 6 docs** (`SEUIL_MAP_REDUCE = 6`) → **MAP-REDUCE v2** ; sinon (dont `document` et `complement`, toujours) → **single-call v7**.
+   - **MAP** (`MAP_TIMEOUT_MS = 350000`, ne pas dépasser 370000) : lecture parallèle, **faits en texte libre** + `chiffres_cles` + `alertes` par doc, suppression du PDF Files API APRÈS sauvegarde en base (`map_resultats` jsonb). Prompt ~1 860 tokens, **13 types de documents** précisés (27/07). Retry uniquement si l'échec a été **rapide** (`MAP_RETRY_WINDOW_MS`).
+   - **REDUCE** (self-invoke, service-role) : empile les extraits, 1 appel `buildSystemPrompt('complete')`, post-traitement déterministe, écrit `result`, nettoie `map_resultats`, notifie.
+   - **Post-traitement déterministe** (tous modes ≠ `document`) : `retryDpeCarrez` · `recalculerCategories` / `recalculerCategoriesMaison` (score = somme des catégories) · **`recompterLots` + `retirerLotsRemplaces`** (27/07) · `validateDiagsManquants` (**réparé** 27/07) · **extraction dédiée EDD** si la liste des lots est douteuse (appel court ~500 tokens, avant suppression RGPD).
+3. **Échec** : `handleAnalyseFailure` — analyse classique → refund idempotent + `failed` + notif ; **complément → 0 refund + `completed` restauré + marqueur** (25/07). ✅ Validé en conditions réelles le 27/07 : 2 compléments en timeout, rapport d'origine intact, aucun crédit débité.
+4. **Filets** : cron `analyser-retry` (5 min, 12 tentatives ≈ 1h) ; cron `watchdog-stuck-analyses` (15 min, seuils sur created_at **ET** last_retry_at).
+
+### 📏 Tailles de prompt (mesurées le 27/07) — ⚠️ LE TEMPS DE GÉNÉRATION EST LE SEUL MUR
+| Prompt | Tokens | Usage |
+|---|---|---|
+| `buildSystemPrompt('complete')` | ~22 000 | analyse complète + REDUCE |
+| `buildDocumentPrompt` | ~16 400 | analyse simple — **schémas structurés par type** |
+| `buildComplementPrompt` | **~1 060** | complément — court **PAR NÉCESSITÉ** (voir ci-dessous) |
+| `buildMapPrompt` | ~1 860 | lecture d'un doc — **faits en texte libre** |
+
+> 🔴 **RÈGLE APPRISE LE 27/07** : gonfler le prompt de complément à 21 900 tokens a provoqué **2 timeouts client en production**. Le complément est single-call et porte déjà le rapport existant (JSON volumineux) + 5 PDFs max. **Tout ajout de prompt sur ce chemin doit être mesuré en temps avant livraison.** À l'inverse, le prompt MAP peut grossir sans risque (1 doc, en parallèle, budget de 350 s propre).
 
 ### Points de vigilance connus (backlog)
-- **Doc en échec après 3 retries = sauté silencieusement** du REDUCE (aucun signalement client). Décision A/B/C toujours en attente (Alex penche C : reprise par queue au bon endroit).
-- **Mort brutale d'invocation** (kill plateforme ~400 s) : rien n'attrape → coincée en processing jusqu'au watchdog (1h max). Plan heartbeat (colonne `last_heartbeat` + cron 3 min) validé, non codé. Le tampon `last_retry_at` (25/07) protège du faux-positif inverse (tuer une saine), pas de la lenteur de détection.
-- **Complément = single-call toujours** : rapport JSON (gros si dossier MAP-REDUCE) + 5 PDFs max. Le cap 5 protège ; très gros dossier + 5 gros PDFs peut frôler le timeout 385 s → mais l'échec est désormais PROPRE (rapport restauré + invitation à réessayer).
-- **Estimation de durée** basée sur le nb de docs seulement (un PDF de 200 p compte comme un de 3 p) — inchangé du 24/07.
+- **🎯 IDÉE ALEX (27/07) — schémas par type en phase MAP.** Différence de fond : l'analyse simple donne au moteur un **formulaire à cases** par type de document ; MAP lui donne une **feuille blanche** (faits libres + page). D'où l'écart : documents simples (taxe foncière, appels de charges) → OK avec l'extraction générique ; documents complexes (compromis ~20 champs, carnet d'entretien, DTG) → les faits libres ne se mappent pas sur les blocs. **Faisabilité vérifiée : 49 noms de champs identiques** entre le schéma COMPROMIS de `buildDocumentPrompt` et le bloc `compromis` du rapport final → reprise quasi mécanique. Obstacles : (a) le type est détecté *pendant* la lecture, or il faudrait le connaître *avant* pour n'injecter que le bon schéma (~1 500 tokens/doc au lieu de 16 400) ; (b) REDUCE est écrit pour consommer du vrac, à réécrire ; (c) ~15 champs de `buildDocumentPrompt` n'ont pas d'équivalent dans le rapport → à verser dans un champ de **texte libre** conservé à côté du structuré. **Décision : à faire à froid, avec un dossier de référence pour comparer avant/après.**
+- **Complément moins complet que l'analyse complète** (conséquence assumée du prompt court). Piste : n'injecter que les blocs concernés par les documents ajoutés, détectés à l'upload.
+- **Doc en échec après retries = sauté** du REDUCE — MAIS injecté dans `documents_non_analyses` (déterministe, l.~3186) donc **signalé au client**. Cas réel 27/07 : « PV AGO 30102025 Compressé.pdf » → `lecture_trop_longue` (350 s dépassées). Le timeout est **déjà au plafond** → la seule piste est de **repasser le doc raté seul** dans une invocation dédiée.
+- **Mort brutale d'invocation** (~400 s) : rien n'attrape → processing jusqu'au watchdog (1h). Plan heartbeat validé, non codé.
+- **Estimation de durée** basée sur le nb de docs seulement.
+- **`MAX_TOKENS_OUTPUT = 64000` inatteignable** : le mur des ~400 s coupe bien avant (~20 000 mots max). Le vrai plafond est le **temps**, pas le réglage.
+- **Garde-fou manquant l.~2082** : la relance après JSON invalide n'a PAS la condition « échec rapide » présente l.~2405 (chemin MAP). À reporter — 5 min.
 
 ### Historique condensé (pour mémoire)
-- **03/06** : MAP-REDUCE v18 (tranches de 3 docs, résumés « exhaustifs » 64K) livré → **04/06 : retour single-call** (v18 plus LENT : les résumés dilataient l'info). **25/06** : v18 retiré du repo.
-- **02-03/07** : mesure du mur single-call (11 docs = timeout 386 s, EarlyDrop, CPU/mémoire bas → goulot = génération). Plafond ≈ 10 docs. Timeout 350→385 s (pansement).
-- **Session suivante** : **MAP-REDUCE v2 hybride à seuil** construit et déployé — la version décrite ci-dessus, avec le défaut v18 corrigé (résumés libres CONCIS ~1 page, pas exhaustifs). C'est l'architecture en prod aujourd'hui.
+- **03/06** : MAP-REDUCE v18 (tranches de 3, résumés exhaustifs 64K) → **04/06 retour single-call** (plus lent). **25/06** : v18 retiré.
+- **02-03/07** : mur single-call mesuré (11 docs = timeout 386 s). Plafond ≈ 10 docs.
+- **Puis** : MAP-REDUCE v2 hybride à seuil, résumés libres CONCIS. Architecture en prod aujourd'hui.
+
+---
+
+## 🔴 BACKLOG PRIORISÉ (au 27 juillet 2026)
+
+### Sécurité — par ordre
+1. **🔴 Rotation de la clé service_role** (exposée en mai, jamais tournée). Devenue **plus** critique : le verrou d'`analyser-run` s'appuie dessus.
+2. **Consommation du crédit encore côté client** (`NouvelleAnalyse` ~l.464) : `consume_pro_credit` appelé avant l'edge function, jamais vérifié serveur. Après le 27/07, il faut être **inscrit + connecté + savoir ouvrir les outils dev** — plus « n'importe qui sur internet ». À déplacer côté serveur.
+3. **CORS `*` sur les 16 edge functions.**
+4. **`supabase-schema.sql` obsolète** : 2 tables décrites, ~34 en prod. Aucune migration, aucun historique des fonctions SQL qui manipulent de l'argent (`consume_pro_credit`, `refund_analyse_credit`, `my_agence_id`), pas de staging possible. → `supabase db dump --schema public` committé après chaque session SQL.
+5. **README** : documente `VITE_ANTHROPIC_API_KEY=sk-ant-…` — le préfixe `VITE_` **bundle la variable côté client**. Personne ne l'utilise (`.env.example` est propre) mais l'instruction est dangereuse. À supprimer. Fichier vide `supabase/functions/a` à supprimer aussi.
+
+### Qualité de code (constaté 27/07)
+- `AdminPage` 8 874 lignes · `DashboardProPage` 8 519 · `RapportPage` 5 764 · `analyser-run` ~3 300 — pour **6 composants partagés**.
+- **8 763 `style={{}}` inline contre 869 `className`** : Tailwind installé, quasi inutilisé. Changer une couleur de marque = 8 763 endroits.
+- **253 `any`**, dont dans `stripe-webhook-pro`. `tsconfig.app.json` n'inclut que `src` → **les edge functions ne sont typecheckées par personne**.
+- 47 guides importés statiquement → `GuideArticlePage` pèse **101 kB gzip** pour lire un article (pages purement SEO). `import.meta.glob` lazy → < 15 kB.
+- **Piste de refactoring utile** : `supabase/functions/_shared/prompts.ts` (module partagé). Les Edge Functions ne partagent pas leur code → dupliquer un prompt entre 2 fonctions recréerait exactement le bug du complément. **Une edge function séparée pour le complément serait contre-productive.**
+
+### Produit
+- **Récupération des documents** (idée retenue) : le mandataire envoie un lien au vendeur, checklist ✅/❌, relances auto, analyse lancée quand complet. Se place **avant** l'analyse dans la chaîne → attrape le client plus tôt. Validation terrain proposée : appeler 5 mandataires, une seule question — *« le plus pénible, obtenir les documents ou les comprendre ? »*
+- Concurrence identifiée : **Naveen** (analyse IA du dossier acheteur, même positionnement, gros SEO) et **Keyzia** (côté syndic). « Analyser des documents » ne différenciera plus dans 12 mois.
 
 ---
 
