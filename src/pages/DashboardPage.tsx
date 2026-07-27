@@ -370,7 +370,10 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
                 </div>
               ) : (
                 notifications.slice(0, 10).map(n => {
-                  const isAnalysis = !!n.analysisId || !!n.link;
+                  // ⚠️ Ne PAS inclure `n.link` ici : ce drapeau pilote l'habillage
+                  // "Rapport prêt/mis à jour". Une notification a lien (message du
+                  // support) doit garder son propre titre et son icone cloche.
+                  const isAnalysis = !!n.analysisId;
                   const rawMsg = (n as unknown as Record<string, string>).message || '';
                   const isUpdate = isAnalysis && (/mis à jour/i.test(n.title || '') || /mis à jour/i.test(rawMsg));
                   const bienLabel = rawMsg.replace(/\s*—\s*(consulter le rapport|voir le rapport mis à jour)\s*$/i, '').trim();
@@ -663,9 +666,29 @@ export default function DashboardPage() {
       const { count } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('unread_by_user', true);
       setUnreadTickets(count || 0);
     };
-    loadUnread();
-    const interval = setInterval(loadUnread, 30000);
-    return () => clearInterval(interval);
+    // 🆕 Le badge support et la cloche etaient rafraichis toutes les 30s, et les
+    // notifications une seule fois au montage : un message envoye par le support
+    // pouvait mettre une demi-minute a apparaitre. Passage a 10s, plus un
+    // rafraichissement immediat au retour sur l'onglet — c'est ce qui donne
+    // l'impression de temps reel sans marteler la base.
+    const loadNotifs = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('user_notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+      setDbNotifications(data || []);
+    };
+    const rafraichir = () => { loadUnread(); loadNotifs(); };
+
+    rafraichir();
+    const interval = setInterval(rafraichir, 10000);
+    const onVisible = () => { if (document.visibilityState === 'visible') rafraichir(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', rafraichir);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', rafraichir);
+    };
   }, []);
 
   const [showHelpPopup, setShowHelpPopup] = useState(false);
