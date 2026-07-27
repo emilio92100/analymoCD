@@ -1333,13 +1333,31 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserI
     // la discussion. Une reponse dans un fil existant n'en declenche pas : le
     // client sait deja qu'il attend une reponse, la pastille support suffit.
     // Le lien mene droit au fil, sans avoir a chercher dans l'espace support.
-    await supabase.from('user_notifications').insert({
-      user_id: nmUserId,
-      title: 'Le support Verimo vous a écrit',
-      message: sujet,
-      link: '/dashboard/support',
-      read: false,
-    });
+    // ⚠️ Cette insertion vise un user_id qui n'est PAS celui de l'admin connecté.
+    // Si une policy RLS l'interdit, elle echoue — et elle echouait EN SILENCE.
+    // On remonte desormais l'erreur exacte, et on retente sans `link` au cas ou
+    // la colonne n'aurait pas encore ete creee en base.
+    {
+      const notif = {
+        user_id: nmUserId,
+        title: 'Le support Verimo vous a écrit',
+        message: sujet,
+        read: false,
+      };
+      let { error: errNotif } = await supabase
+        .from('user_notifications')
+        .insert({ ...notif, link: '/dashboard/support' });
+
+      if (errNotif && /link/i.test(errNotif.message || '')) {
+        // Colonne `link` absente : on insere quand meme la notification (elle
+        // renverra vers le tableau de bord au lieu du fil, mais elle existe).
+        console.warn('[Admin] Colonne `link` absente sur user_notifications — insertion sans lien');
+        ({ error: errNotif } = await supabase.from('user_notifications').insert(notif));
+      }
+      if (errNotif) {
+        showToast('Ticket créé, mais notification non envoyée : ' + errNotif.message);
+      }
+    }
 
     setNmSending(false);
     setShowComposer(false);
@@ -1488,20 +1506,23 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserI
           <motion.div key={selectedUserId + '-' + selectedTicketId} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2, ease: 'easeOut' }}
             style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
-            <div style={{ padding: '10px 16px', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {/* 🆕 minWidth:0 sur le conteneur ET sur le bloc identite : sans ca, un
+                flex enfant refuse de se compresser sous sa taille naturelle et
+                pousse les boutons d'action hors de l'ecran (constaté sur PC). */}
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, minWidth: 0, overflow: 'hidden' }}>
               <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                 {(selectedUser.user_name.charAt(0) || '?').toUpperCase()}
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {selectedUser.user_name}
+              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedUser.user_name}</span>
                   <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 5, background: selectedUser.user_role === 'pro' ? '#f0fdf4' : '#f0f7fb', color: selectedUser.user_role === 'pro' ? '#16a34a' : '#2a7d9c' }}>{selectedUser.user_role === 'pro' ? 'PRO' : 'PART.'}</span>
                 </div>
-                <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <span>{selectedUser.user_email}</span>
+                <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{selectedUser.user_email}</span>
                   {onGoToUser && <>
-                    <span>·</span>
-                    <button onClick={() => onGoToUser(selectedUser.user_id)} style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                    <span style={{ flexShrink: 0 }}>·</span>
+                    <button onClick={() => onGoToUser(selectedUser.user_id)} style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       → Voir la fiche client
                     </button>
                   </>}
@@ -1510,7 +1531,7 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserI
               {/* Ticket selector */}
               {selectedUser.tickets.length > 1 && (
                 <select value={selectedTicketId || ''} onChange={e => setSelectedTicketId(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #edf2f7', fontSize: 11, fontWeight: 600, color: '#0f172a', background: '#f8fafc', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #edf2f7', fontSize: 11, fontWeight: 600, color: '#0f172a', background: '#f8fafc', cursor: 'pointer', fontFamily: 'inherit', maxWidth: 240, minWidth: 110, flexShrink: 1, textOverflow: 'ellipsis' }}>
                   {selectedUser.tickets.map((t: AdminTicket) => (
                     <option key={t.id} value={t.id}>{t.subject} {t.status === 'open' ? '● ' : '✓ '}{fmtRelative(t.updated_at)}</option>
                   ))}
