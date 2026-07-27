@@ -439,8 +439,22 @@ Deno.serve(async (req) => {
   let analyseIdForCatch: string | null = null;
 
   try {
+    // ══════════════════════════════════════════════════════════
+    // 🔒 AUTHENTIFICATION — vérification RÉELLE du jeton
+    // Avant : on testait uniquement la PRÉSENCE du header, donc
+    // "Authorization: Bearer nimportequoi" passait. On valide désormais
+    // le JWT auprès de Supabase Auth.
+    // ══════════════════════════════════════════════════════════
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+    const jwt = authHeader.replace('Bearer ', '').trim();
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(jwt);
+    if (authError || !user) {
+      console.warn('[analyser] 🚫 Jeton invalide ou expiré');
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
 
     const body = await req.json() as {
       analyseId: string; mode: string; profil: 'rp' | 'invest';
@@ -450,6 +464,64 @@ Deno.serve(async (req) => {
 
     const { analyseId, mode, profil, typeBienDeclare } = body;
     if (!analyseId || !mode) return new Response(JSON.stringify({ error: 'missing_params' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+
+    // ══════════════════════════════════════════════════════════
+    // 🔒 PROPRIÉTÉ — l'appelant a-t-il le droit sur cette analyse ?
+    // supabaseAdmin tourne en service_role : la RLS ne s'applique PAS.
+    // Ce contrôle doit donc être fait à la main, sinon n'importe quel
+    // compte connecté peut lancer une opération (dont un COMPLÉMENT,
+    // qui réécrit le rapport) sur l'analyse de quelqu'un d'autre.
+    //
+    // ⚠️ Deux cas légitimes, et deux seulement :
+    //   1. l'analyse lui appartient
+    //   2. l'analyse appartient à un collègue de SA MÊME agence
+    //      (les membres travaillent sur les dossiers partagés — ce
+    //      comportement existe déjà, on ne le change pas ici)
+    // ══════════════════════════════════════════════════════════
+    const { data: owner } = await supabaseAdmin
+      .from('analyses')
+      .select('user_id')
+      .eq('id', analyseId)
+      .maybeSingle();
+
+    if (!owner) {
+      return new Response(JSON.stringify({ error: 'not_found' }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+
+    if (owner.user_id !== user.id) {
+      const { data: memberships } = await supabaseAdmin
+        .from('agence_members')
+        .select('user_id, agence_id')
+        .in('user_id', [user.id, owner.user_id])
+        .is('removed_at', null);
+
+      const agenceAppelant = memberships?.find(m => m.user_id === user.id)?.agence_id ?? null;
+      const agenceProprio = memberships?.find(m => m.user_id === owner.user_id)?.agence_id ?? null;
+
+      if (!agenceAppelant || !agenceProprio || agenceAppelant !== agenceProprio) {
+        console.warn(`[analyser] 🚫 user ${user.id} → analyse ${analyseId} (propriétaire ${owner.user_id})`);
+        return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      console.log(`[analyser] ✅ Accès agence ${agenceAppelant} — user ${user.id} sur l'analyse de ${owner.user_id}`);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // 🔒 CHEMINS STORAGE — jamais confiance au navigateur
+    // Le client construit ses chemins ainsi : `${analyseId}/${i}_${nom}`.
+    // On impose ce préfixe. Sans ça, le body pouvait désigner les PDF
+    // d'une autre analyse : ils étaient téléchargés en service_role
+    // (fuite RGPD) puis SUPPRIMÉS par le .remove() plus bas.
+    // ══════════════════════════════════════════════════════════
+    if (body.storagePaths?.length) {
+      const prefix = `${analyseId}/`;
+      const invalides = body.storagePaths.filter(
+        p => typeof p !== 'string' || !p.startsWith(prefix) || p.includes('..')
+      );
+      if (invalides.length) {
+        console.warn(`[analyser] 🚫 Chemins hors analyse ${analyseId} : ${invalides.join(', ')}`);
+        return new Response(JSON.stringify({ error: 'invalid_paths' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+    }
 
     analyseIdForCatch = analyseId;
 
