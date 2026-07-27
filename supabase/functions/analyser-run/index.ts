@@ -710,8 +710,31 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
   }
 
   // ═══ DIAGS COMMUNS (note_max = 3) ═══
-  let noteDiagsCommuns = 2;
+  // ── APPLICABILITE (fix) ──────────────────────────────────────────────
+  // Sur les parties communes, seul l'amiante est reglementairement attendu,
+  // et uniquement pour un bati anterieur a juillet 1997. Sur un immeuble
+  // recent il n'y a RIEN a fournir : l'absence de document n'est pas une
+  // lacune, elle est normale. L'ancienne version partait de 2 dans tous les
+  // cas -> un immeuble neuf et parfaitement en regle etait plafonne a 2/3
+  // (barre orange a 67 %) et perdait 1 point sur 20 sans aucune raison,
+  // pendant qu'un immeuble de 1948 SANS aucun diagnostic commun — un vrai
+  // trou de dossier — obtenait exactement la meme note.
+  //
+  // Nouvelle grille de depart :
+  //   rien d'exigible (bati >= 1997)          -> 3   « sans objet »
+  //   exigible ET des documents fournis       -> 2   (comportement historique)
+  //   exigible ET rien fourni                 -> 1.5 (la vraie lacune)
+  // Les bonus/malus DTG et les anomalies s'appliquent ensuite dans tous les cas :
+  // un immeuble recent dote d'un DTG degrade redescend normalement.
+  const diagsCommunsAttendus = anneeNum !== null && anneeNum < 1997;
   const dtg = rapport.vie_copropriete?.dtg;
+  const hasCommunsData = diagsCommuns.length > 0 || Boolean(dtg?.present);
+
+  let noteDiagsCommuns: number;
+  if (!diagsCommunsAttendus) noteDiagsCommuns = 3;
+  else if (hasCommunsData) noteDiagsCommuns = 2;
+  else noteDiagsCommuns = 1.5;
+
   if (dtg?.present) {
     if (dtg.etat_general === 'bon') noteDiagsCommuns += 1;
     else if (dtg.etat_general === 'moyen') noteDiagsCommuns += 0.5;
@@ -725,15 +748,14 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
     if (d.type === 'TERMITES' && /pr[ée]sence|d[ée]tect[ée]/i.test(detail) && !/absence/i.test(detail)) noteDiagsCommuns -= 1;
   }
 
-  const hasCommunsData = diagsCommuns.length > 0 || dtg?.present;
-  noteDiagsCommuns = clamp(noteDiagsCommuns, hasCommunsData ? 1 : 0, 3);
+  noteDiagsCommuns = clamp(noteDiagsCommuns, 0, 3);
 
   const categoriesRecalculees = {
     travaux: { note: Math.round(noteTravaux * 2) / 2, note_max: 5 },
     procedures: { note: Math.round(noteProcedures * 2) / 2, note_max: 4 },
     finances: { note: Math.round(noteFinances * 2) / 2, note_max: 4 },
     diags_privatifs: { note: Math.round(noteDiagsPrivatifs * 2) / 2, note_max: 4 },
-    diags_communs: { note: Math.round(noteDiagsCommuns * 2) / 2, note_max: 3 },
+    diags_communs: { note: Math.round(noteDiagsCommuns * 2) / 2, note_max: 3, sans_objet: !diagsCommunsAttendus },
   };
 
   console.log('[analyser-run] Categories recalculees:', JSON.stringify(categoriesRecalculees));
