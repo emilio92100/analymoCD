@@ -8,9 +8,11 @@ type Props = {
   adresse: string;
   nomsFichiers?: string[];
   onClose: () => void;
+  /** Prévient le parent que le ticket est créé, pour figer l'UI côté rapport. */
+  onEnvoye?: () => void;
 };
 
-export default function SignalementComplementModal({ analyseId, adresse, nomsFichiers, onClose }: Props) {
+export default function SignalementComplementModal({ analyseId, adresse, nomsFichiers, onClose, onEnvoye }: Props) {
   const [message, setMessage] = useState('');
   const [envoi, setEnvoi] = useState(false);
   const [envoye, setEnvoye] = useState(false);
@@ -28,7 +30,7 @@ export default function SignalementComplementModal({ analyseId, adresse, nomsFic
     setEnvoi(true);
     setErreur(null);
     const res = await creerSignalementComplement({ analyseId, adresse, messageClient: message, nomsFichiers });
-    if (res.ok) setEnvoye(true);
+    if (res.ok) { setEnvoye(true); onEnvoye?.(); }
     else { setErreur(res.error || 'Une erreur est survenue.'); setEnvoi(false); }
   };
 
@@ -69,10 +71,18 @@ export default function SignalementComplementModal({ analyseId, adresse, nomsFic
               Vous pouvez suivre l'échange à tout moment depuis l'onglet <strong>Support</strong> de votre espace.
             </div>
 
-            <button onClick={onClose}
-              style={{ marginTop: 28, padding: '11px 26px', borderRadius: 10, border: 'none', background: '#0f2d3d', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              Retour au rapport
-            </button>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 28, flexWrap: 'wrap' }}>
+              {/* Navigation dure : on quitte le rapport pour l'espace support,
+                  qui vit dans une autre route du dashboard. */}
+              <button onClick={() => { window.location.href = '/dashboard/support'; }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 10, border: 'none', background: '#0f2d3d', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <LifeBuoy size={15} /> Voir ma demande
+              </button>
+              <button onClick={onClose}
+                style={{ padding: '11px 22px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Retour au rapport
+              </button>
+            </div>
           </div>
         ) : (
           /* ── Formulaire ── */
