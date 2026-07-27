@@ -800,7 +800,10 @@ function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, n
                 </div>
               ) : (
                 notifications.slice(0, 10).map(n => {
-                  const isAnalysis = !!n.analysisId || !!n.link;
+                  // ⚠️ Ne PAS inclure `n.link` ici : ce drapeau pilote l'habillage
+                  // "Rapport prêt/mis à jour". Une notification a lien (message du
+                  // support) doit garder son propre titre et son icone cloche.
+                  const isAnalysis = !!n.analysisId;
                   const rawMsg = (n as unknown as Record<string, string>).message || '';
                   const isUpdate = isAnalysis && (/mis à jour/i.test(n.title || '') || /mis à jour/i.test(rawMsg));
                   const bienLabel = rawMsg.replace(/\s*—\s*(consulter le rapport|voir le rapport mis à jour)\s*$/i, '').trim();
@@ -7904,6 +7907,32 @@ export default function DashboardProPage() {
   }, [navigate]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // 🆕 Badge support + cloche : cote pro, rien ne les rafraichissait apres le
+  // chargement initial de la page. Un message du support n'apparaissait qu'au
+  // rechargement complet. Rythme de 10s + rafraichissement au retour sur l'onglet.
+  useEffect(() => {
+    const rafraichir = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const [{ count }, { data: notifs }] = await Promise.all([
+        supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('unread_by_user', true),
+        supabase.from('user_notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+      ]);
+      setUnreadTickets(count || 0);
+      setDbNotifications(notifs || []);
+    };
+    rafraichir();
+    const interval = setInterval(rafraichir, 10000);
+    const onVisible = () => { if (document.visibilityState === 'visible') rafraichir(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', rafraichir);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', rafraichir);
+    };
+  }, []);
 
   // Polling toutes les 15s pour détecter les analyses qui passent à "completed"
   useEffect(() => {
