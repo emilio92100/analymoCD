@@ -729,6 +729,27 @@ Deno.serve(async (req) => {
 
     console.log(`[analyser] ${fileIds.length} fichiers uploadés → status=files_ready (ignorés: ${documentsIgnores.length})`);
 
+    // 🆕 Consigné pour le CLIENT : jusqu'ici un PDF protégé ou corrompu était
+    // signalé à l'admin mais l'acheteur n'en savait rien et croyait son dossier
+    // complet. Le front affiche désormais un rappel à l'ouverture du rapport.
+    if (documentsIgnores.length > 0) {
+      try {
+        const { data: dnt } = await supabaseAdmin
+          .from('analyses').select('documents_non_traites').eq('id', analyseId).single();
+        const existant = (dnt?.documents_non_traites || {}) as { items?: Array<{ nom: string }> };
+        const deja = Array.isArray(existant.items) ? existant.items : [];
+        const noms = new Set(deja.map(d => d.nom));
+        const nouveaux = documentsIgnores
+          .filter(n => !noms.has(n))
+          .map((n, i) => ({ nom: n, raison: uploadErrors[i] || 'envoi', phase: 'envoi' }));
+        await supabaseAdmin.from('analyses').update({
+          documents_non_traites: { vu: false, items: [...deja, ...nouveaux] },
+        }).eq('id', analyseId);
+      } catch (e) {
+        console.error('[analyser] Consignation docs non traités (non bloquant):', e);
+      }
+    }
+
     // Si certains fichiers ont été ignorés → log l'info en alerte info (non bloquante)
     if (documentsIgnores.length > 0) {
       const { data: analyseUser } = await supabaseAdmin
