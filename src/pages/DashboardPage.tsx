@@ -18,6 +18,7 @@ import NouvelleAnalyse from './dashboard/NouvelleAnalyse';
 import Compare from './dashboard/Compare';
 import Compte from './dashboard/Compte';
 import Support from './dashboard/Support';
+import Notifications from './dashboard/Notifications';
 import Aide from './dashboard/Aide';
 import Tarifs from './dashboard/Tarifs';
 
@@ -358,11 +359,11 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
         <AnimatePresence>
         {bellOpen && (
           <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
-            style={{ position: 'absolute', right: -60, top: 'calc(100% + 8px)', width: 320, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+            style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 440, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
             </div>
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
               {(!notifications || notifications.length === 0) ? (
                 <div style={{ padding: '24px 16px', textAlign: 'center' }}>
                   <Bell size={20} style={{ color: '#e2e8f0', marginBottom: 8 }} />
@@ -402,6 +403,13 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
                 })
               )}
             </div>
+            {/* 🆕 Acces a l'historique complet */}
+            <button onClick={() => { setBellOpen(false); window.location.href = '/dashboard/notifications'; }}
+              style={{ width: '100%', padding: '13px 16px', borderTop: '1px solid #f0f5f9', background: '#fbfdff', border: 'none', borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: '#f0f5f9', color: '#2a7d9c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' }}
+              onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; }}
+              onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fbfdff'; }}>
+              Consulter toutes les notifications →
+            </button>
           </motion.div>
         )}
         </AnimatePresence>
@@ -579,6 +587,7 @@ function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/compare')          return <Compare/>;
   if (path === '/dashboard/compte')           return <Compte/>;
   if (path === '/dashboard/support')          return <Support/>;
+  if (path === '/dashboard/notifications') return <Notifications/>;
   if (path === '/dashboard/aide')             return <Aide/>;
   if (path === '/dashboard/rapport')          return <RapportDashboard/>;
   return <HomeView/>;
@@ -746,7 +755,8 @@ export default function DashboardPage() {
     }
   };
 
-  const title = navItems.find(i => i.to === location.pathname)?.label || 'Mon espace';
+  const title = navItems.find(i => i.to === location.pathname)?.label
+    || (location.pathname === '/dashboard/notifications' ? 'Notifications' : 'Mon espace');
 
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'#f5f9fb', fontFamily:"'DM Sans', system-ui, sans-serif" }}>
