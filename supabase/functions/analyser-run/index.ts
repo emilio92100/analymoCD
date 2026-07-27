@@ -905,7 +905,7 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
     return diagnostics.some(d => {
       const t = String(d.type || '').toUpperCase();
       const presence = String(d.presence || '').toLowerCase();
-      return t === type && presence !== 'non_realise' && presence !== 'absence';
+      return t === type && presence !== 'non_realise';
     });
   };
 
@@ -973,7 +973,7 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
       const t = String(d.type || '').toUpperCase();
       const perimetre = String(d.perimetre || '').toLowerCase();
       const presence = String(d.presence || '').toLowerCase();
-      return t === 'AMIANTE' && perimetre === 'lot_privatif' && presence !== 'non_realise' && presence !== 'absence';
+      return t === 'AMIANTE' && perimetre === 'lot_privatif' && presence !== 'non_realise';
     });
     if (!amiantePrivatif) {
       ajouter("Diagnostic amiante privatif (obligatoire pour les biens construits avant 1997)");
@@ -1008,6 +1008,206 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
   console.log(`[analyser-run] validateDiagsManquants: ${docsManquants.length} docs manquants, ${pointsVigilance.length} points vigilance`);
 
   return { ...rapport, documents_manquants: docsManquants, points_vigilance: pointsVigilance } as RapportShape;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 📋 CHECKLIST DETERMINISTE — source unique de « Completer mon dossier »
+// ──────────────────────────────────────────────────────────────────────
+// Le front ne recalcule plus rien : il affiche `rapport.checklist`.
+// Trois etats, parce que « present » ne veut pas dire « suffisant » :
+//   ok           -> l'obligation est couverte
+//   insuffisant  -> un document a ete fourni mais il ne suffit pas
+//                   (modificatif sans le reglement, PV perimes, appel de
+//                    charges de 2022...) — c'est ce cas que l'ancienne
+//                    logique ratait : elle testait la seule presence du type
+//   manquant     -> rien du tout
+// Recalculee a chaque analyse ET a chaque complement -> toujours a jour.
+// ══════════════════════════════════════════════════════════════════════
+
+type ChecklistStatut = 'ok' | 'insuffisant' | 'manquant';
+type ChecklistItem = {
+  id: string;
+  label: string;
+  statut: ChecklistStatut;
+  niveau: 'essentiel' | 'secondaire';
+  detail: string | null;
+  tooltip: string | null;
+};
+
+function construireChecklist(rapport: RapportShape): RapportShape {
+  const r = rapport as unknown as Record<string, unknown>;
+
+  const docs = Array.isArray(r.documents_analyses)
+    ? (r.documents_analyses as Array<Record<string, unknown>>) : [];
+  const diags = Array.isArray(r.diagnostics)
+    ? (r.diagnostics as Array<Record<string, unknown>>) : [];
+  const manquantsMoteur = Array.isArray(r.documents_manquants)
+    ? (r.documents_manquants as unknown[]).map(String) : [];
+
+  const typeBien = String(r.type_bien || 'appartement');
+  const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
+  const anneeBrute = r.annee_construction
+    ? Number(String(r.annee_construction).replace(/[^0-9]/g, '')) : null;
+  const annee = anneeBrute && anneeBrute > 1700 && anneeBrute < 2100 ? anneeBrute : null;
+  const anneeRef = new Date().getFullYear();
+
+  // ── helpers ──
+  const ofType = (t: string) =>
+    docs.filter(d => String(d.type || '').toUpperCase() === t);
+  const has = (t: string) => ofType(t).length > 0;
+  const anneeMax = (t: string): number | null => {
+    const ys = ofType(t)
+      .map(d => Number(String(d.annee ?? '').replace(/[^0-9]/g, '')))
+      .filter(n => Number.isFinite(n) && n > 1900 && n <= anneeRef + 1);
+    return ys.length ? Math.max(...ys) : null;
+  };
+  // Un diagnostic compte des qu'il a ete REALISE, quel que soit son resultat.
+  // (presence='absence' = diag fait, substance non detectee = le meilleur cas)
+  const diagFait = (t: string, exigePrivatif = false) => diags.some(d => {
+    if (String(d.type || '').toUpperCase() !== t) return false;
+    if (String(d.presence || '').toLowerCase() === 'non_realise') return false;
+    if (exigePrivatif && String(d.perimetre || '').toLowerCase() !== 'lot_privatif') return false;
+    return true;
+  });
+  // Le moteur ecrit souvent une phrase plus fine que la notre : on la reprend.
+  const phraseMoteur = (re: RegExp): string | null =>
+    manquantsMoteur.find(m => re.test(m)) || null;
+
+  const items: ChecklistItem[] = [];
+  const push = (
+    id: string, label: string, statut: ChecklistStatut,
+    niveau: 'essentiel' | 'secondaire',
+    detail: string | null = null, tooltip: string | null = null,
+  ) => { items.push({ id, label, statut, niveau, detail, tooltip }); };
+
+  // ══════════════ ESSENTIELS — COPROPRIETE ══════════════
+  if (isCopro) {
+
+    // ── PV d'AG : 3 obligatoires ET recents ──
+    const nbPv = ofType('PV_AG').length;
+    const pvRecent = anneeMax('PV_AG');
+    let sPv: ChecklistStatut = 'ok';
+    let dPv: string | null = null;
+    if (nbPv === 0) {
+      sPv = 'manquant';
+      dPv = 'Le vendeur doit fournir les procès-verbaux des 3 dernières assemblées générales.';
+    } else if (nbPv < 3) {
+      sPv = 'insuffisant';
+      dPv = `${nbPv} PV fourni${nbPv > 1 ? 's' : ''} sur les 3 obligatoires.`;
+    } else if (pvRecent !== null && anneeRef - pvRecent > 2) {
+      sPv = 'insuffisant';
+      dPv = `3 PV fournis, mais le plus récent date de ${pvRecent} — les décisions prises depuis ne figurent pas au dossier.`;
+    }
+    if (sPv !== 'ok') dPv = phraseMoteur(/proc[èe]s-verb|assembl[ée]es? g[ée]n[ée]rale|\bPV d/i) || dPv;
+    push('pv_ag', '3 derniers PV d\'Assemblée Générale', sPv, 'essentiel', dPv,
+      'Ils retracent les décisions, les travaux votés et les finances de la copropriété. La loi impose les 3 derniers.');
+
+    // ── Reglement de copropriete : le modificatif ne le remplace pas ──
+    const aRcp = has('REGLEMENT_COPRO');
+    const aModif = has('MODIFICATIF_RCP');
+    const anneeModif = anneeMax('MODIFICATIF_RCP');
+    const sRcp: ChecklistStatut = aRcp ? 'ok' : (aModif ? 'insuffisant' : 'manquant');
+    let dRcp: string | null = null;
+    if (sRcp === 'insuffisant') {
+      dRcp = `Seul un modificatif${anneeModif ? ` (${anneeModif})` : ''} a été transmis — il complète le règlement d'origine mais ne le remplace pas.`;
+    }
+    if (sRcp !== 'ok') dRcp = phraseMoteur(/r[èe]glement de copropri[ée]t[ée]/i) || dRcp;
+    push('rcp', 'Règlement de copropriété', sRcp, 'essentiel', dRcp,
+      'Document fondateur qui régit la copropriété : destination de l\'immeuble, tantièmes, clauses restrictives.');
+
+    // ── Carnet d'entretien ──
+    push('carnet', 'Carnet d\'entretien de l\'immeuble',
+      has('CARNET_ENTRETIEN') ? 'ok' : 'manquant', 'essentiel', null,
+      'Tenu par le syndic : historique des travaux, contrats d\'entretien en cours, diagnostics de l\'immeuble.');
+
+    // ── Appel de charges : perime vite ──
+    const anneeAppel = anneeMax('APPEL_CHARGES');
+    let sAppel: ChecklistStatut = 'ok';
+    let dAppel: string | null = null;
+    if (!has('APPEL_CHARGES')) {
+      sAppel = 'manquant';
+    } else if (anneeAppel !== null && anneeRef - anneeAppel > 1) {
+      sAppel = 'insuffisant';
+      dAppel = `Le dernier appel fourni date de ${anneeAppel} — les charges actuelles ont pu évoluer.`;
+    }
+    if (sAppel !== 'ok') dAppel = phraseMoteur(/appel de (charges|fonds)/i) || dAppel;
+    push('appel_charges', 'Appel de charges / appel de fonds', sAppel, 'essentiel', dAppel, null);
+
+    // ── Pre-etat date : obligatoire a la vente ──
+    // (pour le remettre en secondaire : remplacer 'essentiel' par 'secondaire' ci-dessous)
+    push('pre_etat_date', 'Pré-état daté',
+      (has('PRE_ETAT_DATE') || has('ETAT_DATE')) ? 'ok' : 'manquant', 'essentiel', null,
+      'Émis par le syndic avant la vente : sommes dues par le vendeur, procédures en cours, charges à venir.');
+  }
+
+  // ══════════════ ESSENTIELS — DIAGNOSTICS OBLIGATOIRES ══════════════
+  // Le perimetre d'obligation se deduit de l'annee de construction.
+  const regles: Array<{ id: string; type: string; label: string; requis: boolean; privatif?: boolean; tooltip?: string }> = [
+    { id: 'dpe', type: 'DPE', label: 'DPE — Diagnostic de performance énergétique', requis: true },
+    { id: 'erp', type: 'ERP', label: 'ERP — État des risques et pollutions', requis: true },
+    { id: 'carrez', type: 'CARREZ', label: 'Mesurage loi Carrez', requis: isCopro,
+      tooltip: 'Obligatoire en copropriété. Un écart de plus de 5 % ouvre droit à une réduction du prix.' },
+    { id: 'elec', type: 'ELECTRICITE', label: 'Diagnostic électrique', requis: annee !== null && annee < 2011,
+      tooltip: 'Obligatoire pour une installation de plus de 15 ans.' },
+    { id: 'amiante', type: 'AMIANTE', label: 'Diagnostic amiante privatif', requis: annee !== null && annee < 1997, privatif: true,
+      tooltip: 'Obligatoire pour les biens dont le permis de construire est antérieur à juillet 1997.' },
+    { id: 'plomb', type: 'PLOMB', label: 'CREP — Constat de risque d\'exposition au plomb', requis: annee !== null && annee < 1949,
+      tooltip: 'Obligatoire pour les biens construits avant 1949.' },
+  ];
+  for (const g of regles) {
+    if (!g.requis) continue;
+    push(`diag_${g.id}`, g.label,
+      diagFait(g.type, g.privatif) ? 'ok' : 'manquant', 'essentiel', null, g.tooltip || null);
+  }
+
+  // ══════════════ ESSENTIELS — MAISON HORS COPRO ══════════════
+  if (!isCopro) {
+    const diagDpe = diags.find(d => String(d.type || '').toUpperCase() === 'DPE');
+    const classeDpe = (String(diagDpe?.resultat || '').match(/Classe\s*([A-G])/i)?.[1] || '').toUpperCase();
+    if (['E', 'F', 'G'].includes(classeDpe)) {
+      push('audit', 'Audit énergétique réglementaire',
+        has('AUDIT_ENERGETIQUE') ? 'ok' : 'manquant', 'essentiel', null,
+        `Obligatoire à la vente d'une maison classée ${classeDpe}.`);
+    }
+    push('assainissement', 'Diagnostic assainissement',
+      has('ASSAINISSEMENT') ? 'ok' : 'manquant', 'essentiel', null,
+      'Obligatoire si le bien n\'est pas raccordé au tout-à-l\'égout (contrôle SPANC).');
+    push('taxe_fonciere', 'Taxe foncière',
+      has('TAXE_FONCIERE') ? 'ok' : 'manquant', 'essentiel', null, null);
+  }
+
+  // ══════════════ SECONDAIRES ══════════════
+  if (isCopro) {
+    push('modif_rcp', 'Modificatif(s) au règlement de copropriété',
+      has('MODIFICATIF_RCP') ? 'ok' : 'manquant', 'secondaire', null,
+      'Actes notariés modifiant le règlement d\'origine ou l\'état descriptif de division.');
+    push('diag_communs', 'Diagnostics des parties communes',
+      has('DIAGNOSTIC_PARTIES_COMMUNES') ? 'ok' : 'manquant', 'secondaire', null,
+      'Amiante, plomb et risques sur les parties communes de l\'immeuble.');
+    const dtgPresent = Boolean(((r.vie_copropriete as Record<string, unknown> | undefined)
+      ?.dtg as Record<string, unknown> | undefined)?.present);
+    push('dtg', 'DTG — Diagnostic Technique Global',
+      dtgPresent ? 'ok' : 'manquant', 'secondaire', null,
+      'Bilan complet de l\'état de l\'immeuble. Permet d\'anticiper les grands travaux.');
+    push('ppt', 'PPT — Plan Pluriannuel de Travaux',
+      'manquant', 'secondaire', null,
+      'Planning des travaux sur 10 ans établi à partir du DTG.');
+    push('taxe_fonciere_sec', 'Taxe foncière',
+      has('TAXE_FONCIERE') ? 'ok' : 'manquant', 'secondaire', null, null);
+  }
+  push('titre', 'Titre de propriété',
+    has('TITRE_PROPRIETE') ? 'ok' : 'manquant', 'secondaire', null,
+    'Permet de vérifier que le vendeur est bien propriétaire et que les lots cédés correspondent.');
+  push('autre', 'Tout autre document lié à votre futur logement',
+    'manquant', 'secondaire', null, null);
+
+  const ko = items.filter(i => i.niveau === 'essentiel' && i.statut !== 'ok').length;
+  console.log(`[analyser-run] checklist: ${items.length} items, ${ko} essentiel(s) non couvert(s)`);
+
+  return {
+    ...rapport,
+    checklist: { version: 1, calcule_le: new Date().toISOString(), items },
+  } as RapportShape;
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2762,6 +2962,7 @@ async function runAnalyseWithData(
       try {
         report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
         try { croiserTitrePropriete(report); } catch (e) { console.error('[analyser-run] croiserTitrePropriete (non bloquant):', e); }
+        report = construireChecklist(report as RapportShape) as Record<string, unknown>;
       } catch (e) {
         console.error('[analyser-run] validateDiagsManquants erreur (non bloquant):', e);
       }
@@ -2980,6 +3181,7 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       try {
         report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
         try { croiserTitrePropriete(report); } catch (e) { console.error('[analyser-run] croiserTitrePropriete (non bloquant):', e); }
+        report = construireChecklist(report as RapportShape) as Record<string, unknown>;
       } catch (e) {
         console.error('[analyser-run] validateDiagsManquants erreur (non bloquant):', e);
       }
@@ -3409,6 +3611,7 @@ async function runPhaseReduce(
     try {
       report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
         try { croiserTitrePropriete(report); } catch (e) { console.error('[analyser-run] croiserTitrePropriete (non bloquant):', e); }
+        report = construireChecklist(report as RapportShape) as Record<string, unknown>;
     } catch (e) {
       console.error('[analyser-run][REDUCE] validateDiagsManquants erreur (non bloquant):', e);
     }
@@ -4336,6 +4539,7 @@ async function runComplementMerge(
     try {
       final = validateDiagsManquants(final as RapportShape) as Record<string, unknown>;
       croiserTitrePropriete(final);
+      final = construireChecklist(final as RapportShape) as Record<string, unknown>;
     } catch (e) {
       console.error('[complement-merge] validateDiagsManquants (non bloquant):', e);
     }
