@@ -940,7 +940,12 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {Object.entries(categories).map(([key, cat]) => {
-                const c = cat as { note: number; note_max: number };
+                const c = cat as { note: number; note_max: number; sans_objet?: boolean };
+                // 🆕 « Sans objet » : rien n'etait reglementairement exigible sur cette
+                // categorie (ex. diagnostics de parties communes sur un bati >= 1997).
+                // La note est pleine et la barre verte, mais on le dit explicitement
+                // pour que le client ne lise pas un point fort la ou il n'y a rien a juger.
+                const sansObjet = c.sans_objet === true;
                 const isZero = c.note === 0;
                 // Garde-fou : detecter les "faux 0" ou le scoring est visiblement en contradiction avec les donnees extraites
                 const diagsPrivatifsPresent = rapport.diagnostics && rapport.diagnostics.some(
@@ -975,6 +980,9 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 15, color: '#0f172a' }}>{catLabels[key] || key}</span>
+                          {sansObjet && (
+                            <TooltipBtn text="Aucun diagnostic de parties communes n'est réglementairement exigible sur un immeuble construit après 1997 (l'amiante n'y est plus recherché). Il n'y a donc rien à reprocher au dossier : la note est pleine." />
+                          )}
                           {isFauxZero && (
                             <TooltipBtn text="Les diagnostics ont bien été détectés dans vos documents. La note n'a pas été calculée automatiquement — consultez le détail dans l'onglet Logement." />
                           )}
@@ -987,7 +995,12 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
                         {isFauxZero ? (
                           <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b', fontStyle: 'italic' }}>Non évalué</span>
                         ) : (
-                          <span style={{ fontSize: 14, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {sansObjet && (
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '2px 8px', borderRadius: 6, letterSpacing: '0.04em' }}>SANS OBJET</span>
+                            )}
+                            <span style={{ fontSize: 14, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
+                          </span>
                         )}
                       </div>
                       <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99 }}>
