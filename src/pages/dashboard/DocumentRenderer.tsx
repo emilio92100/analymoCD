@@ -3627,6 +3627,14 @@ function RendererAutre({ r, isShared, hideVerimoBranding }: { r: any; isShared?:
    n ont aucun sens ici et ne sont pas affichees.
 ══════════════════════════════════════════════════════════════ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Initiales d'un nom complet, pour la pastille du proprietaire.
+// Les parentheses (orthographe alternative d'un patronyme) sont ignorees.
+function initialesNom(nom: string): string {
+  const mots = nom.replace(/\([^)]*\)/g, '').split(/\s+/).filter(m => /[A-Za-zÀ-ÿ]/.test(m));
+  if (mots.length === 0) return '?';
+  return (mots[0][0] + (mots.length > 1 ? mots[mots.length - 1][0] : '')).toUpperCase();
+}
+
 function RendererTitrePropriete({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const NATURES: Record<string, string> = {
     attestation_propriete: 'Attestation de propriété',
@@ -3697,29 +3705,41 @@ function RendererTitrePropriete({ r, isShared, hideVerimoBranding }: { r: any; i
         <Bloc icon="👤" titre={proprios.length > 1 ? 'Propriétaires actuels' : 'Propriétaire actuel'}>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
             {proprios.map((pr: any, i: number) => (
-              <div key={i} style={{ background: '#fff', border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' as const, marginBottom: 6 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{safeStr(pr.nom_complet) || '—'}</span>
-                  {pr.peut_vendre_seul === true && (
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.green.text, background: C.green.bg, border: `0.5px solid ${C.green.border}`, padding: '2px 8px', borderRadius: 6 }}>PEUT VENDRE SEUL</span>
-                  )}
-                  {pr.peut_vendre_seul === false && (
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.orange.text, background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, padding: '2px 8px', borderRadius: 6 }}>ACCORD D&apos;UN TIERS REQUIS</span>
-                  )}
-                  {pr.part_indivision && (
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.blue.text, background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, padding: '2px 8px', borderRadius: 6 }}>INDIVISION {safeStr(pr.part_indivision)}</span>
-                  )}
+              <div key={i} style={{ background: '#fff', border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '15px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)', color: '#0c4a6e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13.5, fontWeight: 800, flexShrink: 0 }}>
+                    {initialesNom(safeStr(pr.nom_complet))}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' as const }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{safeStr(pr.nom_complet) || '—'}</span>
+                      {pr.peut_vendre_seul === true && (
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: C.green.text, background: C.green.bg, border: `0.5px solid ${C.green.border}`, padding: '3px 9px', borderRadius: 7 }}>✓ PEUT VENDRE SEUL</span>
+                      )}
+                      {pr.peut_vendre_seul === false && (
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: C.orange.text, background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, padding: '3px 9px', borderRadius: 7 }}>⚠️ ACCORD D&apos;UN TIERS REQUIS</span>
+                      )}
+                      {pr.part_indivision && (
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: C.blue.text, background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, padding: '3px 9px', borderRadius: 7 }}>🤝 INDIVISION {safeStr(pr.part_indivision)}</span>
+                      )}
+                    </div>
+                    {pr.situation_matrimoniale_citation && (
+                      <div style={{ marginTop: 10, padding: '11px 14px', borderRadius: 11, background: C.bg, borderLeft: `3px solid ${C.border}` }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: C.textSec, letterSpacing: '0.5px', textTransform: 'uppercase' as const, marginBottom: 4 }}>Situation matrimoniale — extrait de l&apos;acte</div>
+                        <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6, fontStyle: 'italic' as const }}>
+                          « {safeStr(pr.situation_matrimoniale_citation)} »
+                        </div>
+                      </div>
+                    )}
+                    {(pr.profession || pr.adresse || pr.nationalite) && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 13, marginTop: 10 }}>
+                        {pr.profession && <span style={{ fontSize: 12.5, color: C.textSec }}>💼 {safeStr(pr.profession)}</span>}
+                        {pr.nationalite && <span style={{ fontSize: 12.5, color: C.textSec }}>🌍 {safeStr(pr.nationalite)}</span>}
+                        {pr.adresse && <span style={{ fontSize: 12.5, color: C.textSec }}>📍 {safeStr(pr.adresse)}</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {pr.situation_matrimoniale_citation && (
-                  <div style={{ fontSize: 13.5, color: C.textSec, lineHeight: 1.6, fontStyle: 'italic' as const }}>
-                    « {safeStr(pr.situation_matrimoniale_citation)} »
-                  </div>
-                )}
-                {(pr.profession || pr.adresse || pr.nationalite) && (
-                  <div style={{ fontSize: 12.5, color: C.textSec, marginTop: 6 }}>
-                    {[safeStr(pr.profession), safeStr(pr.nationalite), safeStr(pr.adresse)].filter(Boolean).join(' · ')}
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -3731,19 +3751,21 @@ function RendererTitrePropriete({ r, isShared, hideVerimoBranding }: { r: any; i
         <Bloc icon="🔑" titre={`Lots détenus (${lots.length})`}>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             {lots.map((l: any, i: number) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#fff', border: `0.5px solid ${C.border}`, borderRadius: 11, padding: '12px 15px' }}>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.blue.text, background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, padding: '3px 9px', borderRadius: 6, flexShrink: 0 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#fff', border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '13px 15px' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.blue.text, background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, padding: '4px 10px', borderRadius: 8, flexShrink: 0 }}>
                   LOT {safeStr(l.numero) || '?'}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>{safeStr(l.designation) || '—'}</div>
+                  <div style={{ fontSize: 13.5, color: C.text, fontWeight: 600, lineHeight: 1.55 }}>{safeStr(l.designation) || '—'}</div>
                   {(l.etage || l.tantiemes || l.nb_pieces) && (
-                    <div style={{ fontSize: 12.5, color: C.textSec, marginTop: 4 }}>
-                      {[
-                        l.etage ? safeStr(l.etage) : null,
-                        l.nb_pieces ? `${l.nb_pieces} pièce${Number(l.nb_pieces) > 1 ? 's' : ''}` : null,
-                        l.tantiemes ? `${safeStr(l.tantiemes)} des parties communes` : null,
-                      ].filter(Boolean).join(' · ')}
+                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 12, marginTop: 7 }}>
+                      {l.etage && <span style={{ fontSize: 12, color: C.textSec }}>🏢 {safeStr(l.etage)}</span>}
+                      {l.nb_pieces ? <span style={{ fontSize: 12, color: C.textSec }}>🚪 {l.nb_pieces} pièce{Number(l.nb_pieces) > 1 ? 's' : ''}</span> : null}
+                      {l.tantiemes && (
+                        <span style={{ fontSize: 12, color: C.textSec }}>
+                          📊 {safeStr(l.tantiemes)}{l.base_tantiemes ? `/${safeStr(l.base_tantiemes)}` : ''} tantièmes des parties communes
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
