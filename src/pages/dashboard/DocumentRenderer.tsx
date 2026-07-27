@@ -3617,6 +3617,166 @@ function RendererAutre({ r, isShared, hideVerimoBranding }: { r: any; isShared?:
 }
 
 // ── Export principal ────────────────────────────────────────
+
+/* ══════════════════════════════════════════════════════════════
+   TITRE DE PROPRIETE — attestation, acte de vente, succession, donation
+   ──────────────────────────────────────────────────────────────
+   A ne pas confondre avec le COMPROMIS : le titre etablit une propriete
+   DEJA acquise, le compromis est un avant-contrat. Les rubriques d un
+   avant-contrat (conditions suspensives, retractation, depot de garantie)
+   n ont aucun sens ici et ne sont pas affichees.
+══════════════════════════════════════════════════════════════ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RendererTitrePropriete({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
+  const NATURES: Record<string, string> = {
+    attestation_propriete: 'Attestation de propriété',
+    acte_de_vente: 'Acte de vente',
+    attestation_succession: 'Attestation de succession',
+    donation: 'Acte de donation',
+    autre: 'Titre de propriété',
+  };
+  const libelle = NATURES[safeStr(r.nature)] || 'Titre de propriété';
+  const proprios: any[] = Array.isArray(r.proprietaires_actuels) ? r.proprietaires_actuels : [];
+  const lots: any[] = Array.isArray(r.lots_detenus) ? r.lots_detenus : [];
+  const cadastre: any[] = Array.isArray(r.references_cadastrales) ? r.references_cadastrales : [];
+  const precedents: any[] = Array.isArray(r.vendeurs_precedents) ? r.vendeurs_precedents : [];
+
+  const fmtD = (v?: string) => {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? safeStr(v) : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const sub = [libelle, fmtD(r.date_acte)].filter(Boolean).join(' · ');
+
+  // Bloc de section local — MBlock appartient a un autre renderer.
+  const Bloc = ({ icon, titre, children }: { icon: string; titre: string; children: React.ReactNode }) => (
+    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '11px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{titre}</span>
+      </div>
+      <div style={{ padding: '14px 16px' }}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <Header type={libelle} titre={r.titre} sub={sub} />
+      <Resume text={r.resume} />
+
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <KpiCard icon="⚖️" label="Notaire" rows={[
+          r.notaire?.nom   ? { icon: '👤', text: `Me ${safeStr(r.notaire.nom)}`, strong: true } : null,
+          r.notaire?.etude ? { icon: '🏢', text: safeStr(r.notaire.etude) } : null,
+          r.notaire?.ville ? { icon: '📍', text: safeStr(r.notaire.ville) } : null,
+        ]} empty="Non précisé" />
+
+        <KpiCard icon="📜" label="Acte" rows={[
+          { icon: '🏷', text: libelle, strong: true },
+          r.date_acte ? { icon: '📅', text: `Signé le ${fmtD(r.date_acte)}` } : null,
+          r.date_entree_jouissance ? { icon: '🔑', text: `Jouissance au ${fmtD(r.date_entree_jouissance)}` } : null,
+          r.anciennete_detention_annees ? { icon: '⏳', text: `Détenu depuis ${r.anciennete_detention_annees} an${r.anciennete_detention_annees > 1 ? 's' : ''}` } : null,
+        ]} />
+
+        <KpiCard icon="🏛" label="Immeuble" rows={[
+          r.bien?.adresse_complete ? { icon: '📍', text: safeStr(r.bien.adresse_complete), strong: true } : null,
+          r.bien?.regime ? { icon: '🏢', text: safeStr(r.bien.regime) === 'copropriete' ? 'Soumis au régime de la copropriété' : safeStr(r.bien.regime) } : null,
+          ...cadastre.map((c: any) => ({
+            icon: '🗺',
+            text: [c.section ? `Section ${safeStr(c.section)}` : null, c.numero ? `n°${safeStr(c.numero)}` : null, safeStr(c.contenance) || null].filter(Boolean).join(' · '),
+          })),
+          r.bien?.date_etat_descriptif_origine || r.date_etat_descriptif_origine
+            ? { icon: '📐', text: `État descriptif du ${fmtD(r.bien?.date_etat_descriptif_origine || r.date_etat_descriptif_origine)}` }
+            : null,
+        ]} empty="Non précisé" />
+      </div>
+
+      {/* Propriétaires */}
+      {proprios.length > 0 && (
+        <Bloc icon="👤" titre={proprios.length > 1 ? 'Propriétaires actuels' : 'Propriétaire actuel'}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+            {proprios.map((pr: any, i: number) => (
+              <div key={i} style={{ background: '#fff', border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' as const, marginBottom: 6 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{safeStr(pr.nom_complet) || '—'}</span>
+                  {pr.peut_vendre_seul === true && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.green.text, background: C.green.bg, border: `0.5px solid ${C.green.border}`, padding: '2px 8px', borderRadius: 6 }}>PEUT VENDRE SEUL</span>
+                  )}
+                  {pr.peut_vendre_seul === false && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.orange.text, background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, padding: '2px 8px', borderRadius: 6 }}>ACCORD D&apos;UN TIERS REQUIS</span>
+                  )}
+                  {pr.part_indivision && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.blue.text, background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, padding: '2px 8px', borderRadius: 6 }}>INDIVISION {safeStr(pr.part_indivision)}</span>
+                  )}
+                </div>
+                {pr.situation_matrimoniale_citation && (
+                  <div style={{ fontSize: 13.5, color: C.textSec, lineHeight: 1.6, fontStyle: 'italic' as const }}>
+                    « {safeStr(pr.situation_matrimoniale_citation)} »
+                  </div>
+                )}
+                {(pr.profession || pr.adresse || pr.nationalite) && (
+                  <div style={{ fontSize: 12.5, color: C.textSec, marginTop: 6 }}>
+                    {[safeStr(pr.profession), safeStr(pr.nationalite), safeStr(pr.adresse)].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Bloc>
+      )}
+
+      {/* Lots détenus */}
+      {lots.length > 0 && (
+        <Bloc icon="🔑" titre={`Lots détenus (${lots.length})`}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+            {lots.map((l: any, i: number) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#fff', border: `0.5px solid ${C.border}`, borderRadius: 11, padding: '12px 15px' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.blue.text, background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, padding: '3px 9px', borderRadius: 6, flexShrink: 0 }}>
+                  LOT {safeStr(l.numero) || '?'}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>{safeStr(l.designation) || '—'}</div>
+                  {(l.etage || l.tantiemes || l.nb_pieces) && (
+                    <div style={{ fontSize: 12.5, color: C.textSec, marginTop: 4 }}>
+                      {[
+                        l.etage ? safeStr(l.etage) : null,
+                        l.nb_pieces ? `${l.nb_pieces} pièce${Number(l.nb_pieces) > 1 ? 's' : ''}` : null,
+                        l.tantiemes ? `${safeStr(l.tantiemes)} des parties communes` : null,
+                      ].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Bloc>
+      )}
+
+      {/* Origine de propriété */}
+      {precedents.length > 0 && (
+        <Bloc icon="↩️" titre="Origine de propriété">
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {precedents.map((v: any, i: number) => (
+              <div key={i} style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6 }}>
+                {safeStr(v.nom_complet)}{v.qualite ? ` — ${safeStr(v.qualite)}` : ''}
+              </div>
+            ))}
+            {r.prix_acquisition && (
+              <div style={{ fontSize: 13.5, color: C.textSec, marginTop: 4 }}>
+                Prix d&apos;acquisition : <strong style={{ color: C.text }}>{Number(r.prix_acquisition).toLocaleString('fr-FR')} €</strong>
+              </div>
+            )}
+          </div>
+        </Bloc>
+      )}
+
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
+    </div>
+  );
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function SafeRenderer({ result, isShared, hideVerimoBranding }: { result: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const type = result?.document_type || 'AUTRE';
@@ -3632,6 +3792,7 @@ function SafeRenderer({ result, isShared, hideVerimoBranding }: { result: any; i
       case 'ETAT_DATE': return <RendererEtatDate r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'COMPROMIS': return <RendererCompromis r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'TITRE_PROPRIETE': return <RendererTitrePropriete r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
       case 'ASL_CHIFFRES': return <RendererAslChiffres r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
