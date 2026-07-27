@@ -1158,7 +1158,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
    ADMIN — SUPPORT TICKETS (Inbox split by user)
 ══════════════════════════════════════════ */
 function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast: (m: string) => void; onUnreadChange: (n: number) => void; onGoToUser?: (userId: string) => void }) {
-  type AdminTicket = { id: string; user_id: string; subject: string; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_admin: boolean; user_email?: string; user_name?: string; user_role?: string };
+  type AdminTicket = { id: string; user_id: string; subject: string; analyse_id: string | null; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_admin: boolean; user_email?: string; user_name?: string; user_role?: string };
   type AdminMessage = { id: string; ticket_id: string; sender_type: 'user' | 'admin'; sender_name?: string | null; message: string; created_at: string };
   type UserGroup = { user_id: string; user_name: string; user_email: string; user_role: string; tickets: AdminTicket[]; lastActivity: string; unreadCount: number; lastPreview: string };
 
@@ -1228,6 +1228,43 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
     if (selectedTicketId === ticketId) await loadMessages(ticketId);
     await loadTickets();
     showToast('Ticket résolu — synchronisé côté client');
+  };
+
+  // 🆕 Débloque le complément d'un dossier signalé après 3 tentatives.
+  // Deux gestes indissociables : remise à zéro du compteur ET report de la
+  // deadline de 7 jours — sinon le client se heurte au délai expiré juste
+  // après le déblocage et rouvre un ticket dans la foulée.
+  const handleDebloquerComplement = async (ticketId: string, analyseId: string) => {
+    const nouvelleDeadline = new Date();
+    nouvelleDeadline.setDate(nouvelleDeadline.getDate() + 7);
+
+    const { error } = await supabase.from('analyses').update({
+      complement_attempts: 0,
+      regeneration_deadline: nouvelleDeadline.toISOString(),
+    }).eq('id', analyseId);
+
+    if (error) { showToast('Échec du déblocage : ' + error.message); return; }
+
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (ticket?.user_id) {
+      await supabase.from('user_notifications').insert({
+        user_id: ticket.user_id,
+        title: 'Mise à jour de dossier débloquée',
+        message: 'Vous pouvez de nouveau ajouter des documents à votre dossier via « Compléter mon dossier ». Vous disposez de 7 jours.',
+        read: false,
+      });
+    }
+
+    await supabase.from('support_messages').insert({
+      ticket_id: ticketId,
+      sender_type: 'admin',
+      message: '✅ La mise à jour de votre dossier a été débloquée. Vous pouvez de nouveau ajouter vos documents via « Compléter mon dossier » — vous disposez de 7 jours.',
+      sender_name: replyName.trim() || 'Verimo',
+    });
+
+    await supabase.from('support_tickets').update({ unread_by_user: true }).eq('id', ticketId);
+    await loadMessages(ticketId);
+    showToast('Complément débloqué — client prévenu');
   };
 
   const handleDelete = async (ticketId: string) => {
@@ -1382,6 +1419,14 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
                 </select>
               )}
               <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                {/* 🆕 N'apparaît que sur un ticket rattaché à un dossier (signalement complément) */}
+                {selectedTicket?.analyse_id && (
+                  <button onClick={() => handleDebloquerComplement(selectedTicket.id, selectedTicket.analyse_id!)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}
+                    title="Remet le compteur de tentatives à zéro et reporte la deadline de 7 jours">
+                    🔓 Débloquer le complément
+                  </button>
+                )}
                 {selectedTicket?.status === 'open' && (
                   <button onClick={() => handleResolve(selectedTicket.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#fff', border: '1px solid #bbf7d0', color: '#16a34a', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}>
