@@ -5905,7 +5905,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 
   const loadClients = useCallback(async () => {
     setLoading(true);
-    const [{ data }, { data: subs }, { data: invs }, { data: agenceMembers }, { data: agences }] = await Promise.all([
+    const [{ data }, { data: subs }, { data: invs }, { data: connexions }, { data: agenceMembers }, { data: agences }] = await Promise.all([
       supabase.from('profiles').select('*').eq('role', 'pro').order('pro_created_at', { ascending: false }),
       // On charge active, past_due ET canceled pour pouvoir filtrer par statut résiliation
       // - active + cancel_at_period_end=true → résiliation programmée
@@ -5913,6 +5913,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       supabase.from('pro_subscriptions').select('user_id, status, cancel_at_period_end').in('status', ['active', 'past_due', 'canceled']),
       // Invitations acceptées = pro qui a cliqué sur le lien et défini son mot de passe
       supabase.from('pro_invitations').select('profile_id, accepted_at').not('accepted_at', 'is', null),
+      // 🆕 last_sign_in_at vit dans le schema `auth`, hors de portee du client.
+      // La fonction SQL get_users_last_sign_in() l'expose aux seuls admins.
+      supabase.rpc('get_users_last_sign_in'),
       // 🏛 Membres d'agence
       supabase.from('agence_members').select('user_id, role, agence_id').is('removed_at', null),
       // 🏛 Agences (pour récupérer le nom)
@@ -5938,9 +5941,17 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     // defini, lien de reinitialisation, activation manuelle depuis l'admin...
     // accepted_at n'est ecrit que par le parcours setup_pro_account. On retient
     // donc les DEUX signaux, sinon des comptes bien actifs restent sans badge.
+    // 🆕 « Compte activé » = le client s'est CONNECTE au moins une fois. C'est le
+    // seul signal fiable : ni accepted_at (ecrit uniquement par le parcours
+    // « definir mon mot de passe ») ni pro_onboarding_done ne couvrent les
+    // clients arrives par reinitialisation de mot de passe ou compte cree avec
+    // mot de passe. Les deux anciens signaux sont conserves en repli au cas ou
+    // la fonction SQL ne serait pas encore deployee.
     const activatedSet = new Set<string>();
     (invs || []).forEach((inv: any) => activatedSet.add(inv.profile_id));
     (data || []).forEach((c: any) => { if (c.pro_onboarding_done === true) activatedSet.add(c.id); });
+    (connexions as Array<{ id: string; last_sign_in_at: string | null }> | null || [])
+      .forEach(u => { if (u.last_sign_in_at) activatedSet.add(u.id); });
     setProActivated(activatedSet);
 
     // 🏛 Map des infos agence par user_id
@@ -6998,7 +7009,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 })()}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-                {(invitations.some(inv => inv.accepted_at) || selected.pro_onboarding_done === true) ? (
+                {(invitations.some(inv => inv.accepted_at) || selected.pro_onboarding_done === true || proActivated.has(selected.id)) ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 700 }}>
                     <CheckCircle size={12} /> Compte activé
                   </span>
@@ -7215,7 +7226,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             {/* Invitations */}
             {invitations.length > 0 && (() => {
                 /* 🆕 Actif = invitation acceptée OU onboarding terminé par une autre voie. */
-                const actif = !!invitations[0].accepted_at || selected.pro_onboarding_done === true;
+                const actif = !!invitations[0].accepted_at || selected.pro_onboarding_done === true || proActivated.has(selected.id);
                 return (
                   <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: actif ? '#f0fdf4' : '#fffbeb', border: `1px solid ${actif ? '#bbf7d0' : '#fde68a'}` }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: actif ? '#16a34a' : '#d97706' }}>
