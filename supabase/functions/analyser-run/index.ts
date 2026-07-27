@@ -2971,7 +2971,8 @@ PRÉCISIONS PAR TYPE (si applicable) :
 - DPE : classe énergie ET classe GES, kWh/m², date du diagnostic, surface, ET si présents les packs de travaux recommandés (pack 1, pack 2, coûts min/max, évolution d'étiquette après chaque pack, détail des postes).
 - DDT / Carrez : surface Carrez totale ET le détail pièce par pièce si présent (nom de pièce + surface). Chaque diagnostic du dossier (électricité, gaz, amiante, plomb, termites, ERP) avec son résultat et ses anomalies.
 - Pré-état daté / état daté : TOUTES les rubriques financières (impayés vendeur, fonds travaux ALUR du lot, avances, honoraires syndic, charges par exercice N-1/N-2, impayés globaux copro, dettes fournisseurs, procédures).
-- Règlement de copro / modificatifs : destination de l'immeuble, clauses restrictives (location, activité, travaux), tantièmes du lot si identifiable, servitudes.
+- Règlement de copro : destination de l'immeuble, clauses restrictives (location, activité, travaux), tantièmes du lot si identifiable, servitudes.
+- MODIFICATIF AU RÈGLEMENT DE COPROPRIÉTÉ (acte notarié modifiant l'état descriptif ou le règlement) — EXTRACTION OBLIGATOIRE, un fait par élément : date de signature de l'acte ; nom du notaire et de son étude ; nature de la modification (division de lot, fusion, suppression, création, changement d'usage, mise à jour de tantièmes, servitude) ; POUR CHAQUE LOT concerné son numéro, sa désignation et ce qu'il devient (supprimé, divisé en lots n°X et n°Y, créé) ; tantièmes avant et après quand ils sont écrits ; nouveau nombre total de lots s'il est indiqué ; service de publicité foncière et date de publication ; servitudes créées ou supprimées.
 - ÉTAT DESCRIPTIF DE DIVISION (dans un RCP, un modificatif ou un acte) — EXTRACTION OBLIGATOIRE LOT PAR LOT : si le document contient la liste numérotée des lots ("LOT NUMERO UN...", "LOT NUMERO DEUX...", ou un tableau récapitulatif des lots), créer UN fait PAR LOT NUMÉROTÉ, sans exception et sans regroupement, au format exact : "LOT <numéro> | <désignation textuelle du document> | <tantièmes>". Exemple : "LOT 1 | Au sous-sol, une cave C1 | 5/10000", "LOT 27 | Aile A, rez-de-chaussée, appartement : entrée, cuisine, séjour, trois chambres | 1115/10000". Ne jamais s'arrêter en cours de liste, ne jamais écrire "et ainsi de suite" : un immeuble divisé en N lots donne N faits, quel que soit N. Le nombre de lots est celui écrit dans le document en cours — jamais un nombre vu ailleurs. Noter aussi le total annoncé s'il est écrit (formulation type "divisé en N lots numérotés de 1 à N") dans chiffres_cles.
   ⚠️ NE PAS extraire comme des lots la description générale de l'immeuble en préambule (type "l'ensemble comprendra un appartement et une chambre à chaque étage") : elle décrit LES MÊMES locaux que l'état descriptif. Si ce préambule existe, le noter en UN SEUL fait explicitement préfixé "PREAMBULE NON COMPTABLE : ..." pour qu'il ne soit jamais confondu avec la liste des lots.
 - CARNET D ENTRETIEN : date de mise a jour, equipements de l immeuble (chauffage, ascenseur, VMC, toiture...) avec pour chacun son etat, son annee de pose et son contrat d entretien ; TRAVAUX REALISES un par un (nature, annee, montant, entreprise) ; contrats en cours (prestataire, objet, echeance) ; diagnostics techniques des parties communes ; references des assurances de l immeuble.
@@ -2993,6 +2994,7 @@ FORMAT DE SORTIE — JSON STRICT, rien d'autre (pas de markdown, pas de commenta
 async function extractOneDoc(
   file: { id: string; name: string },
   apiKey: string,
+  deleteAfter = true, // 🆕 le COMPLEMENT garde les PDF le temps des extractions ciblees
 ): Promise<ExtraitDoc> {
   const userContent: unknown[] = [
     { type: 'document', source: { type: 'file', file_id: file.id } },
@@ -3025,8 +3027,12 @@ async function extractOneDoc(
     console.error(`[analyser-run][MAP] Erreur inattendue "${file.name}":`, err);
     return { file_name: file.name, statut: 'echec', raison: 'erreur_inattendue' };
   } finally {
-    // RGPD : suppression du PDF dès que son extraction est terminée (succès OU échec)
-    try { await deleteFromFilesAPI(file.id, apiKey); } catch (e) { console.error(`[analyser-run][MAP] Suppression RGPD "${file.name}" échouée:`, e); }
+    // RGPD : suppression du PDF dès que son extraction est terminée (succès OU échec).
+    // En mode complement, la suppression est différée : les extractions ciblées
+    // (DPE/Carrez, etat descriptif) ont encore besoin des fichiers.
+    if (deleteAfter) {
+      try { await deleteFromFilesAPI(file.id, apiKey); } catch (e) { console.error(`[analyser-run][MAP] Suppression RGPD "${file.name}" échouée:`, e); }
+    }
   }
 }
 
@@ -3068,6 +3074,9 @@ async function runPhaseMap(
     const oks = extraits.filter(e => e.statut === 'ok');
     const echecs = extraits.filter(e => e.statut === 'echec');
     console.log(`[analyser-run][MAP] Terminé — ${oks.length} OK, ${echecs.length} échec(s)`);
+    await enregistrerDocsNonTraites(supabaseAdmin, analyseId, echecs.map(e => ({
+      nom: e.file_name, raison: e.raison || 'inconnue', phase: 'lecture',
+    })));
 
     // ÉCHEC TOTAL (seul cas bloquant) : aucun doc analysable → remboursement
     if (oks.length === 0) {
@@ -3336,43 +3345,56 @@ async function runPhaseReduce(
 
 const COMPLEMENT_SECTION_TIMEOUT_MS = 150000; // 150s par section (marge x3)
 
-type SectionDef = { id: string; cles: string[]; regles: string };
+type SectionDef = { id: string; cles: string[]; regles: string; schema: string };
 
 const SECTIONS: Record<string, SectionDef> = {
   diagnostics: {
     id: 'diagnostics',
     cles: ['diagnostics', 'diagnostics_resume'],
-    regles: `diagnostics[] : un objet par diagnostic, champs type (DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE), label, perimetre (lot_privatif|parties_communes), localisation, resultat, presence (detectee|absence|non_realise), alerte, pieces_detail. Pour un DPE : resultat doit contenir la classe energie ET la classe GES ET les kWh/m2. Pour un Carrez : conserver pieces_detail piece par piece. diagnostics_resume : 2-3 phrases de synthese.`,
+    regles: `diagnostics[] : un objet par diagnostic, champs type (DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE), label, perimetre (lot_privatif|parties_communes), localisation, resultat, presence (detectee|absence|non_realise), alerte, pieces_detail. Pour un DPE : resultat doit contenir la classe energie ET la classe GES ET les kWh/m2. Pour un Carrez : conserver pieces_detail piece par piece.
+ANTERIORITE : il n existe qu UNE SEULE entree par type de diagnostic. Un nouveau DPE REMPLACE integralement l ancien (classe energie, classe GES, kWh/m2, date, validite) au lieu de s y ajouter ; idem pour l electricite, le gaz, l amiante, le plomb, les termites, l ERP et le Carrez. Quand un diagnostic jusque-la absent arrive, sa "presence" passe de "non_realise" ou "absence" a "detectee" et son "alerte" est reevaluee. diagnostics_resume : 2-3 phrases de synthese.`,
+    schema: `"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":[{"piece":"Sejour","surface":32.96}]}]`,
   },
   dpe_recommandations: {
     id: 'dpe_recommandations',
     cles: ['dpe_recommandations'],
     regles: `Packs de travaux recommandes par le DPE : evolution_etiquette (actuelle / apres_pack_1 / apres_pack_1_et_2 avec classe, kwh_m2, ges_kg_m2), pack_1 et pack_2 (cout_min, cout_max, travaux[] avec poste, description, performance_cible, decision_copropriete, autorisation_urbanisme). Si le DPE ne contient aucune recommandation : present=false, format="aucune".`,
+    schema: `"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}}`,
   },
   travaux: {
     id: 'travaux',
     cles: ['travaux'],
-    regles: `travaux.realises[] / .votes[] / .evoques[] + estimation_totale. CLASSEMENT STRICT selon le statut ECRIT dans le document : "vote" = resolution adoptee en AG ; "evoque" = a l etude, envisage, devis demande ; "realise" = travaux termines. NE JAMAIS classer en "vote" dans le doute. charge_vendeur=true uniquement si le document l indique explicitement.`,
+    regles: `travaux.realises[] / .votes[] / .evoques[] + estimation_totale. CLASSEMENT STRICT selon le statut ECRIT dans le document : "vote" = resolution adoptee en AG ; "evoque" = a l etude, envisage, devis demande ; "realise" = travaux termines. NE JAMAIS classer en "vote" dans le doute.
+RECLASSEMENT ENTRE ASSEMBLEES : un nouveau PV d AG fait souvent evoluer le statut d un chantier deja connu. Un ravalement "evoque" en 2022 puis ADOPTE en 2024 doit QUITTER "evoques" et apparaitre UNIQUEMENT dans "votes", avec l annee et le montant du vote. Il ne doit surtout pas rester dans les deux listes : chaque chantier ne figure qu UNE fois dans l ensemble realises/votes/evoques, sinon il est compte deux fois dans la notation.
+Pour reconnaitre qu il s agit du meme chantier, se fier a la NATURE des travaux (ravalement, toiture, ascenseur, colonnes, chaufferie...) et non a la formulation exacte, qui varie d un PV a l autre. charge_vendeur=true uniquement si le document l indique explicitement.`,
+    schema: `"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null}`,
   },
   procedures: {
     id: 'procedures',
     cles: ['procedures'],
     regles: `procedures[] : label, type (copro_vs_syndic|impayes|contentieux|autre), gravite (faible|moderee|elevee), message explicatif de 2-3 phrases. Si un nouveau document atteste explicitement l absence de procedure (mention "neant"), retirer les procedures qu il contredit.`,
+    schema: `"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}]`,
   },
   finances: {
     id: 'finances',
     cles: ['finances'],
-    regles: `Bloc financier de la copropriete. Ecart budget vote / charges reelles : INFORMATIF, ne jamais penaliser. Appels de fonds exceptionnels justifies par des travaux votes : INFORMATIF. fonds_travaux_statut parmi non_mentionne|insuffisant|conforme|bien|excellent|absent. Toujours renseigner l annee associee a un montant quand elle est connue.`,
+    regles: `Bloc financier de la copropriete. Ecart budget vote / charges reelles : INFORMATIF, ne jamais penaliser. Appels de fonds exceptionnels justifies par des travaux votes : INFORMATIF. fonds_travaux_statut parmi non_mentionne|insuffisant|conforme|bien|excellent|absent. Toujours renseigner l annee associee a un montant quand elle est connue.
+ANTERIORITE : pour chaque montant, le chiffre EXPLICITEMENT ECRIT le plus RECENT fait foi et remplace le precedent, avec son annee mise a jour en meme temps. Les exercices anterieurs ne disparaissent pas pour autant : ils alimentent budgets_historique. Ne JAMAIS faire de moyenne entre un ancien et un nouveau montant, et ne jamais recalculer un total soi-meme.`,
+    schema: `"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"cotisation_fonds_travaux_lot_annuelle":null,"fonds_rattaches_lot":{"avance_tresorerie":null,"fonds_travaux_alur":null,"source":null},"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_pct_vote":null,"fonds_travaux_resolution_adoptee":null,"fonds_travaux_total_constitue":null,"fonds_travaux_total_constitue_date":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null}`,
   },
   pre_etat_date: {
     id: 'pre_etat_date',
     cles: ['pre_etat_date'],
-    regles: `Pre-etat date / etat date : toutes les rubriques financieres (impayes_vendeur, fonds_travaux_alur, fonds_roulement_acheteur et sa modalite, honoraires_syndic, charges_futures, travaux_charge_vendeur[], procedures_copro, impayes_copro_global, dette_fournisseurs, historique_charges N-1/N-2). Reprendre les montants EXACTEMENT comme ecrits.`,
+    regles: `Pre-etat date / etat date : toutes les rubriques financieres (impayes_vendeur, fonds_travaux_alur, fonds_roulement_acheteur et sa modalite, honoraires_syndic, charges_futures, travaux_charge_vendeur[], procedures_copro, impayes_copro_global, dette_fournisseurs, historique_charges N-1/N-2). Reprendre les montants EXACTEMENT comme ecrits.
+ANTERIORITE : un etat date ou un pre-etat date plus RECENT perime integralement le precedent. Toutes ses rubriques ECRASENT les anciennes, y compris quand elles passent a zero ou a "neant" — un impaye solde doit repasser a 0, pas rester a son ancien montant. La date du bloc est mise a jour en meme temps.`,
+    schema: `"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]}`,
   },
   lot_achete: {
     id: 'lot_achete',
     cles: ['lot_achete'],
-    regles: `Lot vendu et compromis. Pour un compromis : identites vendeur/acheteur/notaires/agence, PRIX (net vendeur, honoraires et a la charge de qui, prix total acte), depot de garantie, dates (signature, acte prevue, retractation), conditions_suspensives[] une par une avec leur date butoir, designation du bien et lots cedes, mobilier, clauses_critiques[], servitudes[]. Montants EXACTS, sans arrondi.`,
+    regles: `Lot vendu et compromis. Pour un compromis : identites vendeur/acheteur/notaires/agence, PRIX (net vendeur, honoraires et a la charge de qui, prix total acte), depot de garantie, dates (signature, acte prevue, retractation), conditions_suspensives[] une par une avec leur date butoir, designation du bien et lots cedes, mobilier, clauses_critiques[], servitudes[]. Montants EXACTS, sans arrondi.
+ANTERIORITE : un nouveau compromis, un avenant ou une promesse plus recente REMPLACE le precedent dans son integralite (prix, dates, conditions suspensives, parties). On ne fusionne pas deux avant-contrats et on ne conserve pas les conditions d une version perimee.`,
+    schema: `"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[{"numero_lot":null,"designation":"...","tantiemes":null}],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}}`,
   },
   'vie_copropriete.syndic_ag': {
     id: 'vie_copropriete.syndic_ag',
@@ -3382,49 +3404,76 @@ const SECTIONS: Record<string, SectionDef> = {
       'vie_copropriete.travaux_votes_non_realises', 'vie_copropriete.appels_fonds_exceptionnels',
       'vie_copropriete.questions_diverses_notables',
     ],
-    regles: `Gouvernance et assemblees generales. participation_ag[] : une entree PAR ANNEE d AG, avec copropietaires_presents_representes, taux_tantiemes_pct, quitus {soumis, approuve, detail}. Ajouter la nouvelle AG a l historique SANS supprimer les annees deja presentes. syndic : nom, type, gestionnaire, fin_mandat, tensions_detectees, historique_changements.`,
+    regles: `Gouvernance et assemblees generales. participation_ag[] : une entree PAR ANNEE d AG, avec copropietaires_presents_representes, taux_tantiemes_pct, quitus {soumis, approuve, detail}. Ajouter la nouvelle AG a l historique SANS supprimer les annees deja presentes (une seule entree par annee : si l annee existe deja, on la complete au lieu d en creer une seconde).
+CHANGEMENT DE SYNDIC : si le nouveau PV designe un autre syndic, syndic.nom, type, gestionnaire et fin_mandat sont REMPLACES par les nouvelles valeurs, et une entree est ajoutee dans historique_changements avec le sortant, l entrant et l annee. On ne laisse jamais l ancien syndic en place.
+TRAVAUX VOTES NON REALISES : un chantier de cette liste dont le nouveau PV atteste l ACHEVEMENT en sort definitivement — il ne doit plus y figurer. syndic : nom, type, gestionnaire, fin_mandat, tensions_detectees, historique_changements.`,
+    schema: `"vie_copropriete.syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"vie_copropriete.participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"vie_copropriete.tendance_participation":"Non determinable","vie_copropriete.analyse_participation":"analyse","vie_copropriete.travaux_votes_non_realises":[],"vie_copropriete.appels_fonds_exceptionnels":[],"vie_copropriete.questions_diverses_notables":[]`,
   },
   'vie_copropriete.carnet_entretien': {
     id: 'vie_copropriete.carnet_entretien',
     cles: ['vie_copropriete.carnet_entretien'],
     regles: `Carnet d entretien : date_maj, immatriculation_registre, equipements_copro, contrats_entretien[], travaux_realises_carnet[] (annee, label, entreprise, montant) un par un, travaux_en_cours_votes_carnet[], diagnostics_parties_communes_carnet[], conseil_syndical_carnet.`,
+    schema: `"vie_copropriete.carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}}`,
   },
   'vie_copropriete.dtg': {
     id: 'vie_copropriete.dtg',
     cles: ['vie_copropriete.dtg'],
     regles: `DTG / PPT : present, etat_general, budget_urgent_3ans, budget_total_10ans, travaux_prioritaires[] avec montant estime, echeance et degre d urgence. Le PPT est INFORMATIF : ne jamais penaliser ni bonifier.`,
+    schema: `"vie_copropriete.dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]}`,
   },
   'vie_copropriete.fiche_synthetique': {
     id: 'vie_copropriete.fiche_synthetique',
     cles: ['vie_copropriete.fiche_synthetique'],
     regles: `Fiche synthetique (loi ALUR) : present, date, fiche_recente, immatriculation_registre, dtg_realise, dtg_date, equipements_collectifs_detail[].`,
+    schema: `"vie_copropriete.fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}`,
   },
   'vie_copropriete.lots': {
     id: 'vie_copropriete.lots',
     cles: [
       'vie_copropriete.nb_lots_total', 'vie_copropriete.nb_lots_detail',
       'vie_copropriete.lots_enumeres', 'vie_copropriete.nb_batiments',
-      'vie_copropriete.regles_copro', 'vie_copropriete.modificatifs_rcp',
     ],
-    regles: `Etat descriptif de division. lots_enumeres[] : UN objet PAR LOT NUMEROTE, sans regroupement et sans jamais s arreter en cours de liste (numero, designation, categorie, tantiemes).
+    regles: `Etat descriptif de division. lots_enumeres[] : UN objet PAR LOT NUMEROTE, sans regroupement et sans jamais s arreter en cours de liste (numero en chiffres, designation recopiee, categorie, tantiemes au format "num/den" tels qu ecrits).
 CATEGORIES OBLIGATOIRES (nb_lots_detail, 7 cles) : logements (appartements + studios) - maisons - chambres_service (chambre de bonne, chambre avec salle d eau constituee en lot) - parkings (emplacements, garages, boxes) - caves - commerces - autres (reserve, debarras, grenier, cellier, local technique). NE JAMAIS tout mettre dans "autres".
-Si lots_enumeres existe deja, le CONSERVER integralement et se contenter de completer categorie/designation manquantes, sauf si le nouveau document est un modificatif qui cree ou supprime des lots.
-NE PAS compter comme lots le preambule descriptif de l immeuble.`,
+REGLES ABSOLUES : (1) une entree = un "LOT NUMERO X", jamais autre chose ; (2) ne JAMAIS creer d entree sans numero — un bloc orphelin en haut de page est la FIN du lot precedent ; (3) MODIFICATIF INTEGRE : si un lot a ete DIVISE, FUSIONNE ou SUPPRIME par un acte modificatif, le lot d origine N EXISTE PLUS et doit DISPARAITRE de lots_enumeres ; ses remplacants sont numerotes a la suite. Ne jamais lister le lot d origine a cote de ses remplacants ; (4) ne jamais compter le preambule descriptif de l immeuble ; (5) un lot cite deux fois = une seule entree.
+Si lots_enumeres existe deja, le CONSERVER integralement et se contenter de completer categorie/designation manquantes, sauf si le nouveau document cree ou supprime des lots.
+COMPOSITION vs MODIFICATIFS : le chiffre EXPLICITEMENT ECRIT le plus RECENT fait foi, sans jamais calculer soi-meme. Si un modificatif change les lots SANS donner de nouveau total, ne PAS faire l arithmetique.
+GARDE-FOU : au-dela de 150 lots annonces, laisser lots_enumeres a [] et ne remplir que nb_lots_detail.`,
+    schema: `"vie_copropriete.nb_lots_total":null,"vie_copropriete.nb_lots_detail":{"logements":null,"maisons":null,"chambres_service":null,"parkings":null,"caves":null,"commerces":null,"autres":null},"vie_copropriete.lots_enumeres":[{"numero":null,"designation":"...","categorie":"logements|maisons|chambres_service|parkings|caves|commerces|autres","tantiemes":null}],"vie_copropriete.nb_batiments":null`,
+  },
+  'vie_copropriete.modificatifs': {
+    id: 'vie_copropriete.modificatifs',
+    cles: ['vie_copropriete.modificatifs_rcp', 'vie_copropriete.regles_copro'],
+    regles: `MODIFICATIFS AU REGLEMENT DE COPROPRIETE — un objet par acte modificatif.
+Objectif : faire comprendre a un ACHETEUR ce que change cet acte et ce que ca implique pour lui. Ignorer tout ce qui est purement procedural, fiscal ou administratif sans impact pratique.
+- date_acte : date de signature de l acte modificatif (AAAA-MM-JJ).
+- notaire : nom du notaire et de l etude, tels qu ecrits.
+- type_modification : creation_lot | suppression_lot | changement_usage | mise_a_jour_tantiemes | servitude | fusion_lots | autre. Choisir celui qui correspond a l effet PRINCIPAL de l acte.
+- sur_quoi_porte : 2 a 4 points decrivant CONCRETEMENT ce que modifie l acte, en langage simple et non juridique. Ecrire "Division du lot 38 (duplex du 5e etage) en deux appartements numerotes 39 et 40" plutot que "Modificatif a l etat descriptif de division portant division du lot 38". Mentionner les numeros de lots crees, supprimes ou modifies, et les tantiemes avant/apres quand ils sont ecrits.
+- impact_acheteur : 1 a 2 phrases sur ce que ca change concretement pour un futur acquereur.
+- points_attention : uniquement les points reellement utiles a un acheteur (ex : le total de lots de la copropriete a change, une servitude nouvelle greve le lot). Laisser [] s il n y en a pas.
+Ne JAMAIS recopier le tableau recapitulatif des lots ici : il appartient a l etat descriptif.
+
+REGLES DE COPROPRIETE (regles_copro) — clauses du reglement qui contraignent l usage du lot : location saisonniere, profession liberale, animaux, travaux, changement d usage, occupation. Pour chaque regle : statut (autorise | interdit | sous_conditions) et impact_rp / impact_invest selon qu elle gene une residence principale ou un investissement locatif.`,
+    schema: `"vie_copropriete.modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"explication courte en langage simple sans jargon juridique"}],"impact_acheteur":"1-2 phrases sur ce que ca change concretement pour un futur acheteur","points_attention":[{"label":"...","detail":"explication claire en 1 phrase"}]}],"vie_copropriete.regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}]`,
   },
   historique_travaux: {
     id: 'historique_travaux',
     cles: ['historique_travaux'],
     regles: `Devis / factures / attestations de travaux : entreprise (nom, siret, contact, assurance_decennale), travaux[] (poste, description, montant, date), montant_total, date_plus_recente, garantie_decennale_possible.`,
+    schema: `"historique_travaux":{"present":false,"entreprise":{"nom":null,"siret":null,"contact":null,"assurance_decennale":null},"travaux":[{"poste":null,"description":null,"montant":null,"date":null}],"montant_total":null,"date_plus_recente":null,"garantie_decennale_possible":null}`,
   },
   assainissement: {
     id: 'assainissement',
     cles: ['assainissement'],
     regles: `Assainissement : type_reseau (collectif|non_collectif), conforme, date_controle, observations.`,
+    schema: `"assainissement":{"present":false,"type_reseau":"collectif|non_collectif|null","conforme":null,"date_controle":null,"observations":null}`,
   },
   vie_asl: {
     id: 'vie_asl',
     cles: ['vie_asl', 'asl_mentionnee'],
     regles: `ASL / AFUL / Union : denomination, objet, perimetre, cotisation annuelle et sa base de repartition, organes de gestion, travaux ou charges votes, obligations imposees aux membres. NE PAS confondre avec une copropriete (loi 1965) : l ASL releve de l ordonnance de 2004.`,
+    schema: `"vie_asl":{"present":false,"structures":[]},"asl_mentionnee":{"detectee":false,"statut":null,"source":null}`,
   },
 };
 
@@ -3443,9 +3492,9 @@ const ROUTAGE_SECTIONS: Record<string, string[]> = {
   FICHE_SYNTHETIQUE: ['vie_copropriete.fiche_synthetique', 'finances'],
   CARNET_ENTRETIEN: ['vie_copropriete.carnet_entretien', 'travaux'],
   DTG_PPT: ['vie_copropriete.dtg', 'travaux'],
-  REGLEMENT_COPRO: ['vie_copropriete.lots'],
-  RCP: ['vie_copropriete.lots'],
-  MODIFICATIF_RCP: ['vie_copropriete.lots'],
+  REGLEMENT_COPRO: ['vie_copropriete.lots', 'vie_copropriete.modificatifs'],
+  RCP: ['vie_copropriete.lots', 'vie_copropriete.modificatifs'],
+  MODIFICATIF_RCP: ['vie_copropriete.modificatifs', 'vie_copropriete.lots'],
   COMPROMIS: ['lot_achete'],
   HISTORIQUE_TRAVAUX: ['historique_travaux', 'travaux'],
   ASSAINISSEMENT: ['assainissement'],
@@ -3477,19 +3526,71 @@ function compterFeuilles(v: unknown): number {
   return 1;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 📚 LE REFERENTIEL METIER COMPLET, sans le schema de sortie global.
+// ──────────────────────────────────────────────────────────────────────
+// buildSystemPrompt('complete') = ~20 000 tokens de regles par type de
+// document (PV d AG, RCP, modificatif, DPE, compromis, carnet, DTG, ASL...)
+// suivis du schema JSON des ~200 champs.
+//
+// Reecrire ces regles a la main section par section garantissait des trous :
+// chaque type de document a ses consignes propres et il est impossible de les
+// resumer sans en perdre. On donne donc a chaque section LE VRAI referentiel,
+// mot pour mot — la parite avec une analyse complete devient structurelle.
+//
+// On coupe juste avant le schema global (inutile ici : chaque section porte
+// deja son propre fragment de schema, bien plus precis pour elle).
+//
+// ⚠️ Le cout est en ENTREE, pas en sortie : ~20 000 tokens se chargent en
+// quelques secondes (prefill), alors que le mur des 400s vient de l ECRITURE.
+// Chaque section continue de n ecrire que ses quelques centaines de tokens.
+// ══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// 🔌 INTERRUPTEUR D'URGENCE
+// true  = chaque section recoit le referentiel metier complet (~20 000 tokens
+//         en ENTREE) -> parite totale avec une analyse complete.
+// false = repli sur les regles resumees section par section (~300 tokens).
+//         Moins riche, mais entree divisee par 60.
+// A basculer UNIQUEMENT si les logs montrent des durees de section anormales
+// (> 100s). Redeployer apres modification.
+// ══════════════════════════════════════════════════════════════
+const COMPLEMENT_REFERENTIEL_COMPLET = true;
+
+const MARQUEUR_SCHEMA_GLOBAL = '{"titre":"adresse complete"';
+
+function referentielMetier(profil: string, typeBienDeclare?: string | null): string {
+  if (!COMPLEMENT_REFERENTIEL_COMPLET) {
+    return `Tu es le moteur d analyse documentaire de Verimo. Profil acheteur : ${profil === 'invest' ? 'investissement locatif' : 'residence principale'}. Tu n utilises jamais les mots Claude, Anthropic ou IA.`;
+  }
+  const complet = buildSystemPrompt('complete', profil, typeBienDeclare);
+  const i = complet.indexOf(MARQUEUR_SCHEMA_GLOBAL);
+  return i > 0 ? complet.slice(0, i) : complet;
+}
+
 async function regenererSection(
   def: SectionDef,
   rapport: Record<string, unknown>,
   extraits: ExtraitDoc[],
   apiKey: string,
+  referentiel: string,
 ): Promise<{ id: string; ok: boolean; valeurs?: Record<string, unknown>; raison?: string }> {
   const actuel: Record<string, unknown> = {};
   for (const cle of def.cles) actuel[cle] = getPath(rapport, cle) ?? null;
 
-  const system = `Tu es le moteur d analyse documentaire de Verimo. Tu n utilises jamais les mots Claude, Anthropic ou IA.
+  const system = `${referentiel}
 
-Tu mets a jour UNE SEULE section d un rapport immobilier existant.
+═══════════════════════════════════════════════════════════════
+MODE MISE A JOUR PARTIELLE
+═══════════════════════════════════════════════════════════════
+Toutes les regles ci-dessus s appliquent A L IDENTIQUE. La seule difference
+avec une analyse complete : tu ne produis QU UNE SECTION du rapport, pas le
+rapport entier. Le niveau de detail attendu est EXACTEMENT le meme que si les
+documents avaient ete deposes des le depart — aucune information ne doit
+disparaitre au motif qu il s agit d une mise a jour.
 
+SECTION A PRODUIRE : ${def.id}
+
+Rappel des points cles pour cette section :
 ${def.regles}
 
 REGLES DE FUSION — IMPERATIVES :
@@ -3497,13 +3598,42 @@ REGLES DE FUSION — IMPERATIVES :
 2. Tu CONSERVES toute donnee actuelle que les extraits ne contredisent pas. Ne jamais remplacer une valeur renseignee par null parce que le nouveau document n en parle pas.
 3. Tu COMPLETES les champs vides quand les extraits apportent l information.
 4. Tu CORRIGES une valeur uniquement si un extrait apporte une information plus PRECISE ou plus RECENTE. En cas de contradiction, le document le plus recent l emporte ; a date egale ou inconnue, le nouveau document l emporte.
-5. Les listes historiques (assemblees generales, travaux, lots, modificatifs) s ENRICHISSENT : on ajoute les nouvelles entrees sans supprimer les anciennes.
+5. Les listes historiques (assemblees generales, lots, modificatifs, travaux realises) s ENRICHISSENT : on ajoute les nouvelles entrees sans supprimer les anciennes.
+5bis. RECLASSEMENT — regle PRIORITAIRE sur la 5. Quand un nouveau document fait CHANGER DE STATUT un element deja present, cet element est DEPLACE, jamais duplique. Il DISPARAIT de sa liste d origine et REAPPARAIT dans sa nouvelle liste, enrichi des informations du nouveau document (annee, montant, references).
+   Exemples : un travail "evoque" dans un PV ancien puis ADOPTE dans un PV plus recent quitte "evoques" pour "votes" ; un travail "vote" puis constate TERMINE quitte "votes" pour "realises" ; une procedure declaree eteinte disparait de la liste.
+   Avant de rendre ta reponse, VERIFIE qu aucun element ne figure dans deux listes a la fois : un meme travail ne compte qu une seule fois, sinon le score du rapport est fausse.
 6. Ne RIEN inventer. Une information absente des extraits ET du rapport actuel reste null.
+
+REGLE DE COHERENCE ET D ANTERIORITE — s applique a TOUS les champs de la section :
+Un dossier immobilier est une succession de documents echelonnes dans le temps. Un
+document recent ne s AJOUTE pas toujours a ce qui existe : tres souvent, il fait
+EVOLUER ou il REMPLACE ce que disait un document plus ancien. Avant d ecrire chaque
+champ, determine laquelle des trois situations s applique :
+  (a) AJOUT — le nouveau document apporte une information que personne ne donnait.
+      -> on ajoute, sans toucher au reste.
+  (b) EVOLUTION — le nouveau document parle du MEME objet et en change l etat.
+      -> l objet est mis a jour ou deplace. Il ne doit JAMAIS exister en double.
+  (c) REMPLACEMENT — le nouveau document est une version plus recente du meme
+      document (nouveau DPE, nouvel etat date, nouveau compromis, nouveau syndic).
+      -> les valeurs recentes ECRASENT les anciennes, et la date ou l annee associee
+         est mise a jour EN MEME TEMPS que le montant ou le resultat. Un chiffre
+         recent accompagne d une annee ancienne est une incoherence.
+INTERDITS ABSOLUS : laisser cohabiter deux versions contradictoires d une meme
+information ; faire une moyenne ou un calcul entre un ancien et un nouveau chiffre ;
+garder une valeur ancienne "au cas ou" a cote de la nouvelle.
 7. Tu ne calcules AUCUNE note et AUCUN score : ce n est pas ton role.
 
 FORMAT DE SORTIE — JSON STRICT, rien d autre, aucun markdown.
 Tu renvoies un objet dont les cles sont EXACTEMENT : ${def.cles.map(c => `"${c}"`).join(', ')}.
-La valeur de chaque cle a EXACTEMENT la meme forme que dans la section actuelle.`;
+
+SCHEMA EXACT ATTENDU (noms de champs et valeurs autorisees — a respecter a la lettre,
+meme si la section actuelle est vide ou partielle : c est CE schema qui fait foi,
+jamais la forme de la valeur actuelle) :
+${def.schema}
+
+Les valeurs d exemple du schema ne sont que des illustrations de FORME. Remplis chaque
+champ avec les donnees reelles des extraits, ou null si l information est absente.
+N invente aucun nom de champ et n en omets aucun.`;
 
   const faits = extraits
     .filter(e => e.statut === 'ok')
@@ -3539,6 +3669,12 @@ La valeur de chaque cle a EXACTEMENT la meme forme que dans la section actuelle.
     return { id: def.id, ok: false, raison: 'appauvrissement' };
   }
 
+  // Une section ciblee par un nouveau document est censee s'ENRICHIR. Si elle
+  // revient sans le moindre gain, ce n'est pas bloquant mais c'est anormal :
+  // on le trace pour pouvoir resserrer le prompt de cette section.
+  if (apres <= avant) {
+    console.warn(`[complement-merge] ⚠️ Section "${def.id}" sans gain (${avant} -> ${apres} feuilles) — verifier le prompt/schema`);
+  }
   console.log(`[complement-merge] Section "${def.id}" OK (${dureeS}s, ${avant} -> ${apres} feuilles)`);
   return { id: def.id, ok: true, valeurs: parsed };
 }
@@ -3547,6 +3683,7 @@ async function regenererConclusion(
   rapport: Record<string, unknown>,
   profil: string,
   apiKey: string,
+  referentiel: string,
 ): Promise<Record<string, unknown> | null> {
   const CLES = ['resume', 'points_forts', 'points_vigilance', 'negociation', 'avis_verimo'];
   const actuel: Record<string, unknown> = {};
@@ -3558,8 +3695,11 @@ async function regenererConclusion(
   for (const c of CLES) delete base[c];
 
   const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
-  const system = `Tu es le moteur d analyse documentaire de Verimo. Profil acheteur : ${p}. Tu n utilises jamais les mots Claude, Anthropic ou IA.
+  const system = `${referentiel}
 
+═══════════════════════════════════════════════════════════════
+MODE SYNTHESE SEULE — profil acheteur : ${p}
+═══════════════════════════════════════════════════════════════
 On te donne un rapport immobilier COMPLET et A JOUR (score et notes deja calcules, ne les recalcule pas). Tu rediges uniquement sa synthese.
 
 - resume : objet a 5 cles (le_bien, la_copropriete, performance_energetique, diagnostics_privatifs, gouvernance_finances), 2-3 phrases factuelles chacune.
@@ -3583,6 +3723,102 @@ FORMAT — JSON STRICT, rien d autre : un objet aux cles ${CLES.map(c => `"${c}"
   return parsed;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🔧 NORMALISATION DES ALIAS DE CHAMPS
+// ──────────────────────────────────────────────────────────────────────
+// Constate en production : le moteur produisait les BONNES donnees sous de
+// MAUVAIS noms de champs — pieces_detail avec "surface_carrez" au lieu de
+// "surface", modificatifs_rcp avec "date"/"objet" au lieu de "date_acte"/
+// "impact_acheteur". Le renderer ne trouvait rien et affichait des lignes vides.
+//
+// Le schema explicite injecte dans chaque prompt de section corrige la cause.
+// Cette fonction est le FILET : elle remappe les alias connus.
+// Elle sert aussi de SIGNAL — si elle se declenche encore dans les logs, c'est
+// que le schema n'est pas respecte et qu'il faut resserrer le prompt concerne.
+// ══════════════════════════════════════════════════════════════════════
+function normaliserAliasComplement(rapport: Record<string, unknown>): void {
+  let corrections = 0;
+
+  // ── diagnostics[].pieces_detail[].surface ──
+  const diags = Array.isArray(rapport.diagnostics) ? rapport.diagnostics as Array<Record<string, unknown>> : [];
+  for (const d of diags) {
+    const pieces = Array.isArray(d.pieces_detail) ? d.pieces_detail as Array<Record<string, unknown>> : [];
+    for (const p of pieces) {
+      if (p.surface === undefined || p.surface === null) {
+        const alias = p.surface_carrez ?? p.surface_m2 ?? p.m2 ?? p.superficie ?? p.surface_habitable;
+        if (typeof alias === 'number') { p.surface = alias; corrections++; }
+      }
+      if (p.piece === undefined || p.piece === null) {
+        const aliasNom = p.nom ?? p.libelle ?? p.designation;
+        if (typeof aliasNom === 'string') { p.piece = aliasNom; corrections++; }
+      }
+    }
+  }
+
+  // ── vie_copropriete.modificatifs_rcp[] ──
+  const vie = (rapport.vie_copropriete || {}) as Record<string, unknown>;
+  const modifs = Array.isArray(vie.modificatifs_rcp) ? vie.modificatifs_rcp as Array<Record<string, unknown>> : [];
+  for (const m of modifs) {
+    if (!m.date_acte && typeof m.date === 'string') { m.date_acte = m.date; corrections++; }
+    if (!m.impact_acheteur && typeof m.objet === 'string') { m.impact_acheteur = m.objet; corrections++; }
+    if (!Array.isArray(m.sur_quoi_porte) && typeof m.objet === 'string') {
+      m.sur_quoi_porte = [{ aspect: 'Modification', detail: m.objet }];
+      corrections++;
+    }
+    if (!m.type_modification) { m.type_modification = 'autre'; corrections++; }
+    if (!Array.isArray(m.points_attention)) m.points_attention = [];
+  }
+
+  if (corrections > 0) {
+    console.warn(`[complement-merge] 🔧 ${corrections} champ(s) remappe(s) depuis un alias — le schema n'a pas ete respecte a la lettre`);
+  }
+}
+
+// Borne dure : retryDpeCarrez et extraireLotsRCP n imposent aucun timeoutMs et
+// heritent donc du defaut de 385s. Additionne a une lecture deja longue, ca
+// depassait le budget de l invocation. On ne les attend jamais au-dela du temps
+// reellement disponible ; au-dela on abandonne et on poursuit sans elles.
+function avecDelai<T>(p: Promise<T>, ms: number, label: string): Promise<T | null> {
+  return Promise.race([
+    p.catch(e => { console.error(`[complement-map] ${label}:`, e); return null; }),
+    new Promise<null>(r => setTimeout(() => { console.warn(`[complement-map] ⏱️ ${label} abandonnee apres ${Math.round(ms / 1000)}s`); r(null); }, ms)),
+  ]);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 📋 DOCUMENTS NON TRAITES — visibilite cote CLIENT
+// ──────────────────────────────────────────────────────────────────────
+// Un document peut disparaitre silencieusement a trois endroits : a l upload
+// (PDF protege/corrompu), a la lecture en MAP-REDUCE, a la lecture en
+// complement. Jusqu'ici le rapport se generait et personne ne prevenait
+// l acheteur — il croyait son dossier complet.
+// On consigne ici, le front affiche.
+// ══════════════════════════════════════════════════════════════════════
+async function enregistrerDocsNonTraites(
+  supabaseAdmin: SupabaseClient,
+  analyseId: string,
+  items: Array<{ nom: string; raison: string; phase: string }>,
+): Promise<void> {
+  if (!items.length) return;
+  try {
+    const { data } = await supabaseAdmin
+      .from('analyses').select('documents_non_traites').eq('id', analyseId).single();
+    const existant = (data?.documents_non_traites || {}) as { vu?: boolean; items?: Array<{ nom: string }> };
+    const deja = Array.isArray(existant.items) ? existant.items : [];
+    const noms = new Set(deja.map(d => d.nom));
+    const fusion = [...deja, ...items.filter(i => !noms.has(i.nom))];
+
+    await supabaseAdmin.from('analyses').update({
+      // vu remis a false : un nouvel echec doit etre signale meme si le client
+      // avait deja acquitte un signalement precedent.
+      documents_non_traites: { vu: false, items: fusion },
+    }).eq('id', analyseId);
+    console.log(`[analyser-run] 📋 ${items.length} document(s) non traite(s) consigne(s) pour le client`);
+  } catch (e) {
+    console.error('[analyser-run] enregistrerDocsNonTraites (non bloquant):', e);
+  }
+}
+
 // ══ PHASE 1 — extraction des nouveaux documents ══
 async function runComplementMap(
   analyseId: string,
@@ -3591,6 +3827,7 @@ async function runComplementMap(
   apiKey: string,
 ): Promise<void> {
   try {
+    const tDebutMap = Date.now();
     console.log(`[complement-map] Demarrage — ${files.length} nouveau(x) doc(s) | analyse ${analyseId}`);
     await supabaseAdmin.from('analyses').update({
       progress_current: 0,
@@ -3601,7 +3838,7 @@ async function runComplementMap(
 
     let done = 0;
     const withProgress = async (f: { id: string; name: string }): Promise<ExtraitDoc> => {
-      const e = await extractOneDoc(f, apiKey); // supprime le PDF (RGPD) en fin d appel
+      const e = await extractOneDoc(f, apiKey, false); // suppression differee (extractions ciblees)
       done++;
       await supabaseAdmin.from('analyses').update({
         progress_current: done,
@@ -3617,14 +3854,99 @@ async function runComplementMap(
 
     const oks = extraits.filter(e => e.statut === 'ok');
     console.log(`[complement-map] Termine — ${oks.length}/${files.length} doc(s) lus`);
+    await enregistrerDocsNonTraites(supabaseAdmin, analyseId, extraits
+      .filter(e => e.statut === 'echec')
+      .map(e => ({ nom: e.file_name, raison: e.raison || 'inconnue', phase: 'complement' })));
 
     if (oks.length === 0) {
+      // RGPD : la suppression etant differee, elle doit avoir lieu ici aussi
+      await Promise.all(files.map(f => deleteFromFilesAPI(f.id, apiKey).catch(() => {})));
       await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', COMPLEMENT_FAILED_MSG, 'Complement : aucun document lisible');
       return;
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // 🎯 EXTRACTIONS CIBLEES — les memes filets que l'analyse complete.
+    // Le grand prompt (et a fortiori un prompt de section) rate regulierement
+    // deux champs noyes parmi 200 : les packs de travaux du DPE et le detail
+    // Carrez piece par piece. L'analyse complete les rattrape via retryDpeCarrez ;
+    // idem pour l'etat descriptif via extraireLotsRCP. Sans ces appels, le
+    // complement rendait un rapport structurellement plus pauvre.
+    // ⚠️ DOIT tourner ICI : en phase MERGE les PDF n'existent plus.
+    // ══════════════════════════════════════════════════════════════
+    const extras: Record<string, unknown> = {};
+    try {
+      const { data: courant } = await supabaseAdmin
+        .from('analyses').select('result').eq('id', analyseId).single();
+      const rapportCourant = courant?.result
+        ? JSON.parse(JSON.stringify(courant.result)) as Record<string, unknown>
+        : null;
+
+      const idsOk = extraits.filter(e => e.statut === 'ok').map((_, i) => files[i]?.id).filter(Boolean) as string[];
+      const tousIds = files.map(f => f.id);
+      const typesDetectes = extraits
+        .filter(e => e.statut === 'ok')
+        .map(e => String((e.extraction?.type_detecte as string) || '').toUpperCase());
+
+      // ⏱️ Budget de temps : la lecture des documents a deja consomme une partie
+      // des ~400s de l'invocation. Si elle a ete longue, on saute les extractions
+      // ciblees plutot que de risquer un timeout — les sections resteront servies
+      // par les extraits, et le schema explicite fait deja l'essentiel du travail.
+      // Budget = ce qu'il reste avant 340s, marge gardee pour la suppression RGPD,
+      // la sauvegarde et le declenchement de la phase 2.
+      const ecoule = Date.now() - tDebutMap;
+      const budgetCible = 340000 - ecoule;
+      if (budgetCible < 45000) {
+        console.warn(`[complement-map] ⏱️ Lecture longue (${Math.round(ecoule / 1000)}s) — extractions ciblees sautees`);
+      } else {
+        console.log(`[complement-map] Budget extractions ciblees : ${Math.round(budgetCible / 1000)}s`);
+        const aDpeOuDiag = typesDetectes.some(t => ['DPE', 'DDT', 'DIAGNOSTIC', 'AUDIT_ENERGETIQUE'].includes(t));
+        const aRcp = typesDetectes.some(t => ['RCP', 'REGLEMENT_COPRO', 'MODIFICATIF_RCP'].includes(t));
+
+        // Les deux extractions sont INDEPENDANTES : on les lance en parallele.
+        // En sequentiel, le pire cas (30s + 90s) s'ajoutait a une lecture deja longue.
+        const [resDpe, resLots] = await Promise.all([
+          (rapportCourant && aDpeOuDiag && tousIds.length > 0)
+            ? avecDelai(
+                (async () => {
+                  console.log('[complement-map] 🎯 Extraction ciblee DPE/Carrez lancee');
+                  return await retryDpeCarrez(rapportCourant as RapportShape, tousIds, apiKey) as Record<string, unknown>;
+                })(), budgetCible, 'retryDpeCarrez')
+            : Promise.resolve(null),
+          (aRcp && tousIds.length > 0)
+            ? avecDelai(
+                (async () => {
+                  const vie = (rapportCourant?.vie_copropriete || {}) as Record<string, unknown>;
+                  const totalAnn = typeof vie.nb_lots_total === 'number' ? vie.nb_lots_total as number : null;
+                  console.log('[complement-map] 🎯 Extraction ciblee etat descriptif lancee');
+                  return await extraireLotsRCP(tousIds, apiKey, totalAnn);
+                })(), budgetCible, 'extraireLotsRCP')
+            : Promise.resolve(null),
+        ]);
+
+        if (resDpe) {
+          const reco = resDpe.dpe_recommandations as Record<string, unknown> | undefined;
+          if (reco?.present === true) extras.dpe_recommandations = reco;
+          const diags = Array.isArray(resDpe.diagnostics) ? resDpe.diagnostics as Array<Record<string, unknown>> : [];
+          const carrez = diags.find(d => String(d.type || '').toUpperCase() === 'CARREZ');
+          if (carrez && Array.isArray(carrez.pieces_detail) && (carrez.pieces_detail as unknown[]).length > 0) {
+            extras.carrez_pieces_detail = carrez.pieces_detail;
+          }
+        }
+        if (resLots && resLots.length > 0) extras.lots_enumeres = resLots;
+      }
+
+      void idsOk;
+    } catch (e) {
+      console.error('[complement-map] Extractions ciblees (non bloquant):', e);
+    }
+
+    // RGPD : suppression differee, une fois toutes les extractions terminees
+    await Promise.all(files.map(f => deleteFromFilesAPI(f.id, apiKey).catch(() => {})));
+    console.log(`[complement-map] Suppression RGPD de ${files.length} fichier(s)`);
+
     const { error: saveErr } = await supabaseAdmin.from('analyses').update({
-      complement_extraits: { version: 'complement_v2', nb_docs: files.length, extraits },
+      complement_extraits: { version: 'complement_v2', nb_docs: files.length, extraits, extras },
       progress_message: 'Documents lus — mise a jour du rapport...',
       last_retry_at: new Date().toISOString(),
     }).eq('id', analyseId);
@@ -3688,8 +4010,9 @@ async function runComplementMerge(
 
     const rapport = JSON.parse(JSON.stringify(a.result)) as Record<string, unknown>;
     const profil = (a.profil as string) || 'rp';
-    const bloc = a.complement_extraits as { extraits: ExtraitDoc[] };
+    const bloc = a.complement_extraits as { extraits: ExtraitDoc[]; extras?: Record<string, unknown> };
     const extraits = (bloc.extraits || []).filter(e => e.statut === 'ok');
+    const extras = bloc.extras || {};
 
     // ── Routage : quelles sections sont concernees, et par quels extraits ──
     const parSection = new Map<string, ExtraitDoc[]>();
@@ -3707,8 +4030,12 @@ async function runComplementMerge(
     console.log(`[complement-merge] ${parSection.size} section(s) a regenerer : ${[...parSection.keys()].join(', ')}`);
 
     // ── Regeneration EN PARALLELE (chaque appel est court) ──
+    // Construit UNE fois, partage par tous les appels de section.
+    const referentiel = referentielMetier(profil, (a.type_bien_declare as string) || null);
+    console.log(`[complement-merge] Referentiel metier chargé (~${Math.round(referentiel.length / 4)} tokens)`);
+
     const resultats = await Promise.all(
-      [...parSection.entries()].map(([id, exs]) => regenererSection(SECTIONS[id], rapport, exs, apiKey))
+      [...parSection.entries()].map(([id, exs]) => regenererSection(SECTIONS[id], rapport, exs, apiKey, referentiel))
     );
 
     // ── Fusion JS : seules les sections VALIDEES sont ecrites ──
@@ -3728,6 +4055,31 @@ async function runComplementMerge(
       console.warn(`[complement-merge] Sections non appliquees : ${sectionsRejetees.join(', ')}`);
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // 🎯 APPLICATION DES EXTRACTIONS CIBLEES — priorite absolue.
+    // Ces valeurs viennent d'appels dedies sur les PDF eux-memes : elles sont
+    // plus fiables que ce qu'une section a pu produire a partir des extraits.
+    // On les ecrit APRES la fusion pour qu'aucune section ne puisse les ecraser.
+    // ══════════════════════════════════════════════════════════════
+    if (extras.dpe_recommandations) {
+      rapport.dpe_recommandations = extras.dpe_recommandations;
+      console.log('[complement-merge] 🎯 dpe_recommandations applique (extraction ciblee)');
+    }
+    if (Array.isArray(extras.carrez_pieces_detail)) {
+      const diags = Array.isArray(rapport.diagnostics) ? rapport.diagnostics as Array<Record<string, unknown>> : [];
+      const carrez = diags.find(d => String(d.type || '').toUpperCase() === 'CARREZ');
+      if (carrez) {
+        carrez.pieces_detail = extras.carrez_pieces_detail;
+        console.log(`[complement-merge] 🎯 carrez.pieces_detail applique (${(extras.carrez_pieces_detail as unknown[]).length} pieces)`);
+      }
+    }
+    if (Array.isArray(extras.lots_enumeres) && (extras.lots_enumeres as unknown[]).length > 0) {
+      const vie = (rapport.vie_copropriete || {}) as Record<string, unknown>;
+      vie.lots_enumeres = extras.lots_enumeres;
+      rapport.vie_copropriete = vie;
+      console.log(`[complement-merge] 🎯 lots_enumeres applique (${(extras.lots_enumeres as unknown[]).length} lots)`);
+    }
+
     // ── documents_analyses : append DETERMINISTE (jamais le moteur) ──
     const docsExistants = Array.isArray(rapport.documents_analyses)
       ? rapport.documents_analyses as Array<Record<string, unknown>> : [];
@@ -3742,6 +4094,11 @@ async function runComplementMerge(
       });
     }
     rapport.documents_analyses = docsExistants;
+
+    // ── Filet : remappage des alias de champs avant tout recalcul ──
+    try { normaliserAliasComplement(rapport); } catch (e) {
+      console.error('[complement-merge] normaliserAlias (non bloquant):', e);
+    }
 
     // ── Recalculs DETERMINISTES : score, niveau, categories, docs manquants ──
     let final = rapport;
@@ -3763,7 +4120,7 @@ async function runComplementMerge(
       last_retry_at: new Date().toISOString(),
     }).eq('id', analyseId);
 
-    const conclusion = await regenererConclusion(final, profil, apiKey);
+    const conclusion = await regenererConclusion(final, profil, apiKey, referentiel);
     if (conclusion) {
       for (const [k, v] of Object.entries(conclusion)) {
         if (v === undefined || v === null) continue;
