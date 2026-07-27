@@ -4518,7 +4518,7 @@ function TabAsl({ rapport }: { rapport: RapportData }) {
   );
 }
 
-function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportData; onComplement?: () => void; isShared?: boolean }) {
+function TabDocuments({ rapport, onComplement, isShared, bloque, signale }: { rapport: RapportData; onComplement?: () => void; isShared?: boolean; bloque?: boolean; signale?: boolean }) {
 
   const docTypeLabel: Record<string, string> = {
     PV_AG: "PV d'Assemblée Générale", REGLEMENT_COPRO: 'Règlement de copropriété',
@@ -4639,20 +4639,35 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
+              {/* 🆕 `bloque` = 3 tentatives atteintes : le serveur refusera de toute
+                  façon, on désactive donc le bouton plutôt que de laisser le client
+                  se heurter à une erreur. Il redevient actif dès que le support débloque. */}
               <button
-                onClick={(expired || complementDate) ? undefined : () => onComplement?.()}
-                disabled={expired || !!complementDate}
-                title={complementDate ? 'Dossier déjà complété' : expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
+                onClick={(expired || complementDate || bloque) ? undefined : () => onComplement?.()}
+                disabled={expired || !!complementDate || !!bloque}
+                title={
+                  bloque
+                    ? (signale ? 'Demande en cours de traitement par notre équipe' : 'Ajout indisponible — signalez-le au support')
+                    : complementDate ? 'Dossier déjà complété'
+                    : expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé'
+                    : undefined
+                }
                 style={{
                   display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none',
-                  background: (expired || complementDate) ? '#e2e8f0' : '#2a7d9c',
-                  color: (expired || complementDate) ? '#94a3b8' : '#fff',
+                  background: (expired || complementDate || bloque) ? '#e2e8f0' : '#2a7d9c',
+                  color: (expired || complementDate || bloque) ? '#94a3b8' : '#fff',
                   fontSize: 13, fontWeight: 600,
-                  cursor: (expired || complementDate) ? 'not-allowed' : 'pointer',
-                  opacity: (expired || complementDate) ? 0.7 : 1,
+                  cursor: (expired || complementDate || bloque) ? 'not-allowed' : 'pointer',
+                  opacity: (expired || complementDate || bloque) ? 0.7 : 1,
                 }}>
                 <RefreshCw size={13} /> Compléter mon dossier
               </button>
+              {bloque && !complementDate && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#b45309', fontWeight: 600 }}>
+                  <LifeBuoy size={14} />
+                  <span>{signale ? 'Demande en cours de traitement par notre équipe' : 'Ajout indisponible — signalez-le au support'}</span>
+                </div>
+              )}
               {complementDate ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
                   <CheckCircle size={14} />
@@ -5356,6 +5371,9 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
   // le bandeau bascule du bouton « Réessayer » vers « Signaler au support ».
   const [complementBloque, setComplementBloque] = useState(false);
   const [showSignalement, setShowSignalement] = useState(false);
+  // 🆕 Un ticket support est déjà ouvert pour ce dossier : on n'invite plus à
+  // signaler, on indique que la demande est en cours de traitement.
+  const [signalementEnvoye, setSignalementEnvoye] = useState(false);
 
   const loadRapport = useCallback(async () => {
     setLoading(true);
@@ -5426,6 +5444,26 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
         created_at: data.created_at, document_names: data.document_names,
         regeneration_deadline: data.regeneration_deadline, complement_date: data.complement_date || null, complement_doc_names: data.complement_doc_names || null, is_preview: data.is_preview ?? false,
       }));
+
+      // 🆕 L'état « bloqué » doit être connu DÈS LE CHARGEMENT. Sans ça, un simple
+      // rafraîchissement de page redonnait au client un bouton « Compléter mon
+      // dossier » actif qui ne pouvait que se faire refuser par le serveur.
+      const tentatives = Number((data as Record<string, unknown>).complement_attempts || 0);
+      const bloque = tentatives >= 3;
+      setComplementBloque(bloque);
+      if (bloque) {
+        // Un ticket déjà ouvert => la demande est chez le support, on n'invite plus à signaler.
+        supabase
+          .from('support_tickets')
+          .select('id')
+          .eq('analyse_id', data.id)
+          .eq('status', 'open')
+          .limit(1)
+          .maybeSingle()
+          .then(({ data: t }) => setSignalementEnvoye(!!t));
+      } else {
+        setSignalementEnvoye(false);
+      }
     };
 
     const MAX_ATTEMPTS = 36;
@@ -5628,36 +5666,64 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
           </div>
         )}
 
-        {/* 🆕 Bandeau complément ÉCHOUÉ — rapport d'origine restauré, on invite à réessayer */}
+        {/* 🆕 Bandeau complément ÉCHOUÉ — trois états distincts :
+            (a) échec ponctuel  → on invite à relancer
+            (b) 3 tentatives    → plus de relance possible, on oriente vers le support
+            (c) signalé         → demande en cours de traitement, plus aucune action */}
         {!isShared && complementNotice === 'failed' && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 18px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12 }}>
-            <AlertTriangle size={16} style={{ color: '#b45309', flexShrink: 0, marginTop: 2 }} />
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 14,
+            padding: complementBloque ? '18px 22px' : '14px 18px',
+            background: '#fffbeb',
+            border: complementBloque ? '2px solid #fcd34d' : '1px solid #fde68a',
+            borderRadius: 12,
+          }}>
+            <AlertTriangle size={complementBloque ? 20 : 16} style={{ color: '#b45309', flexShrink: 0, marginTop: 2 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>La mise à jour du dossier n'a pas abouti</div>
-              <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.6, marginTop: 2 }}>
-                Un incident technique a interrompu l'ajout de vos documents. Votre rapport d'origine est intact ci-dessous — vous pouvez relancer la mise à jour dès maintenant.
+              <div style={{ fontSize: complementBloque ? 15 : 13, fontWeight: 800, color: '#92400e' }}>
+                {signalementEnvoye
+                  ? 'Votre demande est en cours de traitement'
+                  : complementBloque
+                    ? 'La mise à jour du dossier n\'a pas pu aboutir'
+                    : 'La mise à jour du dossier n\'a pas abouti'}
+              </div>
+              <div style={{ fontSize: complementBloque ? 13.5 : 12, color: '#92400e', lineHeight: 1.65, marginTop: 4 }}>
+                {signalementEnvoye
+                  ? 'Notre équipe a bien reçu votre signalement et intervient sur votre dossier. Vous serez prévenu dès que l\'ajout de documents sera de nouveau possible. Votre rapport d\'origine reste consultable ci-dessous.'
+                  : complementBloque
+                    ? 'Après plusieurs tentatives, l\'ajout de vos documents n\'a pas pu être finalisé. Votre rapport d\'origine est intact ci-dessous. Signalez-le à notre équipe : nous reprenons la main sur votre dossier.'
+                    : 'Un incident technique a interrompu l\'ajout de vos documents. Votre rapport d\'origine est intact ci-dessous — vous pouvez relancer la mise à jour dès maintenant.'}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              {complementBloque ? (
+              {signalementEnvoye ? (
+                <button
+                  onClick={() => { window.location.href = '/dashboard/support'; }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 9, border: '1px solid #fcd34d', background: '#fff', color: '#92400e', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <LifeBuoy size={13} /> Voir ma demande
+                </button>
+              ) : complementBloque ? (
                 <button
                   onClick={() => setShowSignalement(true)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#0f2d3d', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                  <LifeBuoy size={12} /> Signaler au support
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 9, border: 'none', background: '#0f2d3d', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <LifeBuoy size={13} /> Signaler au support
                 </button>
               ) : (
                 <button
                   onClick={() => setShowComplement(true)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#d97706', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#d97706', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <RefreshCw size={12} /> Réessayer
                 </button>
               )}
-              <button
-                onClick={() => setComplementNotice(null)}
-                title="Masquer"
-                style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #fde68a', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <X size={13} color="#b45309" />
-              </button>
+              {/* Bandeau bloquant : pas de croix, l'information ne doit pas pouvoir disparaître */}
+              {!complementBloque && (
+                <button
+                  onClick={() => setComplementNotice(null)}
+                  title="Masquer"
+                  style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #fde68a', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <X size={13} color="#b45309" />
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -5719,7 +5785,7 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
           {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'compromis' && isComplete && hasCompromis && <SafeTabBoundary><TabCompromis rapport={rapport} isShared={isShared} hideVerimoBranding={hideVerimoBranding} /></SafeTabBoundary>}
-          {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={() => setShowComplement(true)} isShared={isShared} /></SafeTabBoundary>}
+          {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={() => setShowComplement(true)} isShared={isShared} bloque={complementBloque} signale={signalementEnvoye} /></SafeTabBoundary>}
         </div>
 
         {/* ══ BOTTOM TAB BAR — mobile uniquement — Option C pill ══ */}
@@ -5767,6 +5833,7 @@ export default function RapportPage({ shareTokenOverride }: { shareTokenOverride
               analyseId={rapport.id}
               adresse={safeStr(rapport.adresse)}
               onClose={() => setShowSignalement(false)}
+              onEnvoye={() => setSignalementEnvoye(true)}
             />
           )}
         </AnimatePresence>
