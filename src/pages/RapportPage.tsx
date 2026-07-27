@@ -952,6 +952,17 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
                   (key === 'diags_privatifs' && isZero && diagsPrivatifsPresent) ||
                   (key === 'diags_communs' && isZero && diagsCommunsPresent) ||
                   (key === 'diags_securite' && isZero && anyDiagPresent);
+
+                // 🐛 FIX : un 0 pouvait avoir DEUX causes opposées — aucun document
+                // trouvé, OU des risques trouvés qui consomment tous les points.
+                // L'infobulle affichait toujours "aucun document détecté", donc
+                // l'inverse de la réalité quand des procédures avaient été relevées.
+                const zeroParRisque = isZero && (
+                  (key === 'procedures' && nbProcedures > 0) ||
+                  (key === 'travaux' && (rapport.travaux_votes?.length ?? 0) > 0) ||
+                  (key === 'travaux_bati' && (rapport.travaux_votes?.length ?? 0) > 0) ||
+                  (key === 'finances' && !!finances)
+                );
                 const pct = Math.round((c.note / c.note_max) * 100);
                 const color = isFauxZero ? '#64748b' : (isZero ? '#94a3b8' : getCatColor(pct));
                 const bg = isFauxZero ? '#f1f5f9' : (isZero ? '#f8fafc' : getCatBg(pct));
@@ -966,7 +977,9 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
                             <TooltipBtn text="Les diagnostics ont bien été détectés dans vos documents. La note n'a pas été calculée automatiquement — consultez le détail dans l'onglet Logement." />
                           )}
                           {isZero && !isFauxZero && (
-                            <TooltipBtn text="Cette note est nulle car aucun document pertinent n'a été détecté. Complétez votre dossier dans les 7 jours pour améliorer votre score." />
+                            <TooltipBtn text={zeroParRisque
+                              ? "Cette note est nulle parce que des risques ont été identifiés dans vos documents, et non parce qu'il manquerait des pièces. Consultez le détail de cette catégorie dans le rapport."
+                              : "Cette note est nulle car aucun document pertinent n'a été détecté. Complétez votre dossier dans les 7 jours pour améliorer votre score."} />
                           )}
                         </div>
                         {isFauxZero ? (
@@ -1674,7 +1687,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
     points_attention?: Array<{ label?: string; detail?: string }>;
   };
   type VieT = {
-    syndic?: SyndicT; nb_lots_total?: number | null; nb_lots_detail?: NbLotsT; nb_batiments?: number | null;
+    syndic?: SyndicT; nb_lots_total?: number | null; nb_lots_detail?: NbLotsT; nb_lots_detail_verifie?: boolean; nb_batiments?: number | null;
     participation_ag?: ParticT[]; tendance_participation?: string; analyse_participation?: string;
     travaux_votes_non_realises?: unknown[]; appels_fonds_exceptionnels?: unknown[];
     questions_diverses_notables?: unknown[]; dtg?: DtgT; regles_copro?: RegleT[];
@@ -1822,6 +1835,16 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                 {incoherent && (
                   <div style={{ padding: '8px 14px', background: '#fffbeb', borderTop: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
                     ⚠ Le détail par catégorie ({sommeDetail} lots) dépasse le total annoncé ({nbLotsTotal} lots) — à recouper avec l'état descriptif de division.
+                  </div>
+                )}
+                {/* 🏷️ Répartition non vérifiée : le nombre de lots relevés ne correspond
+                    pas au total annoncé, ou les tantièmes ne bouclent pas. On le DIT
+                    plutôt que d'afficher des barres nettes comme un fait établi. */}
+                {!incoherent && vie?.nb_lots_detail_verifie === false && (
+                  <div style={{ padding: '10px 14px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', fontSize: 12, color: '#64748b', lineHeight: 1.55 }}>
+                    <strong style={{ color: '#475569' }}>Répartition indicative</strong> — elle n'a pas pu être recoupée avec l'état descriptif de division.
+                    Le total est fiable ; la ventilation par type est à vérifier dans le règlement de copropriété, en particulier si les documents fournis
+                    datent d'époques différentes (un règlement ancien et un pré-état daté récent n'annoncent pas toujours le même nombre de lots).
                   </div>
                 )}
               </div>
