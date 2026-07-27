@@ -1329,6 +1329,18 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserI
       return;
     }
 
+    // 🆕 Notification cloche — UNIQUEMENT ici, c'est-a-dire quand l'admin ouvre
+    // la discussion. Une reponse dans un fil existant n'en declenche pas : le
+    // client sait deja qu'il attend une reponse, la pastille support suffit.
+    // Le lien mene droit au fil, sans avoir a chercher dans l'espace support.
+    await supabase.from('user_notifications').insert({
+      user_id: nmUserId,
+      title: 'Le support Verimo vous a écrit',
+      message: sujet,
+      link: '/dashboard/support',
+      read: false,
+    });
+
     setNmSending(false);
     setShowComposer(false);
     await loadTickets();
@@ -1504,19 +1516,21 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserI
                   ))}
                 </select>
               )}
-              <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                {/* 🆕 N'apparaît que sur un ticket rattaché à un dossier (signalement complément) */}
+              {/* 🆕 Actions du ticket : elles etaient en 11px sur fond blanc, noyees
+                  dans l'en-tete. Passees en boutons pleins, plus hauts, contrastes,
+                  et non compressibles (flexShrink 0) pour rester lisibles sur PC. */}
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                 {selectedTicket?.analyse_id && (
                   <button onClick={() => handleDebloquerComplement(selectedTicket.id, selectedTicket.analyse_id!)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, background: '#15803d', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap', boxShadow: '0 1px 3px rgba(21,128,61,0.3)' }}
                     title="Remet le compteur de tentatives à zéro et reporte la deadline de 7 jours">
                     🔓 Débloquer le complément
                   </button>
                 )}
                 {selectedTicket?.status === 'open' && (
                   <button onClick={() => handleResolve(selectedTicket.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#fff', border: '1px solid #bbf7d0', color: '#16a34a', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}>
-                    <CheckCircle size={12} /> Résoudre
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, background: '#0f2d3d', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap', boxShadow: '0 1px 3px rgba(15,45,61,0.25)' }}>
+                    <CheckCircle size={14} /> Clôturer le ticket
                   </button>
                 )}
                 <button onClick={() => selectedTicketId && handleArchive(selectedTicketId)}
