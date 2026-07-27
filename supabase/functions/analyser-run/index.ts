@@ -1517,11 +1517,12 @@ async function notifyAnalysisReady(
 
 async function callAI(params: {
   system: string; userContent: unknown[]; maxTokens: number; apiKey: string; timeoutMs?: number;
-}): Promise<{ text: string; error?: string }> {
+}): Promise<{ text: string; error?: string; stopReason?: string }> {
   const { system, userContent, maxTokens, apiKey, timeoutMs = 385000 } = params;
+
   for (let attempt = 1; attempt <= 3; attempt++) {
-    // Timeout dur sur l'appel : sans ça, un appel lent attend jusqu'à la limite wall-clock (~400s)
-    // de l'edge function → le worker est tué EN PLEIN APPEL et l'analyse reste bloquée en "processing".
+    // Timeout dur sur l'appel : sans ca, un appel lent attend jusqu'a la limite wall-clock (~400s)
+    // de l'edge function -> le worker est tue EN PLEIN APPEL et l'analyse reste bloquee en "processing".
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -1533,22 +1534,79 @@ async function callAI(params: {
           'anthropic-version': AI_VERSION,
           'anthropic-beta': FILES_BETA,
         },
-        body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content: userContent }] }),
+        // 🆕 stream:true — SANS streaming, un abort() ferme la socket mais la generation
+        // continue cote serveur et reste FACTUREE integralement. En streaming, couper le
+        // flux arrete les frais a l'endroit exact ou on coupe.
+        body: JSON.stringify({
+          model: AI_MODEL,
+          max_tokens: maxTokens,
+          system,
+          messages: [{ role: 'user', content: userContent }],
+          stream: true,
+        }),
         signal: controller.signal,
       });
+
+      if (res.status === 429) { clearTimeout(timer); if (attempt < 3) { await sleep(Math.pow(2, attempt) * 5000); continue; } return { text: '', error: 'rate_limit' }; }
+      if (res.status === 529 || res.status === 503) { clearTimeout(timer); if (attempt < 3) { await sleep(15000); continue; } return { text: '', error: 'overload' }; }
+      if (res.status === 401 || res.status === 403) { clearTimeout(timer); const e = await res.text(); console.error(`[analyser-run] ⚠️ CRITIQUE — Anthropic ${res.status} (billing/auth):`, e); return { text: '', error: 'api_billing' }; }
+      if (!res.ok || !res.body) { clearTimeout(timer); const e = await res.text().catch(() => ''); console.error(`[analyser-run] Anthropic ${res.status}:`, e); return { text: '', error: `api_error_${res.status}` }; }
+
+      // ── Lecture du flux SSE ──
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let text = '';
+      let stopReason = '';
+      let streamError = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          let evt: Record<string, unknown>;
+          try { evt = JSON.parse(payload); } catch { continue; }
+          const t = evt.type as string;
+          if (t === 'content_block_delta') {
+            const d = evt.delta as Record<string, unknown> | undefined;
+            if (d?.type === 'text_delta' && typeof d.text === 'string') text += d.text;
+          } else if (t === 'message_delta') {
+            const d = evt.delta as Record<string, unknown> | undefined;
+            if (typeof d?.stop_reason === 'string') stopReason = d.stop_reason;
+          } else if (t === 'error') {
+            const e = evt.error as Record<string, unknown> | undefined;
+            streamError = String(e?.type || 'stream_error');
+          }
+        }
+      }
       clearTimeout(timer);
-      if (res.status === 429) { if (attempt < 3) { await sleep(Math.pow(2, attempt) * 5000); continue; } return { text: '', error: 'rate_limit' }; }
-      if (res.status === 529 || res.status === 503) { if (attempt < 3) { await sleep(15000); continue; } return { text: '', error: 'overload' }; }
-      if (res.status === 401 || res.status === 403) { const e = await res.text(); console.error(`[analyser-run] ⚠️ CRITIQUE — Anthropic ${res.status} (billing/auth):`, e); return { text: '', error: 'api_billing' }; }
-      if (!res.ok) { const e = await res.text(); console.error(`[analyser-run] Anthropic ${res.status}:`, e); return { text: '', error: `api_error_${res.status}` }; }
-      const d = await res.json();
-      const text = d.content?.find((b: { type: string }) => b.type === 'text')?.text ?? '';
+
+      if (streamError) {
+        if (streamError === 'overloaded_error') { if (attempt < 3) { await sleep(15000); continue; } return { text: '', error: 'overload' }; }
+        if (streamError === 'rate_limit_error') { if (attempt < 3) { await sleep(Math.pow(2, attempt) * 5000); continue; } return { text: '', error: 'rate_limit' }; }
+        console.error(`[analyser-run] Erreur dans le flux: ${streamError}`);
+        return { text: '', error: 'api_error_stream' };
+      }
       if (!text) return { text: '', error: 'empty_response' };
-      return { text };
+
+      // 🆕 Reponse coupee par max_tokens : le JSON est forcement invalide. On renvoie une
+      // erreur DEDIEE pour que l'appelant ne relance JAMAIS le meme appel a l'identique
+      // (il reproduirait la meme troncature et doublerait la facture pour rien).
+      if (stopReason === 'max_tokens') {
+        console.error(`[analyser-run] ⚠️ Reponse TRONQUEE (max_tokens=${maxTokens}) — pas de retry`);
+        return { text, error: 'truncated', stopReason };
+      }
+      return { text, stopReason };
+
     } catch (err) {
       clearTimeout(timer);
-      // Appel avorté car trop long : on échoue PROPREMENT et SANS réessayer (un retry referait
-      // un appel tout aussi long et dépasserait le budget de durée). L'appelant rembourse + invite à réessayer.
+      // Appel avorte car trop long : on echoue PROPREMENT et SANS reessayer.
       if (err instanceof Error && err.name === 'AbortError') return { text: '', error: 'timeout' };
       if (attempt < 3) { await sleep(3000); continue; }
       return { text: '', error: 'network_error' };
@@ -2470,12 +2528,16 @@ async function runAnalyseWithData(
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
     }, 40_000);
 
+    const tCallAI = Date.now();
     let result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
     let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
 
-    if (!result.error && !report) {
-      console.warn('[analyser-run] JSON invalide — retry 5s');
+    // 🆕 Retry uniquement si le 1er essai a echoue RAPIDEMENT. Un essai qui a consomme
+    // plusieurs minutes ne laisse aucun budget pour un second : on relancait quand meme,
+    // on retimeoutait, et on payait deux fois.
+    if (!result.error && !report && (Date.now() - tCallAI) < MAP_RETRY_WINDOW_MS) {
+      console.warn('[analyser-run] JSON invalide (echec rapide) — retry 5s');
       await sleep(5000);
       result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
@@ -2531,6 +2593,8 @@ async function runAnalyseWithData(
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé');
       } else if (result.error && result.error.startsWith('api_error_5')) {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API');
+      } else if (result.error === 'truncated') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'truncated', 'Le rapport genere etait trop volumineux pour etre finalise. Votre credit a ete rembourse automatiquement. Contactez le support.', 'Reponse tronquee (max_tokens atteint)', 'critical');
       } else if (result.error === 'timeout') {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'timeout', 'La génération du rapport a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Timeout (appel moteur trop long)');
       } else {
@@ -2686,12 +2750,16 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
     }, 40_000);
 
+    const tCallAI = Date.now();
     let result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
     let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
 
-    if (!result.error && !report) {
-      console.warn('[analyser-run] JSON invalide — retry 5s');
+    // 🆕 Retry uniquement si le 1er essai a echoue RAPIDEMENT. Un essai qui a consomme
+    // plusieurs minutes ne laisse aucun budget pour un second : on relancait quand meme,
+    // on retimeoutait, et on payait deux fois.
+    if (!result.error && !report && (Date.now() - tCallAI) < MAP_RETRY_WINDOW_MS) {
+      console.warn('[analyser-run] JSON invalide (echec rapide) — retry 5s');
       await sleep(5000);
       result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
@@ -2746,6 +2814,8 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé');
       } else if (result.error && result.error.startsWith('api_error_5')) {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API');
+      } else if (result.error === 'truncated') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'truncated', 'Le rapport genere etait trop volumineux pour etre finalise. Votre credit a ete rembourse automatiquement. Contactez le support.', 'Reponse tronquee (max_tokens atteint)', 'critical');
       } else if (result.error === 'timeout') {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'timeout', 'La génération du rapport a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Timeout (appel moteur trop long)');
       } else {
@@ -3149,6 +3219,8 @@ async function runPhaseReduce(
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé (REDUCE)');
       } else if (result.error && result.error.startsWith('api_error_5')) {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API (REDUCE)');
+      } else if (result.error === 'truncated') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'truncated', 'Le rapport genere etait trop volumineux pour etre finalise. Votre credit a ete rembourse automatiquement. Contactez le support.', 'Reponse tronquee (max_tokens atteint)', 'critical');
       } else if (result.error === 'timeout') {
         await handleAnalyseFailure(supabaseAdmin, analyseId, 'timeout', 'La génération du rapport a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Timeout (REDUCE)');
       } else {
@@ -3247,6 +3319,498 @@ async function runPhaseReduce(
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🧩 COMPLEMENT V2 — FUSION PAR SECTIONS
+// ──────────────────────────────────────────────────────────────────────
+// Le complement v1 demandait au moteur de RE-EMETTRE le rapport entier
+// (~12 000 tokens de sortie) en UN SEUL appel => >385s de generation => timeout,
+// et la reponse etait facturee integralement pour zero resultat.
+//
+// v2 : on ne regenere QUE les sections concernees par les nouveaux documents.
+//   Invocation 1 (complement-map)   : extraction parallele de chaque nouveau doc
+//   Invocation 2 (complement-merge) : appels COURTS par section, en parallele,
+//                                     puis fusion JS + recalcul deterministe
+//
+// Toute section non concernee est RECOPIEE A L'IDENTIQUE : aucune perte possible.
+// ══════════════════════════════════════════════════════════════════════
+
+const COMPLEMENT_SECTION_TIMEOUT_MS = 150000; // 150s par section (marge x3)
+
+type SectionDef = { id: string; cles: string[]; regles: string };
+
+const SECTIONS: Record<string, SectionDef> = {
+  diagnostics: {
+    id: 'diagnostics',
+    cles: ['diagnostics', 'diagnostics_resume'],
+    regles: `diagnostics[] : un objet par diagnostic, champs type (DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE), label, perimetre (lot_privatif|parties_communes), localisation, resultat, presence (detectee|absence|non_realise), alerte, pieces_detail. Pour un DPE : resultat doit contenir la classe energie ET la classe GES ET les kWh/m2. Pour un Carrez : conserver pieces_detail piece par piece. diagnostics_resume : 2-3 phrases de synthese.`,
+  },
+  dpe_recommandations: {
+    id: 'dpe_recommandations',
+    cles: ['dpe_recommandations'],
+    regles: `Packs de travaux recommandes par le DPE : evolution_etiquette (actuelle / apres_pack_1 / apres_pack_1_et_2 avec classe, kwh_m2, ges_kg_m2), pack_1 et pack_2 (cout_min, cout_max, travaux[] avec poste, description, performance_cible, decision_copropriete, autorisation_urbanisme). Si le DPE ne contient aucune recommandation : present=false, format="aucune".`,
+  },
+  travaux: {
+    id: 'travaux',
+    cles: ['travaux'],
+    regles: `travaux.realises[] / .votes[] / .evoques[] + estimation_totale. CLASSEMENT STRICT selon le statut ECRIT dans le document : "vote" = resolution adoptee en AG ; "evoque" = a l etude, envisage, devis demande ; "realise" = travaux termines. NE JAMAIS classer en "vote" dans le doute. charge_vendeur=true uniquement si le document l indique explicitement.`,
+  },
+  procedures: {
+    id: 'procedures',
+    cles: ['procedures'],
+    regles: `procedures[] : label, type (copro_vs_syndic|impayes|contentieux|autre), gravite (faible|moderee|elevee), message explicatif de 2-3 phrases. Si un nouveau document atteste explicitement l absence de procedure (mention "neant"), retirer les procedures qu il contredit.`,
+  },
+  finances: {
+    id: 'finances',
+    cles: ['finances'],
+    regles: `Bloc financier de la copropriete. Ecart budget vote / charges reelles : INFORMATIF, ne jamais penaliser. Appels de fonds exceptionnels justifies par des travaux votes : INFORMATIF. fonds_travaux_statut parmi non_mentionne|insuffisant|conforme|bien|excellent|absent. Toujours renseigner l annee associee a un montant quand elle est connue.`,
+  },
+  pre_etat_date: {
+    id: 'pre_etat_date',
+    cles: ['pre_etat_date'],
+    regles: `Pre-etat date / etat date : toutes les rubriques financieres (impayes_vendeur, fonds_travaux_alur, fonds_roulement_acheteur et sa modalite, honoraires_syndic, charges_futures, travaux_charge_vendeur[], procedures_copro, impayes_copro_global, dette_fournisseurs, historique_charges N-1/N-2). Reprendre les montants EXACTEMENT comme ecrits.`,
+  },
+  lot_achete: {
+    id: 'lot_achete',
+    cles: ['lot_achete'],
+    regles: `Lot vendu et compromis. Pour un compromis : identites vendeur/acheteur/notaires/agence, PRIX (net vendeur, honoraires et a la charge de qui, prix total acte), depot de garantie, dates (signature, acte prevue, retractation), conditions_suspensives[] une par une avec leur date butoir, designation du bien et lots cedes, mobilier, clauses_critiques[], servitudes[]. Montants EXACTS, sans arrondi.`,
+  },
+  'vie_copropriete.syndic_ag': {
+    id: 'vie_copropriete.syndic_ag',
+    cles: [
+      'vie_copropriete.syndic', 'vie_copropriete.participation_ag',
+      'vie_copropriete.tendance_participation', 'vie_copropriete.analyse_participation',
+      'vie_copropriete.travaux_votes_non_realises', 'vie_copropriete.appels_fonds_exceptionnels',
+      'vie_copropriete.questions_diverses_notables',
+    ],
+    regles: `Gouvernance et assemblees generales. participation_ag[] : une entree PAR ANNEE d AG, avec copropietaires_presents_representes, taux_tantiemes_pct, quitus {soumis, approuve, detail}. Ajouter la nouvelle AG a l historique SANS supprimer les annees deja presentes. syndic : nom, type, gestionnaire, fin_mandat, tensions_detectees, historique_changements.`,
+  },
+  'vie_copropriete.carnet_entretien': {
+    id: 'vie_copropriete.carnet_entretien',
+    cles: ['vie_copropriete.carnet_entretien'],
+    regles: `Carnet d entretien : date_maj, immatriculation_registre, equipements_copro, contrats_entretien[], travaux_realises_carnet[] (annee, label, entreprise, montant) un par un, travaux_en_cours_votes_carnet[], diagnostics_parties_communes_carnet[], conseil_syndical_carnet.`,
+  },
+  'vie_copropriete.dtg': {
+    id: 'vie_copropriete.dtg',
+    cles: ['vie_copropriete.dtg'],
+    regles: `DTG / PPT : present, etat_general, budget_urgent_3ans, budget_total_10ans, travaux_prioritaires[] avec montant estime, echeance et degre d urgence. Le PPT est INFORMATIF : ne jamais penaliser ni bonifier.`,
+  },
+  'vie_copropriete.fiche_synthetique': {
+    id: 'vie_copropriete.fiche_synthetique',
+    cles: ['vie_copropriete.fiche_synthetique'],
+    regles: `Fiche synthetique (loi ALUR) : present, date, fiche_recente, immatriculation_registre, dtg_realise, dtg_date, equipements_collectifs_detail[].`,
+  },
+  'vie_copropriete.lots': {
+    id: 'vie_copropriete.lots',
+    cles: [
+      'vie_copropriete.nb_lots_total', 'vie_copropriete.nb_lots_detail',
+      'vie_copropriete.lots_enumeres', 'vie_copropriete.nb_batiments',
+      'vie_copropriete.regles_copro', 'vie_copropriete.modificatifs_rcp',
+    ],
+    regles: `Etat descriptif de division. lots_enumeres[] : UN objet PAR LOT NUMEROTE, sans regroupement et sans jamais s arreter en cours de liste (numero, designation, categorie, tantiemes).
+CATEGORIES OBLIGATOIRES (nb_lots_detail, 7 cles) : logements (appartements + studios) - maisons - chambres_service (chambre de bonne, chambre avec salle d eau constituee en lot) - parkings (emplacements, garages, boxes) - caves - commerces - autres (reserve, debarras, grenier, cellier, local technique). NE JAMAIS tout mettre dans "autres".
+Si lots_enumeres existe deja, le CONSERVER integralement et se contenter de completer categorie/designation manquantes, sauf si le nouveau document est un modificatif qui cree ou supprime des lots.
+NE PAS compter comme lots le preambule descriptif de l immeuble.`,
+  },
+  historique_travaux: {
+    id: 'historique_travaux',
+    cles: ['historique_travaux'],
+    regles: `Devis / factures / attestations de travaux : entreprise (nom, siret, contact, assurance_decennale), travaux[] (poste, description, montant, date), montant_total, date_plus_recente, garantie_decennale_possible.`,
+  },
+  assainissement: {
+    id: 'assainissement',
+    cles: ['assainissement'],
+    regles: `Assainissement : type_reseau (collectif|non_collectif), conforme, date_controle, observations.`,
+  },
+  vie_asl: {
+    id: 'vie_asl',
+    cles: ['vie_asl', 'asl_mentionnee'],
+    regles: `ASL / AFUL / Union : denomination, objet, perimetre, cotisation annuelle et sa base de repartition, organes de gestion, travaux ou charges votes, obligations imposees aux membres. NE PAS confondre avec une copropriete (loi 1965) : l ASL releve de l ordonnance de 2004.`,
+  },
+};
+
+// Routage deterministe : type de document detecte -> sections a regenerer
+const ROUTAGE_SECTIONS: Record<string, string[]> = {
+  DPE: ['diagnostics', 'dpe_recommandations'],
+  AUDIT_ENERGETIQUE: ['diagnostics', 'dpe_recommandations'],
+  DDT: ['diagnostics'],
+  DIAGNOSTIC: ['diagnostics'],
+  DIAGNOSTIC_PARTIES_COMMUNES: ['diagnostics'],
+  PV_AG: ['vie_copropriete.syndic_ag', 'travaux', 'procedures', 'finances'],
+  APPEL_CHARGES: ['finances'],
+  TAXE_FONCIERE: ['finances'],
+  PRE_ETAT_DATE: ['pre_etat_date', 'finances', 'procedures'],
+  ETAT_DATE: ['pre_etat_date', 'finances', 'procedures'],
+  FICHE_SYNTHETIQUE: ['vie_copropriete.fiche_synthetique', 'finances'],
+  CARNET_ENTRETIEN: ['vie_copropriete.carnet_entretien', 'travaux'],
+  DTG_PPT: ['vie_copropriete.dtg', 'travaux'],
+  REGLEMENT_COPRO: ['vie_copropriete.lots'],
+  RCP: ['vie_copropriete.lots'],
+  MODIFICATIF_RCP: ['vie_copropriete.lots'],
+  COMPROMIS: ['lot_achete'],
+  HISTORIQUE_TRAVAUX: ['historique_travaux', 'travaux'],
+  ASSAINISSEMENT: ['assainissement'],
+  ASL_CHIFFRES: ['vie_asl'],
+  ASL_REGLES: ['vie_asl'],
+  AUTRE: [],
+};
+
+function getPath(obj: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce<unknown>(
+    (o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined),
+    obj,
+  );
+}
+function setPath(obj: Record<string, unknown>, path: string, val: unknown): void {
+  const ks = path.split('.');
+  let o = obj;
+  for (let i = 0; i < ks.length - 1; i++) {
+    if (o[ks[i]] === null || typeof o[ks[i]] !== 'object') o[ks[i]] = {};
+    o = o[ks[i]] as Record<string, unknown>;
+  }
+  o[ks[ks.length - 1]] = val;
+}
+// Compte les feuilles NON nulles — sert au controle de non-regression.
+function compterFeuilles(v: unknown): number {
+  if (v === null || v === undefined || v === '') return 0;
+  if (Array.isArray(v)) return v.reduce<number>((n, x) => n + compterFeuilles(x), 0);
+  if (typeof v === 'object') return Object.values(v as Record<string, unknown>).reduce<number>((n, x) => n + compterFeuilles(x), 0);
+  return 1;
+}
+
+async function regenererSection(
+  def: SectionDef,
+  rapport: Record<string, unknown>,
+  extraits: ExtraitDoc[],
+  apiKey: string,
+): Promise<{ id: string; ok: boolean; valeurs?: Record<string, unknown>; raison?: string }> {
+  const actuel: Record<string, unknown> = {};
+  for (const cle of def.cles) actuel[cle] = getPath(rapport, cle) ?? null;
+
+  const system = `Tu es le moteur d analyse documentaire de Verimo. Tu n utilises jamais les mots Claude, Anthropic ou IA.
+
+Tu mets a jour UNE SEULE section d un rapport immobilier existant.
+
+${def.regles}
+
+REGLES DE FUSION — IMPERATIVES :
+1. Tu recois la valeur ACTUELLE de la section et des EXTRAITS de nouveaux documents.
+2. Tu CONSERVES toute donnee actuelle que les extraits ne contredisent pas. Ne jamais remplacer une valeur renseignee par null parce que le nouveau document n en parle pas.
+3. Tu COMPLETES les champs vides quand les extraits apportent l information.
+4. Tu CORRIGES une valeur uniquement si un extrait apporte une information plus PRECISE ou plus RECENTE. En cas de contradiction, le document le plus recent l emporte ; a date egale ou inconnue, le nouveau document l emporte.
+5. Les listes historiques (assemblees generales, travaux, lots, modificatifs) s ENRICHISSENT : on ajoute les nouvelles entrees sans supprimer les anciennes.
+6. Ne RIEN inventer. Une information absente des extraits ET du rapport actuel reste null.
+7. Tu ne calcules AUCUNE note et AUCUN score : ce n est pas ton role.
+
+FORMAT DE SORTIE — JSON STRICT, rien d autre, aucun markdown.
+Tu renvoies un objet dont les cles sont EXACTEMENT : ${def.cles.map(c => `"${c}"`).join(', ')}.
+La valeur de chaque cle a EXACTEMENT la meme forme que dans la section actuelle.`;
+
+  const faits = extraits
+    .filter(e => e.statut === 'ok')
+    .map(e => `[${e.file_name}]\n${JSON.stringify(e.extraction)}`)
+    .join('\n\n');
+
+  const userContent: unknown[] = [{
+    type: 'text',
+    text: `SECTION ACTUELLE :\n${JSON.stringify(actuel)}\n\n--- EXTRAITS DES NOUVEAUX DOCUMENTS ---\n${faits}\n\nRenvoie la section mise a jour. JSON strict uniquement.`,
+  }];
+
+  const t0 = Date.now();
+  const result = await callAI({ system, userContent, maxTokens: 16000, apiKey, timeoutMs: COMPLEMENT_SECTION_TIMEOUT_MS });
+  const dureeS = Math.round((Date.now() - t0) / 1000);
+
+  if (result.error) {
+    console.error(`[complement-merge] Section "${def.id}" — echec ${result.error} (${dureeS}s)`);
+    return { id: def.id, ok: false, raison: result.error };
+  }
+  const parsed = parseJson<Record<string, unknown>>(result.text);
+  if (!parsed) {
+    console.error(`[complement-merge] Section "${def.id}" — JSON invalide (${dureeS}s)`);
+    return { id: def.id, ok: false, raison: 'json_invalide' };
+  }
+
+  // ── Controle de NON-REGRESSION ──
+  // Une section ne peut qu enrichir ou corriger. Si elle revient effondree
+  // (moins de 60% des donnees actuelles), on la REJETTE et on garde l ancienne.
+  const avant = compterFeuilles(actuel);
+  const apres = compterFeuilles(parsed);
+  if (avant > 0 && apres < avant * 0.6) {
+    console.error(`[complement-merge] Section "${def.id}" REJETEE — appauvrissement ${avant} -> ${apres} feuilles`);
+    return { id: def.id, ok: false, raison: 'appauvrissement' };
+  }
+
+  console.log(`[complement-merge] Section "${def.id}" OK (${dureeS}s, ${avant} -> ${apres} feuilles)`);
+  return { id: def.id, ok: true, valeurs: parsed };
+}
+
+async function regenererConclusion(
+  rapport: Record<string, unknown>,
+  profil: string,
+  apiKey: string,
+): Promise<Record<string, unknown> | null> {
+  const CLES = ['resume', 'points_forts', 'points_vigilance', 'negociation', 'avis_verimo'];
+  const actuel: Record<string, unknown> = {};
+  for (const c of CLES) actuel[c] = rapport[c] ?? null;
+
+  // On transmet le rapport FUSIONNE prive de la conclusion : la synthese est ainsi
+  // ecrite en connaissant le score final et toutes les donnees a jour.
+  const base: Record<string, unknown> = { ...rapport };
+  for (const c of CLES) delete base[c];
+
+  const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
+  const system = `Tu es le moteur d analyse documentaire de Verimo. Profil acheteur : ${p}. Tu n utilises jamais les mots Claude, Anthropic ou IA.
+
+On te donne un rapport immobilier COMPLET et A JOUR (score et notes deja calcules, ne les recalcule pas). Tu rediges uniquement sa synthese.
+
+- resume : objet a 5 cles (le_bien, la_copropriete, performance_energetique, diagnostics_privatifs, gouvernance_finances), 2-3 phrases factuelles chacune.
+- points_forts / points_vigilance : listes courtes, chaque entree adossee a une donnee reelle du rapport. Jamais de generalite.
+- negociation : applicable + elements[] chiffres quand le rapport fournit des montants.
+- avis_verimo : verdict (une phrase), verdict_highlight (2-4 mots cles), contexte (2-3 phrases de cadrage, PAS de constat deja present dans resume ou points_*), demarches[] (titre + description de 1-2 phrases, formulation neutre, jamais d imperatif ni de conseil direct).
+
+La synthese doit refleter le score ${JSON.stringify(rapport.score ?? null)} / 20 et les donnees ci-dessous, y compris les elements qui viennent d etre ajoutes au dossier.
+
+FORMAT — JSON STRICT, rien d autre : un objet aux cles ${CLES.map(c => `"${c}"`).join(', ')}.`;
+
+  const userContent: unknown[] = [{
+    type: 'text',
+    text: `RAPPORT A JOUR :\n${JSON.stringify(base)}\n\nSYNTHESE ACTUELLE (a reecrire) :\n${JSON.stringify(actuel)}\n\nJSON strict uniquement.`,
+  }];
+
+  const result = await callAI({ system, userContent, maxTokens: 8000, apiKey, timeoutMs: COMPLEMENT_SECTION_TIMEOUT_MS });
+  if (result.error) { console.error(`[complement-merge] Conclusion — echec ${result.error}`); return null; }
+  const parsed = parseJson<Record<string, unknown>>(result.text);
+  if (!parsed) { console.error('[complement-merge] Conclusion — JSON invalide'); return null; }
+  return parsed;
+}
+
+// ══ PHASE 1 — extraction des nouveaux documents ══
+async function runComplementMap(
+  analyseId: string,
+  files: Array<{ id: string; name: string }>,
+  supabaseAdmin: SupabaseClient,
+  apiKey: string,
+): Promise<void> {
+  try {
+    console.log(`[complement-map] Demarrage — ${files.length} nouveau(x) doc(s) | analyse ${analyseId}`);
+    await supabaseAdmin.from('analyses').update({
+      progress_current: 0,
+      progress_total: files.length,
+      progress_message: `Lecture des ${files.length} nouveau(x) document(s)...`,
+      last_retry_at: new Date().toISOString(),
+    }).eq('id', analyseId);
+
+    let done = 0;
+    const withProgress = async (f: { id: string; name: string }): Promise<ExtraitDoc> => {
+      const e = await extractOneDoc(f, apiKey); // supprime le PDF (RGPD) en fin d appel
+      done++;
+      await supabaseAdmin.from('analyses').update({
+        progress_current: done,
+        progress_message: `Lecture des nouveaux documents (${done}/${files.length})...`,
+      }).eq('id', analyseId);
+      return e;
+    };
+
+    const settled = await Promise.allSettled(files.map(withProgress));
+    const extraits: ExtraitDoc[] = settled.map((s, i) =>
+      s.status === 'fulfilled' ? s.value : { file_name: files[i].name, statut: 'echec' as const, raison: 'erreur_interne' }
+    );
+
+    const oks = extraits.filter(e => e.statut === 'ok');
+    console.log(`[complement-map] Termine — ${oks.length}/${files.length} doc(s) lus`);
+
+    if (oks.length === 0) {
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', COMPLEMENT_FAILED_MSG, 'Complement : aucun document lisible');
+      return;
+    }
+
+    const { error: saveErr } = await supabaseAdmin.from('analyses').update({
+      complement_extraits: { version: 'complement_v2', nb_docs: files.length, extraits },
+      progress_message: 'Documents lus — mise a jour du rapport...',
+      last_retry_at: new Date().toISOString(),
+    }).eq('id', analyseId);
+
+    if (saveErr) {
+      console.error('[complement-map] ERREUR sauvegarde extraits:', saveErr.message);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', COMPLEMENT_FAILED_MSG, 'Complement : erreur sauvegarde extraits');
+      return;
+    }
+
+    // Self-invoke -> phase merge, chrono 400s remis a zero
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    let invoked = false;
+    for (let attempt = 1; attempt <= 3 && !invoked; attempt++) {
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/analyser-run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+          body: JSON.stringify({ analyseId, phase: 'complement-merge' }),
+        });
+        if (res.ok) { invoked = true; console.log(`[complement-map] Phase MERGE declenchee (tentative ${attempt})`); }
+        else { console.error(`[complement-map] Self-invoke HTTP ${res.status}`); await sleep(3000); }
+      } catch (e) {
+        console.error(`[complement-map] Self-invoke erreur (tentative ${attempt}):`, e);
+        await sleep(3000);
+      }
+    }
+    if (!invoked) {
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', COMPLEMENT_FAILED_MSG, 'Complement : echec declenchement phase MERGE');
+    }
+  } catch (err) {
+    console.error('[complement-map] Erreur:', err);
+    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', COMPLEMENT_FAILED_MSG, 'Complement : erreur inattendue (MAP)');
+  }
+}
+
+// ══ PHASE 2 — fusion par sections + recalcul deterministe ══
+async function runComplementMerge(
+  analyseId: string,
+  supabaseAdmin: SupabaseClient,
+  apiKey: string,
+): Promise<void> {
+  try {
+    const { data: a, error } = await supabaseAdmin
+      .from('analyses')
+      .select('result, complement_extraits, profil, type_bien_declare')
+      .eq('id', analyseId)
+      .single();
+
+    if (error || !a?.result || !a?.complement_extraits) {
+      console.error('[complement-merge] Donnees introuvables:', error);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', COMPLEMENT_FAILED_MSG, 'Complement : rapport ou extraits introuvables');
+      return;
+    }
+
+    await supabaseAdmin.from('analyses').update({
+      progress_message: 'Croisement avec le rapport existant...',
+      last_retry_at: new Date().toISOString(),
+    }).eq('id', analyseId);
+
+    const rapport = JSON.parse(JSON.stringify(a.result)) as Record<string, unknown>;
+    const profil = (a.profil as string) || 'rp';
+    const bloc = a.complement_extraits as { extraits: ExtraitDoc[] };
+    const extraits = (bloc.extraits || []).filter(e => e.statut === 'ok');
+
+    // ── Routage : quelles sections sont concernees, et par quels extraits ──
+    const parSection = new Map<string, ExtraitDoc[]>();
+    for (const e of extraits) {
+      const type = String((e.extraction?.type_detecte as string) || 'AUTRE').toUpperCase();
+      const ids = ROUTAGE_SECTIONS[type] ?? [];
+      if (ids.length === 0) console.warn(`[complement-merge] "${e.file_name}" type "${type}" — aucune section ciblee`);
+      for (const id of ids) {
+        if (!SECTIONS[id]) continue;
+        const liste = parSection.get(id) ?? [];
+        liste.push(e);
+        parSection.set(id, liste);
+      }
+    }
+    console.log(`[complement-merge] ${parSection.size} section(s) a regenerer : ${[...parSection.keys()].join(', ')}`);
+
+    // ── Regeneration EN PARALLELE (chaque appel est court) ──
+    const resultats = await Promise.all(
+      [...parSection.entries()].map(([id, exs]) => regenererSection(SECTIONS[id], rapport, exs, apiKey))
+    );
+
+    // ── Fusion JS : seules les sections VALIDEES sont ecrites ──
+    let sectionsFusionnees = 0;
+    const sectionsRejetees: string[] = [];
+    for (const r of resultats) {
+      if (!r.ok || !r.valeurs) { sectionsRejetees.push(`${r.id} (${r.raison})`); continue; }
+      for (const cle of SECTIONS[r.id].cles) {
+        if (!(cle in r.valeurs)) continue;
+        const v = r.valeurs[cle];
+        if (v === undefined) continue;
+        setPath(rapport, cle, v);
+      }
+      sectionsFusionnees++;
+    }
+    if (sectionsRejetees.length > 0) {
+      console.warn(`[complement-merge] Sections non appliquees : ${sectionsRejetees.join(', ')}`);
+    }
+
+    // ── documents_analyses : append DETERMINISTE (jamais le moteur) ──
+    const docsExistants = Array.isArray(rapport.documents_analyses)
+      ? rapport.documents_analyses as Array<Record<string, unknown>> : [];
+    const nomsExistants = new Set(docsExistants.map(d => String(d.nom || '')));
+    for (const e of extraits) {
+      if (nomsExistants.has(e.file_name)) continue;
+      const dateDoc = e.extraction?.date_document as string | null | undefined;
+      docsExistants.push({
+        type: String((e.extraction?.type_detecte as string) || 'AUTRE').toUpperCase(),
+        annee: dateDoc ? String(dateDoc).slice(0, 4) : null,
+        nom: e.file_name,
+      });
+    }
+    rapport.documents_analyses = docsExistants;
+
+    // ── Recalculs DETERMINISTES : score, niveau, categories, docs manquants ──
+    let final = rapport;
+    try {
+      final = recalculerCategories(final as RapportShape, profil) as Record<string, unknown>;
+    } catch (e) {
+      console.error('[complement-merge] recalculerCategories (non bloquant):', e);
+    }
+    try {
+      final = validateDiagsManquants(final as RapportShape) as Record<string, unknown>;
+    } catch (e) {
+      console.error('[complement-merge] validateDiagsManquants (non bloquant):', e);
+    }
+    console.log(`[complement-merge] Score recalcule : ${final.score} (${final.score_niveau})`);
+
+    // ── Conclusion EN DERNIER : elle voit le score final et les donnees fusionnees ──
+    await supabaseAdmin.from('analyses').update({
+      progress_message: 'Redaction du rapport mis a jour...',
+      last_retry_at: new Date().toISOString(),
+    }).eq('id', analyseId);
+
+    const conclusion = await regenererConclusion(final, profil, apiKey);
+    if (conclusion) {
+      for (const [k, v] of Object.entries(conclusion)) {
+        if (v === undefined || v === null) continue;
+        final[k] = v;
+      }
+    } else {
+      console.warn('[complement-merge] Conclusion non regeneree — ancienne synthese conservee');
+    }
+
+    // ── Sauvegarde ──
+    const { error: updErr } = await supabaseAdmin.from('analyses').update({
+      status: 'completed',
+      result: final,
+      complement_date: new Date().toISOString(),
+      complement_doc_names: extraits.map(e => e.file_name),
+      complement_extraits: null, // purge : les extraits ont rempli leur role
+      file_ids: [],
+      progress_message: 'Rapport mis a jour',
+    }).eq('id', analyseId);
+
+    if (updErr) {
+      console.error('[complement-merge] ERREUR UPDATE:', updErr.message);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', COMPLEMENT_FAILED_MSG, 'Complement : erreur sauvegarde rapport');
+      return;
+    }
+
+    console.log(`[complement-merge] ${analyseId} OK — ${sectionsFusionnees} section(s) fusionnee(s), ${extraits.length} doc(s) integre(s)`);
+
+    if (sectionsRejetees.length > 0) {
+      await insertSystemAlert(supabaseAdmin, {
+        type: 'complement_partiel',
+        severity: 'warning',
+        title: `Complement partiel — ${sectionsRejetees.length} section(s) non appliquee(s)`,
+        message: `Le complement a abouti mais certaines sections n ont pas ete mises a jour : ${sectionsRejetees.join(', ')}. Le rapport reste coherent (anciennes valeurs conservees).`,
+        analyseId,
+        metadata: { sectionsRejetees, sectionsFusionnees },
+      });
+    }
+
+    await notifyAnalysisReady(supabaseAdmin, analyseId);
+
+  } catch (err) {
+    console.error('[complement-merge] Erreur:', err);
+    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', COMPLEMENT_FAILED_MSG, 'Complement : erreur inattendue (MERGE)');
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -3297,6 +3861,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, analyseId, phase: 'reduce' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
+    // ══ COMPLEMENT V2 : phase MERGE (self-invoke — nouveau chrono 400s) ══
+    if (body?.phase === 'complement-merge') {
+      console.log(`[analyser-run] Phase COMPLEMENT-MERGE — ${analyseId}`);
+      EdgeRuntime.waitUntil(runComplementMerge(analyseId, supabaseAdmin, apiKey));
+      return new Response(JSON.stringify({ success: true, analyseId, phase: 'complement-merge' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+
     const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
     const mode = body?.mode as string || 'complete';
     const profil = body?.profil as string || 'rp';
@@ -3315,7 +3886,11 @@ Deno.serve(async (req) => {
     // ══ AIGUILLAGE — analyses complètes uniquement ══
     // ≥ SEUIL_MAP_REDUCE docs → MAP-REDUCE | sinon → single-call v7 (inchangé)
     // Les modes 'document' et 'complement' restent TOUJOURS en single-call.
-    if (mode === 'complete' && fileIds.length >= SEUIL_MAP_REDUCE) {
+    if (mode === 'complement') {
+      // 🆕 COMPLEMENT V2 — plus jamais de regeneration du rapport entier en un appel
+      console.log(`[analyser-run] → COMPLEMENT V2 (${fileIds.length} nouveau(x) doc(s))`);
+      EdgeRuntime.waitUntil(runComplementMap(analyseId, fileIds, supabaseAdmin, apiKey));
+    } else if (mode === 'complete' && fileIds.length >= SEUIL_MAP_REDUCE) {
       console.log(`[analyser-run] → MAP-REDUCE (${fileIds.length} docs ≥ seuil ${SEUIL_MAP_REDUCE})`);
       EdgeRuntime.waitUntil(runPhaseMap(analyseId, fileIds, profil, supabaseAdmin, apiKey, typeBienDeclare));
     } else {
