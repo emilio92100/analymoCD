@@ -2823,6 +2823,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
   const docsAnalyses = (rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || [];
   const compromisDoc = docsAnalyses.find(d => safeStr(d.type) === 'COMPROMIS');
   const compromis = (rapport as Record<string, unknown>).compromis as CompromisT | null;
+  // Le bloc compromis n'a de sens que s'il porte au moins une donnee reelle.
+  const compromisDataUtile = !!compromis && Object.values(compromis as unknown as Record<string, unknown>)
+    .some(v => Array.isArray(v) ? v.length > 0 : (v !== null && v !== undefined && String(v).trim() !== ''));
 
   // DPE
   const diagsPriv = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
@@ -4002,8 +4005,27 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         );
       })()}
 
-      {/* ── COMPROMIS ── */}
-      {(compromisDoc || compromis) && (
+      {/* ── COMPROMIS ──
+           🐛 FIX : la condition etait (compromisDoc || compromis). Or TOUT le
+           contenu du bloc lit `compromis?.…`. Quand un compromis etait detecte
+           dans documents_analyses sans que ses donnees soient extraites, la
+           section s'ouvrait sur des en-tetes vides ("Intervenants" seul).
+           On n'ouvre desormais que si des donnees exploitables existent ; sinon
+           un encart explique que le document est present mais non exploite. */}
+      {!compromisDataUtile && compromisDoc && (
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '18px 20px', display: 'flex', gap: 13, alignItems: 'flex-start' }}>
+          <div style={{ fontSize: 20, lineHeight: 1 }}>✍️</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>Compromis de vente — non exploité</div>
+            <div style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.6 }}>
+              Ce document a été identifié dans votre dossier, mais ses données n'ont pas pu être extraites.
+              Il n'entre donc pas dans l'analyse. Vous pouvez le redéposer via « Compléter mon dossier ».
+            </div>
+          </div>
+        </div>
+      )}
+
+      {compromisDataUtile && (
         <AccordionSection
           title="Compromis de vente" sub="Intervenants · prix · dates · conditions suspensives" icon="✍️"
           status="neutral" badge={compromis?.date_signature ? `Signé le ${safeStr(compromis.date_signature)}` : 'Détecté'}
