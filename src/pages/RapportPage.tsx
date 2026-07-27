@@ -2931,6 +2931,166 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         </button>
       </div>
 
+      {/* ── PROPRIÉTÉ ── titre de propriété et croisement avec le compromis */}
+      {(() => {
+        type ProprioT = { nom_complet?: string; profession?: string; nationalite?: string; adresse?: string; situation_matrimoniale_citation?: string; peut_vendre_seul?: boolean | null; part_indivision?: string };
+        type LotDetenuT = { numero?: string; designation?: string; etage?: string; nb_pieces?: number; tantiemes?: string; base_tantiemes?: string };
+        type CadastreT = { section?: string; numero?: string; lieudit?: string; contenance?: string };
+        type TitreT = {
+          present?: boolean; nature?: string; date_acte?: string; date_entree_jouissance?: string;
+          anciennete_detention_annees?: number; prix_acquisition?: number;
+          notaire?: { nom?: string; etude?: string; ville?: string };
+          proprietaires_actuels?: ProprioT[]; vendeurs_precedents?: Array<{ nom_complet?: string; qualite?: string }>;
+          references_cadastrales?: CadastreT[]; date_etat_descriptif_origine?: string;
+          lots_detenus?: LotDetenuT[];
+          coherence?: { vendeur_conforme_compromis?: boolean | null; lots_conformes_compromis?: boolean | null; tantiemes_conformes?: boolean | null; ecarts?: string[] };
+        };
+        const tp = ((rapport.lot_achete as Record<string, unknown> | null)?.titre_propriete) as TitreT | undefined;
+        if (!tp || tp.present !== true) return null;
+
+        const LIBELLES: Record<string, string> = {
+          attestation_propriete: 'Attestation de propriété',
+          acte_de_vente: 'Acte de vente',
+          attestation_succession: 'Attestation de succession',
+          donation: 'Acte de donation',
+        };
+        const libelle = LIBELLES[safeStr(tp.nature)] || 'Titre de propriété';
+        const proprios = tp.proprietaires_actuels ?? [];
+        const lotsDetenus = tp.lots_detenus ?? [];
+        const ecarts = tp.coherence?.ecarts ?? [];
+
+        // Dates au format long, en tolerant une valeur non parsable.
+        const fmtDateFr = (v?: string) => {
+          if (!v) return null;
+          const d = new Date(v);
+          return isNaN(d.getTime()) ? v : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        };
+
+        const Champ = ({ label, valeur }: { label: string; valeur?: React.ReactNode }) => {
+          if (valeur === null || valeur === undefined || valeur === '') return null;
+          return (
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, lineHeight: 1.5 }}>{valeur}</div>
+            </div>
+          );
+        };
+
+        return (
+          <AccordionSection
+            title="Propriété" sub={`${libelle} · qui possède quoi, depuis quand`} icon="📜"
+            status={ecarts.length > 0 ? 'warning' : 'neutral'}
+            badge={ecarts.length > 0 ? `${ecarts.length} écart${ecarts.length > 1 ? 's' : ''}` : 'Informatif'}
+            defaultOpen={allOpen || ecarts.length > 0}>
+
+            {/* Bandeau d'en-tête : nature, date, ancienneté */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, padding: '16px 18px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', marginBottom: 14 }}>
+              <Champ label="Nature du document" valeur={libelle} />
+              <Champ label="Date de l'acte" valeur={tp.date_acte ? fmtDateFr(safeStr(tp.date_acte)) : null} />
+              <Champ label="Entrée en jouissance" valeur={tp.date_entree_jouissance ? fmtDateFr(safeStr(tp.date_entree_jouissance)) : null} />
+              <Champ label="Détention" valeur={tp.anciennete_detention_annees ? `${tp.anciennete_detention_annees} an${tp.anciennete_detention_annees > 1 ? 's' : ''}` : null} />
+              <Champ label="Prix d'acquisition" valeur={tp.prix_acquisition ? `${Number(tp.prix_acquisition).toLocaleString('fr-FR')} €` : null} />
+            </div>
+
+            {/* Propriétaire(s) */}
+            {proprios.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#0f2d3d', marginBottom: 9 }}>
+                  {proprios.length > 1 ? 'Propriétaires actuels' : 'Propriétaire actuel'}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {proprios.map((pr, i) => (
+                    <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #e8eef3' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap', marginBottom: 6 }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>{safeStr(pr.nom_complet) || '—'}</span>
+                        {pr.peut_vendre_seul === true && (
+                          <span style={{ fontSize: 10, fontWeight: 800, color: '#15803d', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 5 }}>PEUT VENDRE SEUL</span>
+                        )}
+                        {pr.peut_vendre_seul === false && (
+                          <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 5 }}>ACCORD D'UN TIERS REQUIS</span>
+                        )}
+                        {pr.part_indivision && (
+                          <span style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #c7dde8', padding: '2px 8px', borderRadius: 5 }}>INDIVISION {safeStr(pr.part_indivision)}</span>
+                        )}
+                      </div>
+                      {pr.situation_matrimoniale_citation && (
+                        <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, fontStyle: 'italic' }}>« {safeStr(pr.situation_matrimoniale_citation)} »</div>
+                      )}
+                      {(pr.profession || pr.adresse) && (
+                        <div style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 5 }}>
+                          {[safeStr(pr.profession), safeStr(pr.adresse)].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Lots détenus */}
+            {lotsDetenus.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#0f2d3d', marginBottom: 9 }}>
+                  Lots détenus ({lotsDetenus.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {lotsDetenus.map((l, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 15px', borderRadius: 11, background: '#fff', border: '1px solid #e8eef3' }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #c7dde8', padding: '3px 9px', borderRadius: 6, flexShrink: 0 }}>
+                        LOT {safeStr(l.numero) || '?'}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, lineHeight: 1.5 }}>{safeStr(l.designation) || '—'}</div>
+                        {(l.etage || l.tantiemes) && (
+                          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                            {[l.etage ? safeStr(l.etage) : null, l.tantiemes ? `${safeStr(l.tantiemes)} des parties communes` : null].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cadastre et état descriptif d'origine */}
+            {((tp.references_cadastrales ?? []).length > 0 || tp.date_etat_descriptif_origine) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', marginBottom: 14 }}>
+                {(tp.references_cadastrales ?? []).map((c, i) => (
+                  <Champ key={i} label="Référence cadastrale"
+                    valeur={[c.section ? `Section ${safeStr(c.section)}` : null, c.numero ? `n°${safeStr(c.numero)}` : null, safeStr(c.lieudit) || null, safeStr(c.contenance) || null].filter(Boolean).join(' · ')} />
+                ))}
+                <Champ label="État descriptif d'origine" valeur={tp.date_etat_descriptif_origine ? fmtDateFr(safeStr(tp.date_etat_descriptif_origine)) : null} />
+                {tp.notaire?.nom && (
+                  <Champ label="Notaire rédacteur" valeur={[safeStr(tp.notaire.nom), safeStr(tp.notaire.etude), safeStr(tp.notaire.ville)].filter(Boolean).join(' · ')} />
+                )}
+              </div>
+            )}
+
+            {/* Croisement avec le compromis */}
+            {ecarts.length > 0 && (
+              <div style={{ padding: '15px 17px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
+                  <AlertTriangle size={15} style={{ color: '#b45309' }} />
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#92400e' }}>
+                    Écart{ecarts.length > 1 ? 's' : ''} avec le compromis
+                  </span>
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {ecarts.map((e, i) => (
+                    <li key={i} style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{e}</li>
+                  ))}
+                </ul>
+                <div style={{ fontSize: 12, color: '#a16207', marginTop: 10, lineHeight: 1.6 }}>
+                  Un écart n'est pas nécessairement un problème — un mandat, une succession ou une procuration peuvent l'expliquer. Il n'a aucun impact sur votre score. Faites-le confirmer par le notaire avant la signature.
+                </div>
+              </div>
+            )}
+
+          </AccordionSection>
+        );
+      })()}
+
       {/* ── VOTRE LOT ── */}
       {(() => {
         type PedLot = { present?: boolean; impayes_vendeur?: number; fonds_travaux_alur?: number | null; fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null; honoraires_syndic?: number | null; charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null }; travaux_charge_vendeur?: Array<{ label?: string; montant?: number | null }>; procedures_contre_vendeur?: string[]; procedures_copro?: string; impayes_copro_global?: number | null; dette_fournisseurs?: number | null; fonds_travaux_copro_global?: number | null; historique_charges?: Array<{ exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null }> };
