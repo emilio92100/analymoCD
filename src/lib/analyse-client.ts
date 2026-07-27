@@ -24,7 +24,7 @@ export type AnalyseProgress = {
 export type AnalyseClientResult = {
   success: boolean;
   analyseId?: string;
-  error?: 'rate_limit' | 'overload' | 'network' | 'unknown';
+  error?: 'rate_limit' | 'overload' | 'network' | 'unknown' | 'complement_blocked';
   errorMessage?: string;
   // 🆕 v9 — Si l'analyse a été mise en queue suite à une surcharge
   queued?: boolean;
@@ -163,6 +163,15 @@ export async function lancerAnalyseEdge(params: {
         }
         if (errText.includes('already_complemented')) {
           return { success: false, error: 'unknown', errorMessage: 'Ce dossier a déjà été complété — la mise à jour n\'est possible qu\'une seule fois par rapport.' };
+        }
+        // 🆕 Plafond de 3 tentatives atteint côté serveur — le front bascule
+        // sur le formulaire de signalement au support.
+        if (errText.includes('complement_blocked')) {
+          return {
+            success: false,
+            error: 'complement_blocked',
+            errorMessage: 'La mise à jour de ce dossier n\'a pas abouti après 3 tentatives. Notre équipe peut reprendre la main : signalez-le au support.',
+          };
         }
         if (errText.includes('too_many_docs')) {
           return { success: false, error: 'unknown', errorMessage: 'Maximum 5 documents pour compléter un dossier. Retirez des fichiers et réessayez.' };
