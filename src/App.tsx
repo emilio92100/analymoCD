@@ -318,6 +318,7 @@ export default function App() {
           <Route path="/dashboard/aide" element={<SmartDashboard />} />
           <Route path="/dashboard/compte" element={<SmartDashboard />} />
           <Route path="/dashboard/support" element={<SmartDashboard />} />
+          <Route path="/dashboard/notifications" element={<SmartDashboard />} />
           <Route path="/dashboard/tarifs" element={<SmartDashboard />} />
           <Route path="/dashboard/abonnement" element={<SmartDashboard />} />
           <Route path="/dashboard/rapport" element={<SmartDashboard />} />
