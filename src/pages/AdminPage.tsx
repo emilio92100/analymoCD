@@ -603,7 +603,7 @@ export default function AdminPage() {
               {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} onGoToProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} />}
               {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} onCreatePro={(d) => { setCreateProFromDemande(d); setActiveTab('clients'); }} />}
-              {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} focusClientId={focusProClientId} onFocusClientHandled={() => setFocusProClientId(null)} />}
+              {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} focusClientId={focusProClientId} onFocusClientHandled={() => setFocusProClientId(null)} onWriteToUser={(userId) => { setComposeToUserId(userId); setActiveTab('support'); }} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
               {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} composeToUserId={composeToUserId} onComposeHandled={() => setComposeToUserId(null)} />}
@@ -5806,10 +5806,11 @@ type AgenceAnalysisItem = { id: string; label: string; memberName: string; statu
 // Ligne de facture telle que renvoyée par pro-checkout-create (mode list_invoices)
 type ProInvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number };
 
-function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled, focusClientId, onFocusClientHandled }: {
+function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled, focusClientId, onFocusClientHandled, onWriteToUser }: {
   showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void>;
   prefillDemande: Record<string, unknown> | null; onPrefillHandled: () => void;
   focusClientId?: string | null; onFocusClientHandled?: () => void;
+  onWriteToUser?: (userId: string) => void;
 }) {
   const [clients, setClients] = useState<ProClient[]>([]);
   const [proSubscriptions, setProSubscriptions] = useState<Map<string, string>>(new Map());
@@ -7009,6 +7010,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 })()}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                {/* 🆕 Ouvre une discussion : bascule sur l'onglet Support avec le
+                    composeur deja pointe sur ce client. Meme relais que la fiche
+                    de l'onglet Utilisateurs. */}
+                <button onClick={() => onWriteToUser?.(selected.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#0f2d3d', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Send size={12} /> Écrire au client
+                </button>
                 {(invitations.some(inv => inv.accepted_at) || selected.pro_onboarding_done === true || proActivated.has(selected.id)) ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 700 }}>
                     <CheckCircle size={12} /> Compte activé
