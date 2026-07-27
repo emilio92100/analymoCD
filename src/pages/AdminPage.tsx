@@ -184,6 +184,8 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  // 🆕 Relais fiche client -> onglet Support : ouvre le composeur pré-rempli.
+  const [composeToUserId, setComposeToUserId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [toast, setToast] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -596,7 +598,7 @@ export default function AdminPage() {
             <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
               {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
               {activeTab === 'stats' && <StatsTab />}
-              {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} focusUserId={focusUserId} onFocusUserHandled={() => setFocusUserId(null)} onOpenAnalysis={(id) => { setFocusAnalysisId(id); setActiveTab('analyses'); }} onOpenProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} />}
+              {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} focusUserId={focusUserId} onFocusUserHandled={() => setFocusUserId(null)} onOpenAnalysis={(id) => { setFocusAnalysisId(id); setActiveTab('analyses'); }} onOpenProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} onWriteToUser={(userId) => { setComposeToUserId(userId); setActiveTab('support'); }} />}
               {activeTab === 'analyses' && <AnalysesTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} focusAnalysisId={focusAnalysisId} onFocusAnalysisHandled={() => setFocusAnalysisId(null)} />}
               {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} onGoToProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} />}
@@ -604,7 +606,7 @@ export default function AdminPage() {
               {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} focusClientId={focusProClientId} onFocusClientHandled={() => setFocusProClientId(null)} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
-              {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} />}
+              {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} composeToUserId={composeToUserId} onComposeHandled={() => setComposeToUserId(null)} />}
               {activeTab === 'suggestions' && <AdminSuggestionsTab onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} showToast={showToast} onUnreadChange={setSuggestionsUnreadCount} />}
               {activeTab === 'callbacks' && <AdminCallbacksTab showToast={showToast} onPendingChange={setCallbacksPendingCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} onGoToProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
@@ -1157,7 +1159,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
 /* ══════════════════════════════════════════
    ADMIN — SUPPORT TICKETS (Inbox split by user)
 ══════════════════════════════════════════ */
-function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast: (m: string) => void; onUnreadChange: (n: number) => void; onGoToUser?: (userId: string) => void }) {
+function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserId, onComposeHandled }: { showToast: (m: string) => void; onUnreadChange: (n: number) => void; onGoToUser?: (userId: string) => void; composeToUserId?: string | null; onComposeHandled?: () => void }) {
   type AdminTicket = { id: string; user_id: string; subject: string; analyse_id: string | null; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_admin: boolean; user_email?: string; user_name?: string; user_role?: string };
   type AdminMessage = { id: string; ticket_id: string; sender_type: 'user' | 'admin'; sender_name?: string | null; message: string; created_at: string };
   type UserGroup = { user_id: string; user_name: string; user_email: string; user_role: string; tickets: AdminTicket[]; lastActivity: string; unreadCount: number; lastPreview: string };
@@ -1175,6 +1177,16 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [lastMessages, setLastMessages] = useState<Record<string, string>>({});
+  // 🆕 Composeur admin -> client : ouvrir un ticket sans attendre que le client écrive.
+  type ClientLite = { id: string; full_name: string | null; email: string | null; role: string | null };
+  const [showComposer, setShowComposer] = useState(false);
+  const [clients, setClients] = useState<ClientLite[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [nmSearch, setNmSearch] = useState('');
+  const [nmUserId, setNmUserId] = useState<string | null>(null);
+  const [nmSubject, setNmSubject] = useState('');
+  const [nmMessage, setNmMessage] = useState('');
+  const [nmSending, setNmSending] = useState(false);
 
   const loadTickets = useCallback(async () => {
     const { data } = await supabase.from('support_tickets').select('*').order('updated_at', { ascending: false });
@@ -1267,6 +1279,76 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
     showToast('Complément débloqué — client prévenu');
   };
 
+  // Chargement paresseux : la liste ne sert qu'à l'ouverture du composeur.
+  const openComposer = async (preselectUserId?: string) => {
+    setShowComposer(true);
+    setNmUserId(preselectUserId ?? null); setNmSubject(''); setNmMessage(''); setNmSearch('');
+    if (clients.length > 0) return;
+    setClientsLoading(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .order('full_name', { ascending: true })
+      .limit(1000);
+    setClients((data || []) as ClientLite[]);
+    setClientsLoading(false);
+  };
+
+  // 🆕 Ouvre un ticket À L'INITIATIVE DE L'ADMIN.
+  // unread_by_user=true déclenche le badge côté client sur l'onglet Support :
+  // c'est le même compteur que pour une réponse classique, rien à changer côté front.
+  const handleEnvoyerNouveauMessage = async () => {
+    if (!nmUserId || !nmMessage.trim() || nmSending) return;
+    setNmSending(true);
+
+    const sujet = nmSubject.trim() || 'Message de l\'équipe Verimo';
+    const { data: ticket, error: errTicket } = await supabase
+      .from('support_tickets')
+      .insert({ user_id: nmUserId, subject: sujet, unread_by_user: true, unread_by_admin: false })
+      .select()
+      .single();
+
+    if (errTicket || !ticket) {
+      // Remontée explicite : si une policy RLS bloque l'insertion pour un autre
+      // user_id, on veut le voir tout de suite et pas un échec silencieux.
+      showToast('Échec création du ticket : ' + (errTicket?.message || 'inconnu'));
+      setNmSending(false);
+      return;
+    }
+
+    const { error: errMsg } = await supabase.from('support_messages').insert({
+      ticket_id: ticket.id,
+      sender_type: 'admin',
+      message: nmMessage.trim(),
+      sender_name: replyName.trim() || 'Verimo',
+    });
+
+    if (errMsg) {
+      showToast('Ticket créé mais message non envoyé : ' + errMsg.message);
+      setNmSending(false);
+      return;
+    }
+
+    setNmSending(false);
+    setShowComposer(false);
+    await loadTickets();
+    setSelectedUserId(nmUserId);
+    setSelectedTicketId(ticket.id as string);
+    showToast('Message envoyé — le client voit la pastille sur son espace support');
+  };
+
+  // 🆕 Arrivée depuis la fiche client : on ouvre le composeur déjà pointé
+  // sur ce client, sans le faire rechercher.
+  useEffect(() => {
+    if (!composeToUserId) return;
+    (async () => {
+      await openComposer();
+      setNmUserId(composeToUserId);
+      onComposeHandled?.();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composeToUserId]);
+
   const handleDelete = async (ticketId: string) => {
     await supabase.from('support_messages').delete().eq('ticket_id', ticketId);
     await supabase.from('support_tickets').delete().eq('id', ticketId);
@@ -1337,6 +1419,10 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
         <div style={{ padding: '12px 14px', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', flex: 1 }}>Support</span>
           {unreadTotal > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: 10 }}>{unreadTotal} non lu{unreadTotal > 1 ? 's' : ''}</span>}
+          <button onClick={() => openComposer()} title="Écrire à un client"
+            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, background: '#0f2d3d', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+            ✉️ Écrire
+          </button>
         </div>
         <div style={{ display: 'flex', gap: 1, padding: '6px 8px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
           {([['open', 'En cours'], ['resolved', 'Résolus'], ['all', 'Tous']] as const).map(([id, label]) => (
@@ -1502,6 +1588,75 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
         )}
         </AnimatePresence>
       </div>
+
+      {/* 🆕 Composeur : ouvrir un ticket à l'initiative de l'admin */}
+      <AnimatePresence>
+        {showComposer && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
+            onClick={() => !nmSending && setShowComposer(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 560, padding: '26px 26px 22px', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+
+              <h3 style={{ fontSize: 17, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Écrire à un client</h3>
+              <p style={{ fontSize: 12.5, color: '#64748b', marginBottom: 18, lineHeight: 1.55 }}>
+                Un ticket est créé dans son espace support. Il reçoit la pastille de notification
+                et peut répondre dans le fil comme pour une demande qu'il aurait ouverte lui-même.
+              </p>
+
+              {/* Destinataire */}
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Destinataire</label>
+              <input value={nmSearch} onChange={e => setNmSearch(e.target.value)} placeholder="Rechercher un nom ou un e-mail…"
+                style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13, background: '#f8fafc', outline: 'none', fontFamily: 'inherit', marginBottom: 8 }} />
+              <div style={{ border: '1px solid #edf2f7', borderRadius: 10, maxHeight: 170, overflowY: 'auto', marginBottom: 16, flexShrink: 0 }}>
+                {clientsLoading ? (
+                  <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>Chargement…</div>
+                ) : (
+                  clients
+                    .filter(c => {
+                      if (!nmSearch.trim()) return true;
+                      const q = nmSearch.toLowerCase();
+                      return (c.full_name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q);
+                    })
+                    .sort((a, b) => (a.id === nmUserId ? -1 : b.id === nmUserId ? 1 : 0))
+                    .slice(0, 60)
+                    .map(c => (
+                      <div key={c.id} onClick={() => setNmUserId(c.id)}
+                        style={{ padding: '9px 12px', cursor: 'pointer', borderBottom: '1px solid #f8fafc', background: nmUserId === c.id ? '#eff6ff' : 'transparent', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.full_name || '(sans nom)'}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</div>
+                        </div>
+                        {c.role === 'pro' && <span style={{ fontSize: 9.5, fontWeight: 700, background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: 6, flexShrink: 0 }}>PRO</span>}
+                        {nmUserId === c.id && <CheckCircle size={15} style={{ color: '#2563eb', flexShrink: 0 }} />}
+                      </div>
+                    ))
+                )}
+              </div>
+
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Objet</label>
+              <input value={nmSubject} onChange={e => setNmSubject(e.target.value)} placeholder="Message de l'équipe Verimo"
+                style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13, background: '#f8fafc', outline: 'none', fontFamily: 'inherit', marginBottom: 14 }} />
+
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Message</label>
+              <textarea value={nmMessage} onChange={e => setNmMessage(e.target.value)} rows={4} placeholder="Votre message…"
+                style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13, background: '#f8fafc', outline: 'none', fontFamily: 'inherit', resize: 'vertical', marginBottom: 18, boxSizing: 'border-box' }} />
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => setShowComposer(false)} disabled={nmSending}
+                  style={{ padding: '10px 20px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit' }}>
+                  Annuler
+                </button>
+                <button onClick={handleEnvoyerNouveauMessage} disabled={nmSending || !nmUserId || !nmMessage.trim()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 20px', borderRadius: 10, background: (nmSending || !nmUserId || !nmMessage.trim()) ? '#e2e8f0' : '#0f2d3d', color: (nmSending || !nmUserId || !nmMessage.trim()) ? '#94a3b8' : '#fff', border: 'none', cursor: (nmSending || !nmUserId || !nmMessage.trim()) ? 'default' : 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'inherit' }}>
+                  <Send size={14} /> {nmSending ? 'Envoi…' : 'Envoyer'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete confirmation modal */}
       <AnimatePresence>
@@ -3530,7 +3685,7 @@ function ClientSupportSection({ userId, isPro = false, showToast }: { userId: st
 /* ══════════════════════════════════════════
    USERS TAB
 ══════════════════════════════════════════ */
-function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHandled, onOpenAnalysis, onOpenProClient }: {
+function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHandled, onOpenAnalysis, onOpenProClient, onWriteToUser }: {
   onConfirm: (a: ConfirmAction) => void;
   showToast: (m: string) => void;
   logAction: (a: string, t?: string) => Promise<void>;
@@ -3538,6 +3693,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   onFocusUserHandled?: () => void;
   onOpenAnalysis?: (analysisId: string) => void;
   onOpenProClient?: (userId: string) => void;
+  onWriteToUser?: (userId: string) => void;
 }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
@@ -3814,6 +3970,11 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               })()}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginTop: 16 }}>
+              {/* 🆕 Bascule vers l'onglet Support avec le composeur déjà pré-rempli sur ce client */}
+              <button onClick={() => onWriteToUser?.(detailUser.id)}
+                style={{ padding: '10px', borderRadius: 10, background: '#0f2d3d', border: '1.5px solid #0f2d3d', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Send size={14} /> Écrire au client
+              </button>
               <button onClick={() => { setSelectedUser(detailUser); setForm(f => ({ ...f, credit_type: 'complete', credit_quantity: 1, credit_reason: '' })); setModal('credits'); }}
                 style={{ padding: '10px', borderRadius: 10, background: '#f0f7fb', border: '1.5px solid #bae3f5', color: '#2a7d9c', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <Plus size={14} /> Ajouter des crédits
