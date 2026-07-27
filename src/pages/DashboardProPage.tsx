@@ -8097,10 +8097,18 @@ export default function DashboardProPage() {
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} mobileTitle={mobileTitle} proProfile={proProfile}
-          unreadCount={unreadNotifCount} notifications={[
-            ...notifications,
-            ...dbNotifications.map(n => ({ id: n.id, analysisId: n.analysis_id || '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read, link: n.link || '' })),
-          ]} onMarkAllRead={markAllRead}
+          unreadCount={unreadNotifCount} notifications={(() => {
+            // 🆕 Deux sources produisent la MEME notification pour une analyse
+            // terminee : le sondage cote navigateur (liste `notifications`) et
+            // l'insertion serveur en base (`dbNotifications`). Elles s'affichaient
+            // toutes les deux, puis la locale disparaissait au changement d'onglet.
+            // La version en base fait foi : on ecarte la locale quand elle porte
+            // sur la meme analyse.
+            const enBase = dbNotifications.map(n => ({ id: n.id, analysisId: n.analysis_id || '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read, link: n.link || '' }));
+            const analysesEnBase = new Set(enBase.map(n => n.analysisId).filter(Boolean));
+            const locales = notifications.filter(n => !n.analysisId || !analysesEnBase.has(n.analysisId));
+            return [...locales, ...enBase];
+          })()} onMarkAllRead={markAllRead}
           onClickNotification={async (id, link) => {
             // 🆕 Notification porteuse d'un lien (message du support...) : navigation
             // directe, sans passer par la verification d'existence d'un rapport.
