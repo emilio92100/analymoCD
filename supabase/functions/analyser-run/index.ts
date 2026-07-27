@@ -3819,6 +3819,84 @@ async function enregistrerDocsNonTraites(
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🧹 PURGE DE documents_manquants
+// ──────────────────────────────────────────────────────────────────────
+// validateDiagsManquants() ne fait qu'AJOUTER (helper `ajouter`), jamais
+// retirer. En analyse complete ce n'est pas un probleme : le moteur reconstruit
+// la liste a partir de zero. En complement, PERSONNE ne la reconstruit — elle
+// est recopiee telle quelle du rapport d'origine. Resultat constate en
+// production : un client depose son DDT et son pre-etat date, ils sont bien
+// analyses, et l'onglet Documents continue de les reclamer.
+//
+// On retire donc ici, DE FACON DETERMINISTE, tout ce qui est desormais satisfait.
+// validateDiagsManquants tourne ensuite et re-ajoute ce qui manque vraiment.
+// ══════════════════════════════════════════════════════════════════════
+function purgerDocsManquants(rapport: Record<string, unknown>): void {
+  const manquants = Array.isArray(rapport.documents_manquants)
+    ? rapport.documents_manquants as string[] : [];
+  if (manquants.length === 0) return;
+
+  const diags = Array.isArray(rapport.diagnostics) ? rapport.diagnostics as Array<Record<string, unknown>> : [];
+  const docs = Array.isArray(rapport.documents_analyses) ? rapport.documents_analyses as Array<Record<string, unknown>> : [];
+  const vie = (rapport.vie_copropriete || {}) as Record<string, unknown>;
+  const lot = (rapport.lot_achete || {}) as Record<string, unknown>;
+
+  const diagPresent = (type: string): boolean => diags.some(d => {
+    const t = String(d.type || '').toUpperCase();
+    const pres = String(d.presence || '').toLowerCase();
+    return t === type && pres !== 'non_realise' && pres !== 'absence';
+  });
+  const docPresent = (...types: string[]): boolean =>
+    docs.some(d => types.includes(String(d.type || '').toUpperCase()));
+  const blocPresent = (o: unknown): boolean =>
+    !!o && typeof o === 'object' && (o as Record<string, unknown>).present === true;
+  const listeRemplie = (o: unknown): boolean => Array.isArray(o) && o.length > 0;
+
+  // Sans accents ni casse : les libelles varient d'un rapport a l'autre.
+  const norm = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  const satisfait = (libelle: string): boolean => {
+    const l = norm(libelle);
+    // ⚠️ "modificatif" AVANT "reglement de copropriete" : le libelle du
+    // modificatif contient les deux, l'ordre des tests decide du resultat.
+    if (l.includes('modificatif')) return docPresent('MODIFICATIF_RCP') || listeRemplie(vie.modificatifs_rcp);
+    if (l.includes('dtg') || l.includes('pluriannuel') || l.includes('ppt')) return docPresent('DTG_PPT') || blocPresent(vie.dtg);
+    if (l.includes('reglement de copropriete')) return docPresent('RCP', 'REGLEMENT_COPRO');
+    if (l.includes('carnet d')) return docPresent('CARNET_ENTRETIEN') || blocPresent(vie.carnet_entretien);
+    if (l.includes('fiche synthetique')) return docPresent('FICHE_SYNTHETIQUE') || blocPresent(vie.fiche_synthetique);
+    if (l.includes('etat date')) return blocPresent(rapport.pre_etat_date) || docPresent('PRE_ETAT_DATE', 'ETAT_DATE');
+    if (l.includes('appel de charges') || l.includes('appel de fonds')) return docPresent('APPEL_CHARGES');
+    if (l.includes('taxe fonciere')) return docPresent('TAXE_FONCIERE');
+    if (l.includes('assemblee') || l.includes('pv ag') || l.includes('proces-verbal')) return docPresent('PV_AG');
+    if (l.includes('compromis') || l.includes('promesse')) return blocPresent(lot.compromis);
+    if (l.includes('assainissement')) return blocPresent(rapport.assainissement) || docPresent('ASSAINISSEMENT');
+    if (l.includes('audit energetique')) return docPresent('AUDIT_ENERGETIQUE');
+    // Le DDT est un ENSEMBLE : satisfait si le document est la, ou si ses
+    // composants principaux sont detectes.
+    if (l.includes('ddt') || l.includes('dossier de diagnostic technique')) {
+      return docPresent('DDT', 'DIAGNOSTIC') ||
+        (diagPresent('DPE') && (diagPresent('ELECTRICITE') || diagPresent('GAZ') || diagPresent('ERP')));
+    }
+    if (l.includes('dpe') || l.includes('performance energetique')) return diagPresent('DPE');
+    if (l.includes('erp') || l.includes('risques et pollutions')) return diagPresent('ERP');
+    if (l.includes('carrez')) return diagPresent('CARREZ');
+    if (l.includes('termites')) return diagPresent('TERMITES');
+    if (l.includes('amiante')) return diagPresent('AMIANTE');
+    if (l.includes('plomb')) return diagPresent('PLOMB');
+    if (l.includes('electricite')) return diagPresent('ELECTRICITE');
+    if (l.includes('gaz')) return diagPresent('GAZ');
+    return false; // libelle generique ("tout autre document...") : jamais retire
+  };
+
+  const restants = manquants.filter(m => !satisfait(String(m)));
+  const retires = manquants.length - restants.length;
+  if (retires > 0) {
+    rapport.documents_manquants = restants;
+    console.log(`[complement-merge] 🧹 ${retires} document(s) retire(s) de la liste des manquants (desormais fournis)`);
+  }
+}
+
 // ══ PHASE 1 — extraction des nouveaux documents ══
 async function runComplementMap(
   analyseId: string,
@@ -4094,6 +4172,11 @@ async function runComplementMerge(
       });
     }
     rapport.documents_analyses = docsExistants;
+
+    // ── Nettoyage de la liste des documents manquants ──
+    try { purgerDocsManquants(rapport); } catch (e) {
+      console.error('[complement-merge] purgerDocsManquants (non bloquant):', e);
+    }
 
     // ── Filet : remappage des alias de champs avant tout recalcul ──
     try { normaliserAliasComplement(rapport); } catch (e) {
