@@ -2966,15 +2966,58 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           return isNaN(d.getTime()) ? v : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
         };
 
-        const Champ = ({ label, valeur }: { label: string; valeur?: React.ReactNode }) => {
+        // ── Petits composants locaux : même langage visuel que l'analyse simple ──
+        const initiales = (nom: string) => {
+          const mots = nom.replace(/\([^)]*\)/g, '').split(/\s+/).filter(m => /[A-Za-zÀ-ÿ]/.test(m));
+          if (mots.length === 0) return '?';
+          return (mots[0][0] + (mots.length > 1 ? mots[mots.length - 1][0] : '')).toUpperCase();
+        };
+
+        const Bloc = ({ icon, titre, children }: { icon: string; titre: string; children: React.ReactNode }) => (
+          <div style={{ background: '#f8fafc', border: '1px solid #e8eef3', borderRadius: 16, overflow: 'hidden', marginBottom: 14 }}>
+            <div style={{ padding: '11px 16px', background: 'linear-gradient(135deg, #2a7d9c, #1a5068)', display: 'flex', alignItems: 'center', gap: 9 }}>
+              <span style={{ fontSize: 15 }}>{icon}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>{titre}</span>
+            </div>
+            <div style={{ padding: '14px 16px' }}>{children}</div>
+          </div>
+        );
+
+        const Puce = ({ icon, label, valeur }: { icon: string; label: string; valeur?: React.ReactNode }) => {
           if (valeur === null || valeur === undefined || valeur === '') return null;
           return (
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
-              <div style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, lineHeight: 1.5 }}>{valeur}</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderRadius: 13, background: 'rgba(255,255,255,0.78)', border: '1px solid #e6dcc6' }}>
+              <span style={{ fontSize: 15 }}>{icon}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <span style={{ fontSize: 9.5, fontWeight: 800, color: '#a3937a', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f2d3d' }}>{valeur}</span>
+              </span>
             </div>
           );
         };
+
+        const anneeEdd = tp.date_etat_descriptif_origine ? Number(String(tp.date_etat_descriptif_origine).slice(0, 4)) : null;
+        const eddAncien = anneeEdd !== null && !isNaN(anneeEdd) && anneeEdd < 1980;
+
+        const precedents = tp.vendeurs_precedents ?? [];
+        const cadastres = tp.references_cadastrales ?? [];
+
+        // Lignes de la fiche « immeuble et acte » — construites en amont pour
+        // gérer proprement le séparateur de la dernière ligne.
+        const lignesActe: Array<{ icon: string; label: string; valeur: string }> = [];
+        cadastres.forEach(c => {
+          const v = [c.section ? `Section ${safeStr(c.section)}` : null, c.numero ? `n°${safeStr(c.numero)}` : null, safeStr(c.lieudit) || null, safeStr(c.contenance) || null].filter(Boolean).join(' · ');
+          if (v) lignesActe.push({ icon: '🗺️', label: 'Référence cadastrale', valeur: v });
+        });
+        if (tp.date_etat_descriptif_origine) {
+          lignesActe.push({ icon: '📐', label: 'État descriptif d\u2019origine', valeur: fmtDateFr(safeStr(tp.date_etat_descriptif_origine)) || '' });
+        }
+        if (tp.notaire?.nom) {
+          lignesActe.push({
+            icon: '⚖️', label: 'Notaire rédacteur',
+            valeur: [`Me ${safeStr(tp.notaire.nom)}`, safeStr(tp.notaire.etude), safeStr(tp.notaire.ville)].filter(Boolean).join(' · '),
+          });
+        }
 
         return (
           <AccordionSection
@@ -2983,106 +3026,162 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             badge={ecarts.length > 0 ? `${ecarts.length} écart${ecarts.length > 1 ? 's' : ''}` : 'Informatif'}
             defaultOpen={allOpen || ecarts.length > 0}>
 
-            {/* Bandeau d'en-tête : nature, date, ancienneté */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, padding: '16px 18px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', marginBottom: 14 }}>
-              <Champ label="Nature du document" valeur={libelle} />
-              <Champ label="Date de l'acte" valeur={tp.date_acte ? fmtDateFr(safeStr(tp.date_acte)) : null} />
-              <Champ label="Entrée en jouissance" valeur={tp.date_entree_jouissance ? fmtDateFr(safeStr(tp.date_entree_jouissance)) : null} />
-              <Champ label="Détention" valeur={tp.anciennete_detention_annees ? `${tp.anciennete_detention_annees} an${tp.anciennete_detention_annees > 1 ? 's' : ''}` : null} />
-              <Champ label="Prix d'acquisition" valeur={tp.prix_acquisition ? `${Number(tp.prix_acquisition).toLocaleString('fr-FR')} €` : null} />
+            {/* ── En-tête « acte notarié » : papier parchemin, l'identité du document ── */}
+            <div style={{
+              padding: '18px 20px', borderRadius: 16, marginBottom: 14,
+              background: 'linear-gradient(135deg, #fdfbf5 0%, #f6f0e3 100%)',
+              border: '1px solid #e6dcc6',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 13, background: 'rgba(255,255,255,0.85)', border: '1px solid #e6dcc6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📜</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0f2d3d', lineHeight: 1.3 }}>{libelle}</div>
+                  <div style={{ fontSize: 12.5, color: '#9a8a6d', marginTop: 3 }}>
+                    {tp.notaire?.nom
+                      ? `Reçu par Me ${safeStr(tp.notaire.nom)}${tp.notaire.ville ? ` · ${safeStr(tp.notaire.ville)}` : ''}`
+                      : 'Établit qui possède le bien, et depuis quand'}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+                <Puce icon="📅" label="Date de l'acte" valeur={tp.date_acte ? fmtDateFr(safeStr(tp.date_acte)) : null} />
+                <Puce icon="🔑" label="Entrée en jouissance" valeur={tp.date_entree_jouissance ? fmtDateFr(safeStr(tp.date_entree_jouissance)) : null} />
+                <Puce icon="⏳" label="Détention" valeur={tp.anciennete_detention_annees ? `${tp.anciennete_detention_annees} an${tp.anciennete_detention_annees > 1 ? 's' : ''}` : null} />
+                <Puce icon="💶" label="Prix d'acquisition" valeur={tp.prix_acquisition ? `${Number(tp.prix_acquisition).toLocaleString('fr-FR')} €` : null} />
+              </div>
             </div>
 
-            {/* Propriétaire(s) */}
+            {/* ── Propriétaire(s) ── */}
             {proprios.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#0f2d3d', marginBottom: 9 }}>
-                  {proprios.length > 1 ? 'Propriétaires actuels' : 'Propriétaire actuel'}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              <Bloc icon="👤" titre={proprios.length > 1 ? `Propriétaires actuels (${proprios.length})` : 'Propriétaire actuel'}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {proprios.map((pr, i) => (
-                    <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #e8eef3' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap', marginBottom: 6 }}>
-                        <span style={{ fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>{safeStr(pr.nom_complet) || '—'}</span>
-                        {pr.peut_vendre_seul === true && (
-                          <span style={{ fontSize: 10, fontWeight: 800, color: '#15803d', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 5 }}>PEUT VENDRE SEUL</span>
-                        )}
-                        {pr.peut_vendre_seul === false && (
-                          <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 5 }}>ACCORD D'UN TIERS REQUIS</span>
-                        )}
-                        {pr.part_indivision && (
-                          <span style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #c7dde8', padding: '2px 8px', borderRadius: 5 }}>INDIVISION {safeStr(pr.part_indivision)}</span>
-                        )}
-                      </div>
-                      {pr.situation_matrimoniale_citation && (
-                        <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, fontStyle: 'italic' }}>« {safeStr(pr.situation_matrimoniale_citation)} »</div>
-                      )}
-                      {(pr.profession || pr.adresse) && (
-                        <div style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 5 }}>
-                          {[safeStr(pr.profession), safeStr(pr.adresse)].filter(Boolean).join(' · ')}
+                    <div key={i} style={{ padding: '15px 16px', borderRadius: 14, background: '#fff', border: '1px solid #e8eef3' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)', color: '#0c4a6e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13.5, fontWeight: 800, flexShrink: 0 }}>
+                          {initiales(safeStr(pr.nom_complet))}
                         </div>
-                      )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 14.5, fontWeight: 800, color: '#0f172a' }}>{safeStr(pr.nom_complet) || '—'}</span>
+                            {pr.peut_vendre_seul === true && (
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#15803d', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 9px', borderRadius: 7 }}>✓ PEUT VENDRE SEUL</span>
+                            )}
+                            {pr.peut_vendre_seul === false && (
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '3px 9px', borderRadius: 7 }}>⚠️ ACCORD D&apos;UN TIERS REQUIS</span>
+                            )}
+                            {pr.part_indivision && (
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #c7dde8', padding: '3px 9px', borderRadius: 7 }}>🤝 INDIVISION {safeStr(pr.part_indivision)}</span>
+                            )}
+                          </div>
+
+                          {pr.situation_matrimoniale_citation && (
+                            <div style={{ marginTop: 10, padding: '11px 14px', borderRadius: 11, background: '#f8fafc', borderLeft: '3px solid #cbd5e1' }}>
+                              <div style={{ fontSize: 9.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 4 }}>Situation matrimoniale — extrait de l&apos;acte</div>
+                              <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, fontStyle: 'italic' }}>« {safeStr(pr.situation_matrimoniale_citation)} »</div>
+                            </div>
+                          )}
+
+                          {(pr.profession || pr.nationalite || pr.adresse) && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 13, marginTop: 10 }}>
+                              {pr.profession && <span style={{ fontSize: 12.5, color: '#64748b' }}>💼 {safeStr(pr.profession)}</span>}
+                              {pr.nationalite && <span style={{ fontSize: 12.5, color: '#64748b' }}>🌍 {safeStr(pr.nationalite)}</span>}
+                              {pr.adresse && <span style={{ fontSize: 12.5, color: '#64748b' }}>📍 {safeStr(pr.adresse)}</span>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Bloc>
             )}
 
-            {/* Lots détenus */}
+            {/* ── Lots détenus ── */}
             {lotsDetenus.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#0f2d3d', marginBottom: 9 }}>
-                  Lots détenus ({lotsDetenus.length})
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <Bloc icon="🔑" titre={`Lots détenus (${lotsDetenus.length})`}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lotsDetenus.map((l, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 15px', borderRadius: 11, background: '#fff', border: '1px solid #e8eef3' }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #c7dde8', padding: '3px 9px', borderRadius: 6, flexShrink: 0 }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 15px', borderRadius: 12, background: '#fff', border: '1px solid #e8eef3' }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #c7dde8', padding: '4px 10px', borderRadius: 8, flexShrink: 0 }}>
                         LOT {safeStr(l.numero) || '?'}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, lineHeight: 1.5 }}>{safeStr(l.designation) || '—'}</div>
-                        {(l.etage || l.tantiemes) && (
-                          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
-                            {[l.etage ? safeStr(l.etage) : null, l.tantiemes ? `${safeStr(l.tantiemes)} des parties communes` : null].filter(Boolean).join(' · ')}
+                        <div style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, lineHeight: 1.55 }}>{safeStr(l.designation) || '—'}</div>
+                        {(l.etage || l.nb_pieces || l.tantiemes) && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 7 }}>
+                            {l.etage && <span style={{ fontSize: 12, color: '#94a3b8' }}>🏢 {safeStr(l.etage)}</span>}
+                            {l.nb_pieces ? <span style={{ fontSize: 12, color: '#94a3b8' }}>🚪 {l.nb_pieces} pièce{Number(l.nb_pieces) > 1 ? 's' : ''}</span> : null}
+                            {l.tantiemes && (
+                              <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                                📊 {safeStr(l.tantiemes)}{l.base_tantiemes ? `/${safeStr(l.base_tantiemes)}` : ''} tantièmes des parties communes
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Bloc>
             )}
 
-            {/* Cadastre et état descriptif d'origine */}
-            {((tp.references_cadastrales ?? []).length > 0 || tp.date_etat_descriptif_origine) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', marginBottom: 14 }}>
-                {(tp.references_cadastrales ?? []).map((c, i) => (
-                  <Champ key={i} label="Référence cadastrale"
-                    valeur={[c.section ? `Section ${safeStr(c.section)}` : null, c.numero ? `n°${safeStr(c.numero)}` : null, safeStr(c.lieudit) || null, safeStr(c.contenance) || null].filter(Boolean).join(' · ')} />
-                ))}
-                <Champ label="État descriptif d'origine" valeur={tp.date_etat_descriptif_origine ? fmtDateFr(safeStr(tp.date_etat_descriptif_origine)) : null} />
-                {tp.notaire?.nom && (
-                  <Champ label="Notaire rédacteur" valeur={[safeStr(tp.notaire.nom), safeStr(tp.notaire.etude), safeStr(tp.notaire.ville)].filter(Boolean).join(' · ')} />
+            {/* ── Origine de propriété (précédents propriétaires) ── */}
+            {precedents.length > 0 && (
+              <Bloc icon="↩️" titre="Origine de propriété">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {precedents.map((v, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11, background: '#fff', border: '1px solid #e8eef3' }}>
+                      <span style={{ fontSize: 14, flexShrink: 0 }}>👥</span>
+                      <span style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600 }}>{safeStr(v.nom_complet) || '—'}</span>
+                      {v.qualite && <span style={{ fontSize: 12, color: '#94a3b8' }}>· {safeStr(v.qualite)}</span>}
+                    </div>
+                  ))}
+                </div>
+              </Bloc>
+            )}
+
+            {/* ── L'immeuble et l'acte ── */}
+            {lignesActe.length > 0 && (
+              <Bloc icon="🏛️" titre="L&apos;immeuble et l&apos;acte">
+                <div style={{ background: '#fff', border: '1px solid #e8eef3', borderRadius: 12, padding: '4px 14px' }}>
+                  {lignesActe.map((ln, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 0',
+                      borderBottom: i === lignesActe.length - 1 ? 'none' : '1px solid #f1f5f9',
+                    }}>
+                      <span style={{ fontSize: 14, lineHeight: '20px', flexShrink: 0 }}>{ln.icon}</span>
+                      <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, flexShrink: 0, minWidth: 128, lineHeight: '20px' }}>{ln.label}</span>
+                      <span style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, lineHeight: 1.5, flex: 1, minWidth: 0 }}>{ln.valeur}</span>
+                    </div>
+                  ))}
+                </div>
+                {eddAncien && (
+                  <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 11, background: '#f0f7fb', border: '1px solid #c7dde8', fontSize: 12.5, color: '#0c4a6e', lineHeight: 1.6 }}>
+                    💡 L&apos;état descriptif de division date de {anneeEdd}. Des modificatifs ont très probablement été publiés depuis — vérifiez qu&apos;ils figurent tous au dossier.
+                  </div>
                 )}
-              </div>
+              </Bloc>
             )}
 
-            {/* Croisement avec le compromis */}
+            {/* ── Croisement avec le compromis ── */}
             {ecarts.length > 0 && (
-              <div style={{ padding: '15px 17px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
-                  <AlertTriangle size={15} style={{ color: '#b45309' }} />
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#92400e' }}>
+              <div style={{ padding: '16px 18px', borderRadius: 14, background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fcd34d' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 800, color: '#92400e' }}>
                     Écart{ecarts.length > 1 ? 's' : ''} avec le compromis
                   </span>
                 </div>
-                <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {ecarts.map((e, i) => (
-                    <li key={i} style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{e}</li>
+                    <div key={i} style={{ display: 'flex', gap: 9, fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
+                      <span style={{ flexShrink: 0 }}>•</span><span>{e}</span>
+                    </div>
                   ))}
-                </ul>
-                <div style={{ fontSize: 12, color: '#a16207', marginTop: 10, lineHeight: 1.6 }}>
-                  Un écart n'est pas nécessairement un problème — un mandat, une succession ou une procuration peuvent l'expliquer. Il n'a aucun impact sur votre score. Faites-le confirmer par le notaire avant la signature.
+                </div>
+                <div style={{ marginTop: 12, padding: '11px 14px', borderRadius: 11, background: 'rgba(255,255,255,0.65)', fontSize: 12, color: '#a16207', lineHeight: 1.6 }}>
+                  💡 Un écart n&apos;est pas nécessairement un problème — un mandat, une succession ou une procuration peuvent l&apos;expliquer. Il n&apos;a aucun impact sur votre score. Faites-le confirmer par le notaire avant la signature.
                 </div>
               </div>
             )}
