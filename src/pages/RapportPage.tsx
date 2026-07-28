@@ -2933,7 +2933,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
   // Surface Carrez depuis diagnostics
   const carrezDiag = diagsPriv.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
   const carrezSurface = carrezDiag ? safeStr(carrezDiag.resultat)?.match(/([\d,\.]+)\s*m²/i)?.[1] : null;
-  if (carrezSurface) kpiItems.push({ emoji: '🏠', label: 'Surface Carrez', value: `${carrezSurface} m²`, sub: 'surface privative officielle', tooltip: "Surface mesurée selon la loi Carrez. Si la surface réelle est inférieure de plus de 5% à celle du compromis, vous pouvez demander une réduction du prix." });
+  if (carrezSurface) kpiItems.push({ emoji: '🏠', label: 'Surface Carrez', value: `${carrezSurface} m²`, sub: 'surface privative officielle', tooltip: "Surface privative officielle (loi Carrez). Un écart de plus de 5 % avec l'acte de vente ouvre un recours — détail dans l'onglet Logement, section Surface loi Carrez." });
   if (fondsAlurNum) kpiItems.push({ emoji: '💰', label: 'Fonds travaux ALUR', value: `${fondsAlurNum.toLocaleString('fr-FR')} €`, sub: 'À rembourser au vendeur', color: '#d97706', bg: '#fff7ed', border: '#fed7aa', tooltip: "Ce montant est attaché au lot. Il vous sera transféré mais vous devrez le rembourser au vendeur en sus du prix de vente." });
 
   // Purge conditions suspensives
@@ -3417,7 +3417,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
               };
               return (
                 <div style={{ marginTop: 18 }}>
-                  <SectionTitle emoji="📐" text="Surface loi Carrez" tooltip="Surface privative officielle (loi Carrez), obligatoire à la vente en copropriété. Si la surface réelle est inférieure de plus de 5 % à celle annoncée au compromis, vous pouvez demander une réduction de prix proportionnelle." />
+                  <SectionTitle emoji="📐" text="Surface loi Carrez" tooltip="Surface privative officielle du lot, obligatoire à la vente en copropriété. Vos recours en cas d'erreur sont détaillés sous le tableau." />
                   <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                     {surface && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', borderBottom: (pieces && pieces.length > 0) ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
@@ -3444,6 +3444,64 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                         )}
                       </div>
                     )}
+                  </div>
+
+                  {/* ── Recours en cas d'erreur de mesurage ──
+                      Trop long pour une infobulle, et trop important pour être omis :
+                      c'est le seul endroit du rapport où l'acheteur apprend qu'il a
+                      un droit, et qu'il expire. */}
+                  <div style={{ marginTop: 12, borderRadius: 14, overflow: 'hidden', border: '1px solid #bfdbfe', background: '#fff' }}>
+                    <div style={{ padding: '12px 18px', background: 'linear-gradient(135deg, #1e40af, #2563eb)', display: 'flex', alignItems: 'center', gap: 9 }}>
+                      <span style={{ fontSize: 15 }}>⚖️</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', letterSpacing: '0.03em' }}>Surface erronée : ce que dit la loi</span>
+                    </div>
+                    <div style={{ padding: '16px 18px' }}>
+                      <p style={{ margin: '0 0 14px', fontSize: 13.5, color: '#334155', lineHeight: 1.7 }}>
+                        Si un nouveau mesurage établit que la surface réelle est inférieure de <strong>plus de 5 %</strong> à celle inscrite dans l&apos;acte de vente, vous pouvez obtenir une baisse du prix
+                        <span style={{ color: '#94a3b8' }}> (article 46 de la loi du 10 juillet 1965)</span>.
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                          <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1.3 }}>💶</span>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 3 }}>La baisse porte sur tout l&apos;écart</div>
+                            <div style={{ fontSize: 12.5, color: '#15803d', lineHeight: 1.6 }}>
+                              Pas seulement sur la part au-delà de 5 %. Pour 100 m² annoncés et 93 m² réels, la réduction est de <strong>7 %</strong> du prix, pas de 2 %.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 11, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                          <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1.3 }}>⏳</span>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#9a3412', marginBottom: 3 }}>Vous avez un an, et pas un jour de plus</div>
+                            <div style={{ fontSize: 12.5, color: '#c2410c', lineHeight: 1.6 }}>
+                              Le délai court à compter de la signature de l&apos;<strong>acte authentique</strong> chez le notaire, pas du compromis. Il ne se suspend ni ne s&apos;interrompt : une négociation à l&apos;amiable qui traîne ne le prolonge pas. Passé un an, le droit est perdu.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 11, background: '#f0f7fb', border: '1px solid #c7dde8' }}>
+                          <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1.3 }}>🛡️</span>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#0c4a6e', marginBottom: 3 }}>Le risque est à sens unique</div>
+                            <div style={{ fontSize: 12.5, color: '#0369a1', lineHeight: 1.6 }}>
+                              Seul l&apos;acquéreur peut agir. Si la surface réelle s&apos;avère <em>supérieure</em>, le vendeur ne peut réclamer aucun supplément.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 14, paddingTop: 13, borderTop: '1px solid #f1f5f9' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 8 }}>SI VOUS AVEZ UN DOUTE</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, color: '#475569', lineHeight: 1.6 }}>
+                          <div>1. Faites réaliser un contre-mesurage par un diagnostiqueur certifié.</div>
+                          <div>2. Si l&apos;écart dépasse 5 %, mettez le vendeur en demeure par lettre recommandée, en joignant le nouveau certificat.</div>
+                          <div>3. Sans accord, l&apos;action doit être portée devant le tribunal <strong>avant l&apos;échéance d&apos;un an</strong>.</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
