@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 27 juillet 2026 (mis à jour après la session du soir)
+# VERIMO — Contexte projet — 28 juillet 2026 (mis à jour après la session notation / documents manquants)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -26,7 +26,115 @@
 
 ---
 
-## 🆕 DERNIÈRE SESSION — 27 juillet 2026 (soir) ⭐⭐⭐
+## 🆕 DERNIÈRE SESSION — 28 juillet 2026 ⭐⭐⭐
+
+> Point de départ : une question d'Alex sur la concurrence (« si 2 clients lancent une analyse en même temps ? »). A dérivé sur un audit complet du système de notation et des documents manquants, où **une famille entière de bugs** a été trouvée : le code confondait *« pas exigible »* et *« absent »*.
+> 🧭 **Leçon de méthode n°1** : la même règle métier était écrite **6 fois** (1 serveur + 3 dans `RapportPage.tsx` + `Aide.tsx` + `MethodePage.tsx`). Elles avaient dérivé. Le rapport affichait « Aucun matériau contenant de l'amiante repéré » et, trois écrans plus bas, « Diagnostic amiante manquant ». **Une règle = un endroit, côté serveur.**
+> 🧭 **Leçon de méthode n°2** : la page « Notre méthode » publiait des valeurs de barème qui **ne correspondaient plus au code** (amiante −2 publié vs −1 réel, bonus DPE publiés qui n'existent pas). Un argument de transparence qui ne résiste pas à une vérification est pire que pas de page du tout.
+> 🧭 **Leçon de méthode n°3** : **trois bugs de cette session ont été trouvés par les questions d'Alex, pas par relecture.** « Et un immeuble récent ? », « comment tu définis l'année ? », « et si un RCP est ajouté en complément ? ». Poser le cas limite est plus efficace que relire le code.
+> ⚠️ **Incident process** : un script de modification a planté AVANT d'écrire le fichier → une livraison annoncée « faite » ne l'était pas, Alex a déployé dans le vide. → **`BUILD_VERSION` ajoutée**, loguée à chaque invocation.
+
+### ✅ Chantiers livrés
+
+**1. 🔴 Le bug `presence: 'absence'` — amiante, plomb, termites**
+- `validateDiagsManquants` excluait `presence !== 'absence'`. Or dans le schéma, `absence` = **diagnostic réalisé, substance non détectée** — le meilleur résultat possible. Le code le comptait comme « diagnostic non fait ».
+- Cas réel `#e01a8e89` : le rapport écrivait « Aucun matériau de la liste A et B contenant de l'amiante repéré » ET réclamait le diagnostic amiante. Idem CREP plomb. Idem la vigilance « État termites à vérifier » alors que le diagnostic disait qu'aucun arrêté préfectoral ne s'applique dans les Hauts-de-Seine.
+- **Aucun impact score** : `recalculerCategories` compte les diagnostics par leur `type` sans filtrer sur `presence`. Seules la liste des manquants et les vigilances étaient polluées.
+- Corrigé aux 2 endroits (helper `diagPresent` + branche AMIANTE).
+
+**2. 🔴 CHECKLIST DÉTERMINISTE — `construireChecklist()`, source unique**
+- Le front recalculait la liste des documents manquants avec `hasDoc(type)` — un simple test de présence de type, **aveugle à la date, à la complétude et à la pertinence**. Le moteur produisait 7 items précis dans `documents_manquants`, le front n'en affichait que **2 — les 2 faux**, et jetait les 5 justes.
+- Cas réel : « 3 AG analysées » en vert, pendant que le moteur écrivait que le PV le plus récent datait de 2021 et que tout ce qui a été décidé depuis sur la toiture était inconnu.
+- **Nouveau : 3 états**, `ok` / `insuffisant` / `manquant`. `insuffisant` = un document a été fourni mais ne couvre pas l'obligation (modificatif sans le RCP, PV périmés, appel de charges de 2022).
+- Écrit dans `rapport.checklist` (jsonb dans `result`, **aucun SQL**). Appelée aux **4 points** de post-traitement : single-call ×2, REDUCE, complement-merge.
+- Front : `lireChecklist()` en lecture seule, badge `INCOMPLET`, phrase explicative du moteur sous le libellé, bloc **« DÉJÀ AU DOSSIER »** (pastilles vertes) — c'est ce bloc qui évite au client de croire à un bug quand un document qu'il a envoyé n'apparaît nulle part.
+- Repli intégré : les rapports antérieurs (sans `checklist`) gardent l'ancien affichage.
+
+**3. 🔴 APPLICABILITÉ — « sans objet » ≠ « manquant »**
+- **Diagnostics communs** partaient de `2/3` quoi qu'il arrive. Un immeuble de 2015, où **rien n'est exigible** (amiante < 1997, plomb < 1949), perdait 1 point sur 20 sans raison — et un immeuble de 1948 **sans aucun diagnostic commun** (vrai trou de dossier) obtenait la même note.
+- Nouvelle grille de départ : `3/3` si rien n'est exigible (badge **SANS OBJET** au front) · `2/3` si exigible et fourni · `1,5/3` si exigible et absent.
+- **Fonds de travaux** : `−1` si `absent`, sans regarder l'âge. Or il n'est obligatoire qu'au-delà de **10 ans** (art. 14-2). Une copro de 2018 était pénalisée pour un fonds que la loi ne lui demande pas. Malus neutralisé sous 10 ans, bonus conservés.
+- **SPANC** : réclamé sur **toute** maison, même raccordée au tout-à-l'égout. Garde ajoutée sur `assainissement.type_reseau === 'collectif'`.
+- **Année inconnue** : `if (!anneeNum || anneeNum < 2010)` rendait le diagnostic électrique obligatoire **par défaut** → `−0,75` sur une hypothèse. Supprimé. Et le seuil était **2010 dans le scoring vs 2011 dans la checklist** — aligné et rendu **glissant** (`année courante − 15`).
+
+**4. 🔴 ANNÉE DE CONSTRUCTION — bornes et franchissement de seuil**
+- **Aucune consigne d'extraction n'existait** : le champ était dans le schéma, plusieurs règles le consommaient, personne ne disait où le chercher. Il tombait juste parce que le DPE le mentionne souvent.
+- **Hiérarchie des sources fixée par Alex** (métier) : ① **règlement de copropriété d'origine** — acte notarié, fait foi, JAMAIS la date d'un modificatif ② carnet d'entretien ③ fiche synthétique ④ DPE/DDT **en dernier recours**, car ils donnent une **fourchette**.
+- **Le vrai problème : une fourchette ne peut pas trancher un seuil qu'elle chevauche.** « 1989-2000 » ne dit pas si le bâti est antérieur à 1997. Et une date d'acte est une **borne supérieure** : un RCP de 1951 garantit que l'immeuble est antérieur à 1951, pas qu'il est postérieur à 1949.
+- → helpers `bornesConstruction()` + `positionSeuil()` renvoyant **3 réponses** : `avant` / `apres` / **`indetermine`**. Sur indéterminé, on s'abstient et on le DIT (vigilance nommant les seuils concernés).
+- Nouveaux champs : `annee_construction_source`, `annee_construction_precision` (`exacte|fourchette|borne_superieure`), `annee_construction_fourchette {min,max}`.
+- Front : `libelleAnneeConstruction()` → « Construit **entre 1949 et 1974** » ou « Construit **avant 1951** » au lieu d'une fausse année exacte.
+- 🐛 **Bug que j'ai introduit puis corrigé** : `anneeNum !== null && anneeNum < 1997` → quand l'année est nulle, la condition est fausse → le code concluait « rien n'est exigible » → **3/3 avec le badge SANS OBJET**. Un immeuble de 1900 dont l'année n'a pas été extraite recevait un point cadeau ET une affirmation fausse. Corrigé : 3 états, `inconnu` → socle neutre 2/3, pas de badge.
+
+**5. 🔴 CADRE RÉGLEMENTAIRE 2026 — constantes `REGLES` + vigilances**
+- Bloc `REGLES` en tête de `recalculerCategories` : source unique de tous les seuils. Toute évolution législative se corrige **là**.
+- **Réforme du DPE au 01/01/2026** : coefficient de conversion électricité 2,3 → 1,9, ~850 000 logements sortis de F/G **sans travaux**, aucune classe ne se dégrade. → vigilance si DPE E/F/G établi **avant 2026** : un DPE refait peut donner une meilleure classe. Information de négociation majeure, elle n'existait nulle part.
+- **Fonds de travaux — DOUBLE PLANCHER** (le plus important) : sans PPT adopté ≥ 5 % du budget ; **avec PPT adopté ≥ 5 % du budget ET ≥ 2,5 % du montant des travaux du plan**, le plus élevé s'appliquant. Une copro à 5 % pile avec un PPT de 600 000 € cotise 4 000 €/an là où la loi en exige 15 000 — le code disait « conforme ». → malus `−0,5` + vigilance chiffrée. **Prudence assumée** : l'adoption formelle en AG n'est pas détectable, on n'écrase pas `fonds_travaux_statut`.
+- **PPT** obligatoire depuis le 01/01/2025 pour toutes les copros **> 15 ans** · **DPE collectif** depuis le 01/01/2026 pour les mêmes, y compris ≤ 50 lots → vigilances + items de checklist conditionnés à l'âge.
+- **Audit énergétique** : maisons individuelles et **monopropriétés** uniquement (F/G depuis 04/2023, E depuis 01/2025). Un appartement en copro en est dispensé quelle que soit sa classe — le code était déjà correct, c'est maintenant documenté.
+- **Immeuble récent** : 3 vigilances qui n'existaient pas — décennale des parties communes en cours (< 10 ans, avec l'année d'échéance) ou **échue** (10-12 ans) ; réserves non levées / litiges promoteur à chercher dans les PV ; charges des premières années calées sur un budget promoteur optimiste. Ne se déclenchent **pas** sur une fourchette.
+
+**6. 🔴 RÈGLEMENT DE COPROPRIÉTÉ — `vie_copropriete.reglement_copropriete`**
+- **L'analyse simple capturait tout** (`notaire {nom, etude, ville}`, `date_acte`, `publication_fonciere {service, date}`), **l'analyse complète presque rien** : `notaire` en simple chaîne, aucune publicité foncière, **aucun champ pour le RCP d'origine**.
+- Pire : le prompt MAP demande explicitement « nom du notaire et de son étude », « service de publicité foncière ». Le moteur **extrayait et jetait**. Vérifié en SQL : *« Acte reçu par Me Emile MICHELEZ et Me Marcel BARON, tous deux notaires à PARIS, 128 Boulevard de Courcelles »*, *« Enregistré à Paris, 4e bureau des notaires, le 2 avril 1962 »* — présent dans `map_resultats`, absent du rapport. Le modèle casait les références SPF dans le **texte libre** faute de champ.
+- Nouveau bloc + `modificatifs_rcp[].notaire` devient un **objet**. Consigne clé : remplir **dès qu'un modificatif rappelle les références de l'acte d'origine** (c'est presque toujours le cas), et JAMAIS confondre la date du modificatif avec celle de l'origine.
+- Front : encadré parchemin « Règlement de copropriété d'origine » (📅 date · ⚖️ notaire · 📐 état descriptif · 🏛️ publication SPF). **Rétrocompatible** : lit `notaire` en chaîne OU en objet.
+- 🐛 **Bug que j'ai introduit puis corrigé** : le bloc était placé après `if (modifs.length === 0) return null` → un dossier avec un RCP mais **sans modificatif** n'affichait rien. C'est pourtant le cas le plus fréquent.
+
+**7. COMPLÉMENT — section `identite_bien` (trou trouvé par la question d'Alex)**
+- `annee_construction` n'appartenait à **aucune** section régénérable → cercle vicieux : le rapport disait « ajoutez le carnet d'entretien pour identifier l'année », le client l'ajoutait, **rien ne changeait**. Et il brûlait une de ses 3 tentatives.
+- Nouvelle section `identite_bien` (4 champs), routée depuis `REGLEMENT_COPRO`, `RCP`, `MODIFICATIF_RCP`, `CARNET_ENTRETIEN`, `FICHE_SYNTHETIQUE`, `DPE`, `DDT`, `DTG_PPT`.
+- **Garde de fiabilité dans la fusion** : `exacte` > `borne_superieure` > `fourchette`. Un DPE ajouté après coup n'écrase pas une année exacte déjà lue dans le carnet. Aucune valeur → on conserve. Chaque décision est loguée.
+
+**8. LOI CARREZ — texte juridiquement faux corrigé**
+- Ancien tooltip : « Si la surface réelle est inférieure de plus de 5 % à celle **du compromis**, vous pouvez demander une réduction du prix. » **Trois erreurs** :
+  - la référence est l'**acte authentique**, pas le compromis ;
+  - il faut **agir en justice dans l'année** — délai de **forclusion** qui ne se suspend ni ne s'interrompt. Un client qui négocie à l'amiable 13 mois a perdu son droit ;
+  - **la réduction porte sur la TOTALITÉ de l'écart**, pas sur la part au-delà de 5 %. 100 m² annoncés / 93 m² réels = **7 %** de réduction, pas 2 %. Sur un bien à 600 000 €, 42 000 € au lieu de 12 000.
+- Bulles raccourcies (KPI + titre de section). Le détail passe dans un **bloc dédié sous le tableau des surfaces** : 3 cartes colorées (💶 tout l'écart · ⏳ un an à compter de l'acte authentique · 🛡️ risque à sens unique) + marche à suivre en 3 étapes.
+
+**9. PAGES PUBLIQUES — barème remis en accord avec le code**
+- `MethodePage.tsx` publiait une grille **presque entièrement fausse** sur Diagnostics communs (1 ligne juste sur 10) et Diagnostics privatifs (DPE G annoncé −3 / code −1,5 ; DPE G invest annoncé −6 / code −2 ; 3 bonus publiés **inexistants**).
+- Cause structurelle : la page décrivait un modèle **additif** (part de 0, on ajoute) alors que le code part du **maximum et retranche**.
+- → nouveau bloc **« Point de départ »** par catégorie. Le bloc Bonus disparaît quand la catégorie n'en a pas.
+- **FAQ « Pourquoi partir de 20 ? » réécrite** : on ne part PAS de 20. Finances démarre à 2/4, Diags communs à 2/3 → un dossier vierge démarre à **17-18**. 4 nouvelles questions sur le cadre 2026.
+- `Aide.tsx` : mêmes chiffres + tableau des points de départ.
+- `ExemplePage.tsx` : affichait `score: 14.8` avec des catégories qui somment à **13** — et 14,8 n'est même pas produisible (le moteur arrondit au demi-point). Corrigé en 15/20 cohérent.
+
+### 📁 Fichiers livrés (6)
+
+| Fichier | Contenu | Déploiement |
+|---|---|---|
+| `analyser-run/index.ts` | tout le moteur : fix `absence`, `construireChecklist`, `REGLES` 2026, bornes/seuils, `identite_bien`, bloc RCP, `BUILD_VERSION` | GitHub **+ Supabase Studio MANUEL** |
+| `RapportPage.tsx` | checklist, badge SANS OBJET, fourchettes d'année, bloc RCP d'origine, bloc Carrez, onglet Propriété redesigné | GitHub → Vercel |
+| `MethodePage.tsx` | barème corrigé, points de départ, FAQ 2026, Carrez | GitHub → Vercel |
+| `Aide.tsx` | barème corrigé | GitHub → Vercel |
+| `ExemplePage.tsx` | score cohérent | GitHub → Vercel |
+| `DocumentRenderer.tsx` | onglet Propriété aligné (cosmétique) | GitHub → Vercel |
+
+> ⚠️ **ORDRE OBLIGATOIRE** : `RapportPage.tsx` **AVANT** `index.ts`. Le nouveau moteur écrit `modificatifs_rcp[].notaire` en **objet** ; l'ancien front fait `{m.notaire}` en JSX brut et **React refuse de rendre un objet** → onglet Copropriété en erreur.
+> ✅ **Vérifier le déploiement** : logs Supabase → `[analyser-run] 🏷️ BUILD 2026-07-28-rcp-origine`.
+> **Aucun SQL** — `checklist` et les nouveaux champs vivent dans `analyses.result` (jsonb).
+
+### 🧠 Concurrence — réponse à la question initiale
+
+- **Isolation parfaite** : chaque appel = une invocation Edge isolée, `analyseId` unique, `storagePaths` bornés à `${analyseId}/`, polling sur sa propre ligne. Aucun lock, aucun blocage mutuel.
+- **Tier Anthropic = Scale** : Sonnet 4.x → 10K req/min, 10M tokens d'entrée/min, **2M tokens de sortie/min**. L'OTPM est réservé sur `max_tokens` au **démarrage** de la requête.
+- 1 analyse de 15 docs = 15 × 32 000 = **480 000 tokens de sortie réservés d'un coup** → ~4 analyses max de 15 docs dans la même minute. **2-3 clients simultanés : aucun souci.**
+- ⚠️ **Le seul scénario réaliste de dépassement** : `analyser-retry` relance **20 analyses** dans une même exécution → 20 × 12 × 32 000 = **7,7M**, soit ~4× le plafond. → mettre `.limit(5)` et virer `blobToBase64` (CPU pur, alors qu'il a été retiré de `analyser` pour cette raison exacte).
+- ⚠️ **Limites Supabase, plus contraignantes qu'Anthropic** : CPU **2 s par requête** ; les 400 s sont la durée de vie du **worker**, qui peut servir **plusieurs requêtes** — un `analyser-run` qui atterrit sur un worker vivant depuis 300 s n'a plus que 100 s, alors que `MAP_TIMEOUT_MS = 350000` suppose les 400 s pleines. Symptôme : analyse figée en `processing`, watchdog à 1h. **À vérifier dans les logs : shutdowns `WallClockTime` sur des invocations courtes.**
+- Autres pistes non faites : lire le header `retry-after` sur les 429 (le backoff fixe 10s/20s l'ignore) ; traiter `rate_limit` comme `overload` dans `analyser` (mise en queue au lieu du remboursement) ; ne pas facturer plein tarif un rapport amputé par une erreur transitoire.
+
+### ⏭️ Reste ouvert
+
+- **Grille MAISON non auditée** — `categoriesMaison` / `penaltiesMaison` n'ont pas été confrontés au code, le même décalage y est probable. Et deux socles subsistent : `travaux_bati` plafonné à **2/3** sur une maison neuve (rien à rénover), `assainissement_risques` à **2/4** sans données.
+- **Refonte recommandée, non livrée** : séparer le **score** (le risque constaté) de la **complétude** (ce qui manque). Aujourd'hui un 13/20 peut vouloir dire « ce bien a des problèmes » OU « on n'a pas vu grand-chose », et le client ne peut pas faire la différence. Toute la famille de bugs de cette session vient de là. Coût : +3 à 4 points sur les notes → **recalibrage des 5 paliers sur ~10 dossiers réels**.
+- `annee_construction` utilise l'année de construction là où le texte amiante vise la **date du permis de construire**. Immeuble achevé en 1998 avec permis de 1996 = obligation ratée. Cas rare, approximation assumée.
+- Le malus PPT s'appuie sur `dtg.budget_total_10ans`, qui peut venir d'un DTG et non d'un plan **adopté en AG**.
+
+---
+
+## 📌 SESSION — 27 juillet 2026 (soir) ⭐⭐⭐
 
 > Point de départ : le complément timeoutait EN PRODUCTION chez un client (2 lancements, 385 s chacun) **et la facture Anthropic était débitée pour rien**. Session de refonte du complément + fiabilisation facturation + UX support/notifications.
 > 🧭 **Leçon de méthode n°1** : le diagnostic du matin (« le prompt de 22 000 tokens fait timeouter ») était **incomplet**. Le vrai coupable était le **cumul dans un seul appel** : référentiel + rapport entier à réécrire + PDFs joints. Distinguer ce qui est LU (prefill, rapide) de ce qui est ÉCRIT (génération, ~60-90 tokens/s = le seul mur).
@@ -752,16 +860,22 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 📐 Règles de notation — Score /20
 
-**Appartement / Copropriété** (`recalculerCategories`, inchangé) :
+**Appartement / Copropriété** (`recalculerCategories`) :
 
-| Catégorie | Max |
-|-----------|-----|
-| Travaux | 5 pts |
-| Procédures | 4 pts |
-| Finances | 4 pts |
-| Diagnostics privatifs | 4 pts |
-| Diagnostics communs | 3 pts |
-| **TOTAL** | **20 pts** |
+| Catégorie | Max | **Point de départ** | Modèle |
+|-----------|-----|---------------------|--------|
+| Travaux | 5 pts | **5** | soustractif |
+| Procédures | 4 pts | **4** | soustractif |
+| Finances | 4 pts | **2** | socle, monte et descend |
+| Diagnostics privatifs | 4 pts | **4** (0 si aucun diag) | soustractif |
+| Diagnostics communs | 3 pts | **3 / 2 / 1,5** (voir ci-dessous) | variable |
+| **TOTAL** | **20 pts** | **17-18 sur un dossier vierge** | |
+
+> ⚠️ **On ne part PAS de 20.** 3 catégories sur 5 démarrent au maximum, 2 sur un socle. Un dossier sans aucun signal démarre à 17 ou 18. Le 20/20 s'atteint via les bonus (fonds travaux ≥ 10 %, pré-état daté sans impayé, DTG bon). La FAQ de `MethodePage` a été réécrite en conséquence le 28/07 — l'ancienne version affirmait le contraire.
+
+> 🆕 28/07 — **Diagnostics communs, 3 points de départ** : `3/3` si **rien n'est exigible** (bâti ≥ 1997 → badge `SANS OBJET` au front) · `2/3` si exigible ET fourni, ou **année inconnue** (socle neutre) · `1,5/3` si exigible ET rien fourni. Avant : `2/3` dans tous les cas — le neuf conforme perdait 1 point, l'ancien lacunaire ne perdait rien.
+
+> 🆕 28/07 — **Applicabilité systématique.** Une obligation n'est réclamée QUE si elle est **certainement** due : amiante < 1997 · plomb < 1949 · électricité installation > 15 ans (**seuil glissant** `année − 15`) · Carrez copro seulement · fonds de travaux immeuble > 10 ans · PPT et DPE collectif copro > 15 ans · audit énergétique maison/monopropriété E-F-G · SPANC seulement si `type_reseau !== 'collectif'`. **Année inconnue = on ne réclame rien** (avant, `!anneeNum ||` rendait le diag électrique obligatoire par défaut = −0,75 sur une hypothèse).
 
 **Maison hors copro / ASL** (`recalculerCategoriesMaison`, ajouté 26 juin) :
 
@@ -776,7 +890,9 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 > 🆕 25/07 — **Statut fonds travaux (copro)** : recalcul déterministe MILLÉSIME-AWARE. Priorité : % voté en AG (résolution adoptée = conforme dès 5 %, jamais pénalisée) → ratio cotisation/budget du MÊME exercice (`budgets_historique`) → millésimes différents sans correspondance = statut IA conservé. Montant absent + % voté → reconstitué. Impact score : excellent +1,5 / bien +1 / conforme +0,5 / insuffisant −0,5 / absent −1 (inchangé).
 
-> Branche `if (!isCopro) return recalculerCategoriesMaison(...)` en tête de `recalculerCategories`. Le chemin copro est **strictement inchangé**. Différence clé : pour la maison, le **score global est recalculé** = somme des 5 catégories (la copro, elle, conserve le score du LLM). Détail complet dans la section dédiée plus bas.
+> ⚠️ 28/07 — La grille MAISON n'a **pas** été auditée : `categoriesMaison`/`penaltiesMaison` (valeurs publiées) n'ont pas été confrontés au code, et 2 socles subsistent (`travaux_bati` plafonné à 2/3 sur une maison neuve, `assainissement_risques` à 2/4 sans données). Chantier ouvert.
+
+> Branche `if (!isCopro) return recalculerCategoriesMaison(...)` en tête de `recalculerCategories`. Différence clé : pour la maison, le **score global est recalculé** = somme des 5 catégories (la copro, elle, conserve le score du LLM). Détail complet dans la section dédiée plus bas.
 
 ---
 
