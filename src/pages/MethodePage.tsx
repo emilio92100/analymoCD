@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check, Info } from 'lucide-react';
+import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check, Info, Target } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 import { VerimoConfetti, VERIMO_CONFETTI_COLORS } from '../components/VerimoConfetti';
 
@@ -149,99 +149,120 @@ const categories = [
   {
     id: 'travaux', emoji: '🏗️', label: 'Travaux', pts: 5,
     color: '#f0a500', light: '#fffbeb', border: '#fde68a',
-    desc: "Les travaux sont le premier risque financier. On détecte tout ce qui est évoqué ou voté dans vos PV d'AG, en distinguant les travaux lourds des travaux légers.",
+    desc: "Les travaux sont le premier risque financier d'un achat en copropriété. On part du principe que tout va bien, puis chaque chantier évoqué en AG sans être voté ni budgété retire des points.",
+    depart: [
+      { l: 'Point de départ', v: '5 / 5', tip: "Cette catégorie démarre au maximum. Ce sont les travaux annoncés mais non financés qui font descendre la note." },
+    ],
     bad: [
-      { l: 'Travaux lourds évoqués non votés', v: '-3', tip: 'Toiture, ravalement, chaudière collective, ascenseur, structure — évoqués en AG mais pas encore votés ni budgétés. Risque d\'appel de fonds important à prévoir.' },
-      { l: 'Travaux légers évoqués non votés', v: '-1', tip: 'Peinture parties communes, interphones, petit entretien — évoqués sans vote. Impact financier limité.' },
+      { l: 'Travail lourd évoqué non voté', v: '-1,5', tip: "Toiture, ravalement, chaudière collective, ascenseur, structure, façade, canalisations, étanchéité — évoqué en AG mais ni voté ni budgété. Par travail identifié, dans la limite de -3 points." },
+      { l: 'Travail léger évoqué non voté', v: '-0,5', tip: "Peinture des parties communes, interphone, petit entretien — évoqué sans vote. Par travail identifié, dans la limite de -1,5 point." },
     ],
     good: [
-      { l: 'Travaux votés repris par le vendeur (petits/moyens)', v: '+2', tip: 'Des travaux ont été votés. En pratique, le vendeur les reprend via une clause du compromis, donc l\'acheteur n\'a pas à les financer (à confirmer au compromis).' },
-      { l: 'Gros travaux votés repris par le vendeur', v: '+3', tip: 'Chaudière, ravalement, toiture — travaux lourds votés, en général repris par le vendeur via une clause du compromis. Signal positif si la clause le confirme.' },
-      { l: 'Garantie décennale récente sur travaux', v: '+2', tip: 'Les travaux réalisés sont couverts par une garantie décennale en cours de validité — protection contre les malfaçons pendant 10 ans.' },
+      { l: 'Travaux votés repris par le vendeur', v: '+0,5', tip: "Des travaux ont été votés et le compromis en met la charge au vendeur : vous n'aurez pas à les financer. Par travail, dans la limite de +2 points. À faire confirmer par le notaire — sans clause, l'appel de fonds exigible après la vente revient légalement à l'acheteur." },
+    ],
+    info: [
+      { l: 'Plancher de la catégorie', tip: "La note ne descend jamais sous 1/5 dès qu'au moins un travail a été identifié dans vos documents. Elle n'est à 0 que si aucun travail n'apparaît nulle part." },
     ],
   },
   {
     id: 'procedures', emoji: '⚖️', label: 'Procédures juridiques', pts: 4,
-    color: '#dc2626', light: '#fef2f2', border: '#fecaca',
-    desc: "Un litige peut bloquer la vente ou engager des frais imprévus importants. On distingue les procédures selon leur gravité.",
-    bad: [
-      { l: 'Procédure significative', v: '-3', tip: 'Litige bloquant, administration provisoire, détournement syndic, impayés massifs — peut impacter la vente ou générer des coûts imprévus importants.' },
-      { l: 'Procédure mineure', v: '-1,5', tip: 'Petit litige isolé, mise en demeure sans suite judiciaire, un seul copropriétaire en impayé — impact limité, situation généralement en cours de résolution.' },
-      { l: 'Tensions avec syndic documentées', v: '-0,5', tip: 'Quitus refusé accompagné d\'un changement de syndic conflictuel — signe de tension dans la gouvernance de la copropriété.' },
+    color: '#e24b4a', light: '#fef2f2', border: '#fecaca',
+    desc: "Un contentieux en cours peut coûter cher et durer des années. On part du maximum et on retire selon la gravité réelle de chaque procédure identifiée dans les PV d'AG.",
+    depart: [
+      { l: 'Point de départ', v: '4 / 4', tip: "Une copropriété sans procédure garde ses 4 points. Chaque contentieux identifié fait descendre la note selon sa gravité." },
     ],
-    good: [
-      { l: 'Aucune procédure détectée', v: '+1', tip: 'Aucun litige en cours dans les documents analysés — situation juridique saine.' },
+    bad: [
+      { l: 'Procédure de gravité élevée', v: '-2', tip: "Impact financier ou juridique direct et potentiellement lourd : appel de fonds important à venir, contentieux bloquant un chantier, litige portant sur le lot vendu." },
+      { l: 'Procédure de gravité modérée', v: '-1', tip: "Procédure réelle mais à l'impact incertain ou indirect : contentieux sans montant connu, tension sans coût établi pour vous." },
+      { l: 'Procédure de gravité faible', v: '-0,5', tip: "Aucun impact financier ou juridique identifié pour vous : procédure déjà résolue, ou litige n'impliquant pas significativement la copropriété." },
+      { l: 'Quitus refusé au syndic', v: '-0,5', tip: "L'assemblée générale a refusé d'approuver la gestion du syndic. Signal de tension ou de désaccord sur les comptes." },
+    ],
+    good: [],
+    info: [
+      { l: 'Aucun bonus dans cette catégorie', tip: "L'absence de procédure est la situation normale : elle ne rapporte pas de points, elle évite d'en perdre." },
     ],
   },
   {
     id: 'finances', emoji: '💰', label: 'Finances copropriété', pts: 4,
-    color: '#2a7d9c', light: '#f0f7fb', border: '#bae3f5',
-    desc: "La santé financière conditionne vos charges futures. Un fonds de travaux insuffisant peut coûter très cher en cas de travaux imprévus.",
+    color: '#1d9e75', light: '#f0fdf4', border: '#bbf7d0',
+    desc: "La seule catégorie qui part d'un socle neutre : la santé financière peut aussi bien vous rassurer que vous alerter. Le fonds de travaux est le curseur principal.",
+    depart: [
+      { l: 'Point de départ', v: '2 / 4', tip: "Socle neutre. La situation financière de la copropriété fait ensuite monter ou descendre la note dans les deux sens." },
+    ],
     bad: [
-      { l: 'Fonds travaux nul ou absent', v: '-1', tip: 'Aucun fonds de travaux provisionné — en cas de travaux importants, des appels de fonds exceptionnels seront inévitables.' },
-      { l: 'Fonds travaux insuffisant (< 5%)', v: '-0,5', tip: 'Le fonds de travaux est en dessous du minimum légal de 5% imposé par la loi ALUR — la copropriété n\'anticipe pas suffisamment.' },
-      { l: 'Impayés anormaux (> 15% du budget)', v: '-1', tip: 'Le niveau d\'impayés de charges dépasse 15% du budget annuel de la copropriété — signal de fragilité financière collective.' },
+      { l: 'Fonds de travaux absent', v: '-1', tip: "Aucun fonds de travaux constitué. Il est pourtant obligatoire pour tout immeuble d'habitation de plus de 10 ans (article 14-2 de la loi de 1965). Le premier gros chantier se traduira par un appel de fonds exceptionnel." },
+      { l: 'Fonds de travaux sous 5 % du budget', v: '-0,5', tip: "La cotisation annuelle est inférieure au minimum légal de 5 % du budget prévisionnel." },
+      { l: 'Fonds sous le plancher du plan de travaux', v: '-0,5', tip: "Quand un plan pluriannuel de travaux chiffré existe, la cotisation doit aussi atteindre 2,5 % du montant des travaux planifiés — et c'est le plus élevé des deux planchers qui s'impose. Une copropriété à 5 % pile avec un plan de 600 000 € cotise 4 000 €/an là où la loi en exige 15 000." },
+      { l: 'Impayés supérieurs à 15 % du budget', v: '-0,5', tip: "Un niveau d'impayés élevé fragilise la trésorerie : les copropriétaires à jour finissent par avancer les charges des autres." },
     ],
     good: [
-      { l: 'Fonds travaux conforme au légal (5%)', v: '+0,5', tip: 'Le fonds de travaux respecte le minimum légal imposé par la loi ALUR — copropriété à jour de ses obligations.' },
-      { l: 'Fonds travaux bien provisionné (6–9%)', v: '+1', tip: 'Le fonds de travaux dépasse le minimum légal — bonne anticipation des dépenses futures.' },
-      { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5', tip: 'Fonds de travaux très bien provisionné — la copropriété est en excellente santé financière pour faire face aux travaux.' },
-      { l: 'Vendeur à jour de ses charges', v: '+0,5', tip: 'Le pré-état daté ou l\'état daté confirme que le vendeur n\'a aucun impayé — transaction financièrement saine.' },
-      { l: 'Budget stable sur plusieurs exercices', v: '+0,5', tip: 'Les charges restent stables ou en légère hausse sur plusieurs années — copropriété bien gérée sans dérapages budgétaires.' },
+      { l: 'Fonds de travaux ≥ 10 % du budget', v: '+1,5', tip: "Le double du minimum légal. La copropriété anticipe réellement ses travaux." },
+      { l: 'Fonds de travaux ≥ 7,5 % du budget', v: '+1', tip: "Au-dessus du minimum légal, avec une marge confortable." },
+      { l: 'Fonds de travaux ≥ 5 % du budget', v: '+0,5', tip: "Le minimum légal (article 14-2 de la loi du 10 juillet 1965) est respecté." },
+      { l: 'Pré-état daté sans impayé du vendeur', v: '+0,5', tip: "Le syndic confirme que le vendeur est à jour de ses charges — vous ne reprenez aucune dette." },
     ],
     info: [
-      { l: 'Écart budget voté / charges réelles', tip: 'Affiché à titre informatif avec les deux montants si disponibles. Un écart peut être justifié par des travaux imprévus ou une dépense exceptionnelle.' },
-      { l: 'Appels de fonds exceptionnels', tip: 'Mentionnés dans le rapport si détectés, sans pénalité si justifiés par des travaux votés.' },
+      { l: 'Plancher de la catégorie', tip: "La note ne descend jamais sous 1/4 dès qu'une donnée financière est disponible. Elle n'est à 0 que si aucun budget, aucune charge et aucun fonds n'apparaissent dans le dossier." },
+      { l: 'Écart budget voté / charges réelles', tip: "Affiché avec les deux montants si disponibles, sans pénalité : un écart peut être justifié par une dépense exceptionnelle." },
     ],
   },
   {
-    id: 'diags-prives', emoji: '🏠', label: 'Diagnostics privatifs', pts: 4,
+    id: 'diags-prives', emoji: '🔍', label: 'Diagnostics privatifs', pts: 4,
     color: '#7c3aed', light: '#f5f3ff', border: '#ddd6fe',
-    desc: "DPE, électricité, gaz, amiante — ils impactent la valeur du bien, sa revendabilité et vos charges énergétiques futures.",
-    bad: [
-      { l: 'DPE F (résidence principale)', v: '-2', tip: 'Passoire thermique — charges énergétiques élevées et restrictions locatives à venir.' },
-      { l: 'DPE G (résidence principale)', v: '-3', tip: 'Passoire thermique sévère — interdiction de location en vigueur, travaux de rénovation incontournables.' },
-      { l: 'DPE F (investissement locatif)', v: '-4', tip: 'Déjà soumis à restrictions locatives — impact direct sur la rentabilité.' },
-      { l: 'DPE G (investissement locatif)', v: '-6', tip: 'Interdit à la location — investissement bloqué sans travaux lourds de rénovation énergétique.' },
-      { l: 'Électricité : anomalies majeures', v: '-2', tip: 'Anomalies importantes sur l\'installation électrique nécessitant une mise en conformité — coût et délais à prévoir.' },
-      { l: 'Électricité : anomalies mineures', v: '-0,3', tip: 'Anomalies légères sur l\'installation électrique — à surveiller mais sans urgence immédiate.' },
-      { l: 'Gaz : anomalies A1 (risque immédiat)', v: '-1', tip: 'Danger immédiat sur l\'installation de gaz — intervention urgente obligatoire avant mise en service.' },
-      { l: 'Gaz : anomalies A2 (réparation urgente)', v: '-0,5', tip: 'Anomalie nécessitant une réparation dans les délais prescrits — à corriger rapidement.' },
-      { l: 'Amiante privatif : matériaux dégradés', v: '-1', tip: 'Matériaux contenant de l\'amiante en état dégradé dans les parties privatives — travaux de retrait ou confinement à prévoir.' },
-      { l: 'Amiante privatif : matériaux suspects', v: '-0,3', tip: 'Matériaux contenant de l\'amiante non prélevés nécessitant une évaluation périodique — surveillance recommandée.' },
-      { l: 'Plomb (CREP) : revêtements dégradés', v: '-1', tip: 'Présence de plomb dans des revêtements dégradés — travaux de mise en sécurité obligatoires, surtout en présence d\'enfants.' },
-      { l: 'Diagnostic obligatoire manquant', v: '-0,75', tip: 'Un diagnostic réglementairement requis pour ce bien n\'a pas été fourni — information incomplète pour évaluer le bien.' },
+    desc: "DPE, électricité, gaz, amiante, plomb, mesurage Carrez : les diagnostics de votre lot. On part du maximum et on retire selon les anomalies réellement constatées et les diagnostics obligatoires absents.",
+    depart: [
+      { l: 'Point de départ', v: '4 / 4', tip: "Dès qu'au moins un diagnostic du lot est présent, la catégorie démarre au maximum." },
+      { l: 'Aucun diagnostic fourni', v: '0 / 4', tip: "Sans le moindre diagnostic privatif, la performance et la sécurité du logement ne peuvent pas être évaluées." },
     ],
-    good: [
-      { l: 'DPE A, B ou C', v: '+1,5', tip: 'Excellente performance énergétique — charges réduites, bien attractif à la revente, aucune contrainte réglementaire.' },
-      { l: 'DPE D', v: '+1', tip: 'Bonne performance énergétique — aucune contrainte réglementaire immédiate, charges maîtrisées.' },
-      { l: 'Diagnostics complets sans anomalie (hors ERP)', v: '+2', tip: 'Tous les diagnostics obligatoires présents sont conformes, sans aucune anomalie détectée. L\'ERP (risques naturels) est toujours informatif et n\'entre pas dans ce calcul.' },
+    bad: [
+      { l: 'DPE G — investissement locatif', v: '-2', tip: "Location interdite depuis le 1er janvier 2025. Sans travaux, le bien ne peut plus être loué : la rentabilité est bloquée." },
+      { l: 'Termites détectés', v: '-2', tip: "Présence de termites — traitement et parfois consolidation structurelle à prévoir." },
+      { l: 'DPE G — résidence principale', v: '-1,5', tip: "Passoire thermique sévère. Charges de chauffage très élevées et rénovation incontournable à terme." },
+      { l: 'DPE F — investissement locatif', v: '-1,5', tip: "Location interdite au 1er janvier 2028 : la fenêtre de rentabilité se referme." },
+      { l: 'DPE F — résidence principale', v: '-1', tip: "Passoire thermique. Charges élevées et travaux à anticiper." },
+      { l: 'Électricité : anomalie majeure', v: '-1', tip: "Anomalie présentant un danger ou un risque, nécessitant une mise en conformité." },
+      { l: 'Gaz : anomalie A1', v: '-1', tip: "Danger immédiat sur l'installation de gaz — intervention urgente." },
+      { l: 'Amiante privatif dégradé', v: '-1', tip: "Matériaux amiantés en état dégradé — retrait ou confinement à prévoir." },
+      { l: 'Plomb (CREP) : revêtements dégradés', v: '-1', tip: "Plomb accessible dans des revêtements dégradés — mise en sécurité obligatoire, a fortiori en présence d'enfants." },
+      { l: 'Diagnostic obligatoire manquant', v: '-0,75', tip: "Par diagnostic absent. Le périmètre dépend du bien : DPE et mesurage Carrez toujours, électricité si l'installation a plus de 15 ans, amiante si le permis est antérieur au 1er juillet 1997, plomb si la construction est antérieure à 1949." },
+      { l: 'Gaz : anomalie A2', v: '-0,5', tip: "Réparation à effectuer dans les délais prescrits." },
+      { l: 'Amiante privatif à surveiller', v: '-0,3', tip: "Matériaux non prélevés soumis à évaluation périodique." },
+      { l: 'Électricité : anomalie simple', v: '-0,3', tip: "Anomalie légère, à corriger sans urgence." },
+    ],
+    good: [],
+    info: [
+      { l: 'Plancher de la catégorie', tip: "La note ne descend jamais sous 1/4 dès qu'au moins un diagnostic est présent." },
+      { l: 'Votre projet change la note', tip: "Un DPE F ou G pénalise davantage en investissement locatif qu'en résidence principale, parce que le calendrier d'interdiction de location vous touche directement : G retire 2 points au lieu de 1,5, F retire 1,5 point au lieu de 1." },
+      { l: 'DPE établi avant 2026', tip: "Le mode de calcul du DPE a changé le 1er janvier 2026 : le coefficient de conversion de l'électricité est passé de 2,3 à 1,9. Environ 850 000 logements sont sortis des classes F et G sans aucun travaux. Si le diagnostic date d'avant 2026 et que le logement est chauffé à l'électricité, le rapport vous le signale — un DPE refait aujourd'hui peut aboutir à une meilleure classe." },
+      { l: 'Audit énergétique', tip: "Obligatoire à la vente d'une maison individuelle ou d'un immeuble en monopropriété classé E, F ou G. Un appartement en copropriété en est dispensé, quelle que soit sa classe : le rapport n'en tient donc pas compte." },
     ],
   },
   {
     id: 'diags-communs', emoji: '🏢', label: 'Diagnostics communs', pts: 3,
     color: '#16a34a', light: '#f0fdf4', border: '#bbf7d0',
-    desc: "L'état des parties communes conditionne vos futures charges collectives. Un immeuble bien entretenu, c'est moins de mauvaises surprises.",
+    desc: "L'état des parties communes conditionne vos futures charges collectives. Le point de départ dépend de l'immeuble : sur un bâti récent, aucun diagnostic de parties communes n'est exigible.",
+    depart: [
+      { l: 'Immeuble construit après 1997', v: '3 / 3', tip: "Sans objet : l'amiante n'est plus recherché dans les parties communes d'un bâti postérieur à juillet 1997, et le plomb ne concerne que l'avant-1949. Il n'y a rien à fournir, donc rien à reprocher — la note est pleine." },
+      { l: 'Avant 1997, diagnostics fournis', v: '2 / 3', tip: "Les diagnostics attendus figurent au dossier. La note évolue ensuite selon leur contenu et le diagnostic technique global." },
+      { l: 'Avant 1997, aucun diagnostic', v: '1,5 / 3', tip: "Des diagnostics de parties communes sont réglementairement attendus sur cet immeuble et aucun n'a été fourni : c'est une vraie lacune du dossier." },
+    ],
     bad: [
-      { l: 'Amiante parties communes dégradé', v: '-2', tip: 'Présence d\'amiante dégradé dans les parties communes — travaux de désamiantage obligatoires, coûteux et complexes.' },
-      { l: 'Termites parties communes', v: '-2', tip: 'Infestation de termites détectée dans les parties communes — traitement et consolidation structurelle à prévoir.' },
-      { l: 'DTG : état général dégradé', v: '-2', tip: 'Le Diagnostic Technique Global révèle un immeuble en mauvais état général — travaux lourds à anticiper sur plusieurs années.' },
-      { l: 'DTG : budget urgent < 50 000 €', v: '-1', tip: 'Des travaux urgents sont identifiés dans le DTG pour un montant inférieur à 50 000 € — à surveiller.' },
-      { l: 'DTG : budget urgent > 50 000 €', v: '-2', tip: 'Des travaux urgents importants sont identifiés dans le DTG — appels de fonds significatifs à prévoir à court terme.' },
+      { l: 'DTG : état général dégradé', v: '-1', tip: "Le diagnostic technique global décrit un immeuble en mauvais état — travaux lourds à anticiper sur plusieurs années." },
+      { l: 'Amiante en parties communes, action corrective', v: '-1', tip: "Amiante classé AC1 dans les parties communes : des travaux de traitement sont obligatoires et seront appelés en charges." },
+      { l: 'Termites en parties communes', v: '-1', tip: "Infestation détectée — traitement et parfois consolidation structurelle à la charge de la copropriété." },
+      { l: 'DTG : travaux urgents > 50 000 €', v: '-0,5', tip: "Des travaux urgents importants sont chiffrés : appels de fonds significatifs à court terme." },
     ],
     good: [
-      { l: 'Immeuble bien entretenu', v: '+0,5', tip: 'Les documents montrent un immeuble correctement entretenu, sans signalement de dégradation notable.' },
-      { l: 'Diagnostics parties communes complets sans alerte', v: '+0,5', tip: 'Tous les diagnostics des parties communes sont réalisés et ne révèlent aucune anomalie — immeuble sain.' },
-      { l: 'Entretien chaudière certifié', v: '+0,5', tip: 'Contrat d\'entretien chaudière collective en règle — équipement suivi, risques réduits.' },
-      { l: 'DTG : état général bon', v: '+1', tip: 'Le Diagnostic Technique Global confirme un immeuble en bon état général — rassurance sur les dépenses futures.' },
+      { l: 'DTG : état général bon', v: '+1', tip: "Le diagnostic technique global confirme un immeuble en bon état — visibilité rassurante sur les dépenses futures." },
+      { l: 'DTG : état général moyen', v: '+0,5', tip: "État correct sans dégradation majeure signalée." },
     ],
     info: [
-      { l: 'PPT (Plan Pluriannuel de Travaux)', tip: 'Affiché à titre informatif — planification des travaux sur 10 ans. Permet d\'anticiper les dépenses futures sans impacter la note.' },
+      { l: 'Plan pluriannuel de travaux', tip: "Obligatoire depuis le 1er janvier 2025 pour toutes les copropriétés de plus de 15 ans, quelle que soit leur taille. Son absence est signalée dans le rapport sans pénaliser la note — mais elle prive l'acheteur de toute visibilité sur les dix prochaines années." },
+      { l: 'DPE collectif', tip: "Obligatoire depuis le 1er janvier 2026 pour toutes les copropriétés de plus de 15 ans, y compris celles de 50 lots ou moins. Il sert de socle au plan pluriannuel de travaux." },
     ],
   },
 ];
 
-// ════════ MAISON HORS COPRO / ASL ════════
 const docTypesMaison = [
   {
     id: 'm-dpe', emoji: '⚡', label: 'DPE — Diagnostic de Performance Énergétique',
@@ -391,12 +412,16 @@ const levels = [
 ];
 
 const faqs = [
-  { q: 'Pourquoi partir de 20 et non de 0 ?', a: "Parce qu'on part du principe que votre bien est parfait — jusqu'à preuve du contraire. C'est plus intuitif : un 18/20 signifie quasi irréprochable, un 8/20 signifie risques sérieux. Si on partait de 0, personne ne saurait si 12 est bon ou mauvais." },
+  { q: 'Comment la note se construit-elle ?', a: "Chaque catégorie part d'un niveau de référence, puis les éléments de votre dossier la font bouger. Trois catégories démarrent au maximum et ne font que descendre : Travaux (5/5), Procédures (4/4) et Diagnostics privatifs (4/4) — on suppose que tout va bien jusqu'à preuve du contraire. Deux catégories partent d'un socle et bougent dans les deux sens : Finances (2/4) et Diagnostics communs (2/3, ou 3/3 sur un immeuble récent où rien n'est exigible). Un dossier sans aucun signal démarre donc autour de 17 ou 18 sur 20, et le 20/20 reste atteignable si les bonus s'ajoutent : fonds de travaux au-delà du minimum légal, vendeur à jour de ses charges, diagnostic technique global favorable." },
   { q: 'La note change-t-elle si j\'ajoute des documents ?', a: "Oui, et c'est voulu. Plus vous fournissez de documents, plus la note est précise. Un document manquant ne pénalise pas — mais le révéler peut faire varier la note dans les deux sens. C'est pourquoi l'option de compléter son dossier dans les 7 jours après analyse existe." },
   { q: 'Peut-on dépasser 20/20 ?', a: "Non. Les bonus s'ajoutent mais la note est plafonnée à 20. Si les points positifs compensent largement les négatifs, vous atteignez le maximum — c'est déjà excellent." },
   { q: 'La note Verimo remplace-t-elle un expert immobilier ?', a: "Non. Verimo est un outil d'aide à la lecture et à la décision. Il détecte les signaux présents dans vos documents — mais ne se substitue pas à une visite physique ou à l'avis d'un professionnel qualifié." },
   { q: 'Que se passe-t-il si mon document n\'est pas reconnu ?', a: "Notre outil l'indique clairement dans le rapport en précisant qu'il ne s'agit pas d'un document immobilier reconnu. Aucune pénalité n'est appliquée pour un document non analysable." },
   { q: 'Une maison est-elle notée comme un appartement ?', a: "Non. Une maison hors copropriété n'a ni parties communes, ni syndic, ni fonds de travaux. Verimo applique une grille dédiée — performance énergétique, diagnostics & sécurité, assainissement, état du bâti, et le volet juridique. Le score reste sur 20." },
+  { q: 'Sur quel état du droit la note est-elle calculée ?', a: "Sur le droit en vigueur, mis à jour en juillet 2026. Concrètement : réforme du DPE du 1er janvier 2026 (coefficient de conversion de l'électricité ramené de 2,3 à 1,9, environ 850 000 logements sortis des classes F et G sans travaux) ; interdiction de location des logements classés G depuis le 1er janvier 2025, des F au 1er janvier 2028, des E au 1er janvier 2034 ; audit énergétique obligatoire à la vente d'une maison individuelle ou d'un immeuble en monopropriété classé E, F ou G ; plan pluriannuel de travaux obligatoire depuis le 1er janvier 2025 pour toutes les copropriétés de plus de 15 ans ; DPE collectif obligatoire depuis le 1er janvier 2026 pour ces mêmes copropriétés." },
+  { q: 'Mon DPE date d\'avant 2026, est-ce un problème ?', a: "Pas pour la validité du diagnostic, qui reste opposable jusqu'à son échéance. Mais le mode de calcul a changé le 1er janvier 2026 et il ne peut qu'améliorer une étiquette, jamais la dégrader. Si le logement est chauffé à l'électricité et classé E, F ou G sur un diagnostic antérieur, le rapport vous le signale : un DPE refait aujourd'hui peut aboutir à une meilleure classe sans le moindre travaux. C'est un point à vérifier avant de négocier sur la performance énergétique." },
+  { q: 'Le fonds de travaux à 5 % du budget suffit-il ?', a: "Pas toujours, et c'est un piège fréquent. Sans plan pluriannuel de travaux adopté, le minimum légal est bien de 5 % du budget prévisionnel. Mais dès qu'un plan est adopté, la cotisation doit aussi atteindre 2,5 % du montant des travaux qu'il planifie — et c'est le plus élevé des deux planchers qui s'impose. Une copropriété avec un budget de 80 000 € et un plan de 600 000 € doit cotiser 15 000 € par an, pas 4 000 €. Verimo signale l'écart quand il le détecte." },
+  { q: 'Un immeuble récent est-il pénalisé sur les parties communes ?', a: "Non, et c'est une correction récente. Sur un bâti postérieur à juillet 1997, aucun diagnostic amiante de parties communes n'est exigible, et le plomb ne concerne que l'avant-1949. Il n'y a donc rien à fournir : la catégorie « Diagnostics communs » est marquée « sans objet » et créditée de la totalité de ses points. À l'inverse, un immeuble ancien pour lequel ces diagnostics sont attendus et absents part d'une note plus basse — c'est là qu'il y a un vrai manque au dossier." },
   { q: 'Et si ma maison fait partie d\'un lotissement (ASL) ?', a: "Si une Association Syndicale Libre (ASL ou AFUL) gère le lotissement, on analyse ses règles, sa conformité (statuts publiés depuis l'ordonnance de 2004), la rétrocession de la voirie et les contraintes du cahier des charges. La catégorie juridique devient « ASL & lotissement ». Les cotisations sont affichées comme charge réelle, sans pénaliser la note par leur seul montant." },
 ];
 
@@ -822,6 +847,25 @@ export default function MethodePage() {
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
                           <div style={{ borderTop: `1px solid ${cat.border}`, padding: '16px 20px', background: cat.light }}>
                             <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.85, marginBottom: 16 }}>{cat.desc}</p>
+                            {(cat as any).depart && (cat as any).depart.length > 0 && (
+                              <div style={{ background: '#fff', borderRadius: 11, border: `1px solid ${cat.border}`, padding: '14px', marginBottom: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                                  <Target size={12} color={cat.color} />
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: cat.color, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Point de départ</span>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                  {(cat as any).depart.map((item: any, i: number) => (
+                                    <div key={i}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                        <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 800, color: cat.color, background: cat.light, border: `1px solid ${cat.border}`, padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                      </div>
+                                      {item.tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{item.tip}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             <div className="cat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                               <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #fecaca', padding: '14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
@@ -841,6 +885,7 @@ export default function MethodePage() {
                                 </div>
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                                {cat.good.length > 0 && (
                                 <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #d1fae5', padding: '14px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
                                     <TrendingUp size={12} color="#16a34a" />
@@ -858,6 +903,7 @@ export default function MethodePage() {
                                     ))}
                                   </div>
                                 </div>
+                                )}
                                 {(cat as any).info && (cat as any).info.length > 0 && (
                                   <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #e2e8f0', padding: '14px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
@@ -1034,6 +1080,25 @@ export default function MethodePage() {
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
                           <div style={{ borderTop: `1px solid ${cat.border}`, padding: '16px 20px', background: cat.light }}>
                             <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.85, marginBottom: 16 }}>{cat.desc}</p>
+                            {(cat as any).depart && (cat as any).depart.length > 0 && (
+                              <div style={{ background: '#fff', borderRadius: 11, border: `1px solid ${cat.border}`, padding: '14px', marginBottom: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                                  <Target size={12} color={cat.color} />
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: cat.color, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Point de départ</span>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                  {(cat as any).depart.map((item: any, i: number) => (
+                                    <div key={i}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                        <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 800, color: cat.color, background: cat.light, border: `1px solid ${cat.border}`, padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                      </div>
+                                      {item.tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{item.tip}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             <div className="cat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                               <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #fecaca', padding: '14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
@@ -1053,6 +1118,7 @@ export default function MethodePage() {
                                 </div>
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                                {cat.good.length > 0 && (
                                 <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #d1fae5', padding: '14px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
                                     <TrendingUp size={12} color="#16a34a" />
@@ -1070,6 +1136,7 @@ export default function MethodePage() {
                                     ))}
                                   </div>
                                 </div>
+                                )}
                                 {(cat as any).info && (cat as any).info.length > 0 && (
                                   <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #e2e8f0', padding: '14px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
