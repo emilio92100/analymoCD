@@ -4020,6 +4020,17 @@ ANTERIORITE : pour chaque montant, le chiffre EXPLICITEMENT ECRIT le plus RECENT
 ANTERIORITE : un etat date ou un pre-etat date plus RECENT perime integralement le precedent. Toutes ses rubriques ECRASENT les anciennes, y compris quand elles passent a zero ou a "neant" — un impaye solde doit repasser a 0, pas rester a son ancien montant. La date du bloc est mise a jour en meme temps.`,
     schema: `"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]}`,
   },
+  identite_bien: {
+    id: 'identite_bien',
+    cles: ['annee_construction', 'annee_construction_source', 'annee_construction_precision', 'annee_construction_fourchette'],
+    regles: `ANNEE DE CONSTRUCTION. Ce champ conditionne les obligations reglementaires (amiante avant juillet 1997, plomb avant 1949, electricite installation de plus de 15 ans, fonds de travaux immeuble de plus de 10 ans). Le chercher dans cet ORDRE, s arreter a la premiere source exploitable :
+1. REGLEMENT DE COPROPRIETE D ORIGINE — acte notarie, il fait foi. Prendre la date de l acte D ORIGINE, JAMAIS celle d un modificatif. C est une BORNE SUPERIEURE : l immeuble existait au plus tard a cette date, il peut etre plus ancien. precision = "borne_superieure".
+2. CARNET D ENTRETIEN — annee de construction souvent indiquee en clair. precision = "exacte".
+3. FICHE SYNTHETIQUE DE COPROPRIETE — caracteristiques techniques. precision = "exacte".
+4. DPE, DDT, DTG ou AUDIT ENERGETIQUE — en DERNIER RECOURS : ces documents donnent en general une PERIODE. Renseigner alors annee_construction_fourchette {min,max}, precision = "fourchette", et annee_construction = la borne la plus ANCIENNE.
+Si le document n apporte AUCUNE information sur l annee, renvoyer les quatre champs a null : le rapport conservera la valeur qu il possede deja. Ne JAMAIS deduire une annee du style architectural ou du quartier.`,
+    schema: `"annee_construction":null,"annee_construction_source":"reglement_copro|carnet_entretien|fiche_synthetique|dpe_ddt|autre|null","annee_construction_precision":"exacte|fourchette|borne_superieure|null","annee_construction_fourchette":null`,
+  },
   lot_achete: {
     id: 'lot_achete',
     cles: ['lot_achete'],
@@ -4117,9 +4128,9 @@ REGLES DE COPROPRIETE (regles_copro) — clauses du reglement qui contraignent l
 
 // Routage deterministe : type de document detecte -> sections a regenerer
 const ROUTAGE_SECTIONS: Record<string, string[]> = {
-  DPE: ['diagnostics', 'dpe_recommandations'],
+  DPE: ['diagnostics', 'dpe_recommandations', 'identite_bien'],
   AUDIT_ENERGETIQUE: ['diagnostics', 'dpe_recommandations'],
-  DDT: ['diagnostics'],
+  DDT: ['diagnostics', 'identite_bien'],
   DIAGNOSTIC: ['diagnostics'],
   DIAGNOSTIC_PARTIES_COMMUNES: ['diagnostics'],
   PV_AG: ['vie_copropriete.syndic_ag', 'travaux', 'procedures', 'finances'],
@@ -4127,11 +4138,11 @@ const ROUTAGE_SECTIONS: Record<string, string[]> = {
   TAXE_FONCIERE: ['finances'],
   PRE_ETAT_DATE: ['pre_etat_date', 'finances', 'procedures'],
   ETAT_DATE: ['pre_etat_date', 'finances', 'procedures'],
-  FICHE_SYNTHETIQUE: ['vie_copropriete.fiche_synthetique', 'finances'],
-  CARNET_ENTRETIEN: ['vie_copropriete.carnet_entretien', 'travaux'],
-  DTG_PPT: ['vie_copropriete.dtg', 'travaux'],
-  REGLEMENT_COPRO: ['vie_copropriete.lots', 'vie_copropriete.modificatifs'],
-  RCP: ['vie_copropriete.lots', 'vie_copropriete.modificatifs'],
+  FICHE_SYNTHETIQUE: ['vie_copropriete.fiche_synthetique', 'finances', 'identite_bien'],
+  CARNET_ENTRETIEN: ['vie_copropriete.carnet_entretien', 'travaux', 'identite_bien'],
+  DTG_PPT: ['vie_copropriete.dtg', 'travaux', 'identite_bien'],
+  REGLEMENT_COPRO: ['vie_copropriete.lots', 'vie_copropriete.modificatifs', 'identite_bien'],
+  RCP: ['vie_copropriete.lots', 'vie_copropriete.modificatifs', 'identite_bien'],
   MODIFICATIF_RCP: ['vie_copropriete.modificatifs', 'vie_copropriete.lots'],
   COMPROMIS: ['lot_achete'],
   TITRE_PROPRIETE: ['lot_achete', 'vie_copropriete.lots'],
@@ -4762,6 +4773,32 @@ async function runComplementMerge(
     const sectionsRejetees: string[] = [];
     for (const r of resultats) {
       if (!r.ok || !r.valeurs) { sectionsRejetees.push(`${r.id} (${r.raison})`); continue; }
+      // ⚠️ L'annee de construction ne se fusionne PAS a l'aveugle. Un DPE ajoute
+      // apres coup donne une fourchette : il ne doit pas ecraser une annee exacte
+      // deja lue dans le carnet d'entretien. Hierarchie : exacte > borne
+      // superieure > fourchette. A fiabilite egale, la nouvelle valeur passe.
+      if (r.id === 'identite_bien') {
+        const RANG: Record<string, number> = { exacte: 3, borne_superieure: 2, fourchette: 1 };
+        const rapportRec = rapport as Record<string, unknown>;
+        const nouvelle = r.valeurs['annee_construction'];
+        const rangActuel = RANG[String(rapportRec.annee_construction_precision ?? '')] ?? 0;
+        const rangNouveau = RANG[String(r.valeurs['annee_construction_precision'] ?? '')] ?? 0;
+        const aDejaUneAnnee = rapportRec.annee_construction != null && String(rapportRec.annee_construction).trim() !== '';
+        if (nouvelle == null || String(nouvelle).trim() === '') {
+          console.log('[complement-merge] identite_bien : aucune annee dans les nouveaux documents — valeur conservee');
+        } else if (aDejaUneAnnee && rangNouveau < rangActuel) {
+          console.log(`[complement-merge] identite_bien : source moins fiable (${rangNouveau} < ${rangActuel}) — valeur conservee`);
+        } else {
+          for (const cle of SECTIONS[r.id].cles) {
+            if (!(cle in r.valeurs)) continue;
+            setPath(rapport, cle, r.valeurs[cle]);
+          }
+          console.log(`[complement-merge] identite_bien : annee mise a jour -> ${String(nouvelle)} (${String(r.valeurs['annee_construction_precision'] ?? '?')})`);
+        }
+        sectionsFusionnees++;
+        continue;
+      }
+
       for (const cle of SECTIONS[r.id].cles) {
         if (!(cle in r.valeurs)) continue;
         const v = r.valeurs[cle];
