@@ -2041,8 +2041,15 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
           {/* ── SOUS-SECTION MODIFICATIFS RCP (si détectés) ── */}
           {(() => {
+            type NotaireT = { nom?: string | null; etude?: string | null; ville?: string | null };
+            type PublicationT = { service?: string | null; date?: string | null };
             type ModifT = {
-              date_acte?: string | null; notaire?: string | null; type_modification?: string | null;
+              date_acte?: string | null;
+              // ⚠️ Rétrocompatible : chaîne sur les rapports générés avant juillet 2026,
+              // objet {nom, étude, ville} depuis.
+              notaire?: string | NotaireT | null;
+              publication_fonciere?: PublicationT | null;
+              type_modification?: string | null;
               sur_quoi_porte?: { aspect?: string; detail?: string }[];
               impact_acheteur?: string | null;
               points_attention?: { label?: string; detail?: string }[];
@@ -2055,8 +2062,29 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               changement_usage: "Changement d'usage", mise_a_jour_tantiemes: 'Mise à jour des tantièmes',
               servitude: 'Servitude', fusion_lots: 'Fusion de lots', autre: 'Modification',
             };
+            const rcpOrigine = vieCopro?.reglement_copropriete as
+              { present?: boolean; date_acte?: string | null; notaire?: NotaireT | null; publication_fonciere?: PublicationT | null; date_etat_descriptif?: string | null } | undefined;
+            const aRcpOrigine = !!rcpOrigine?.present && !!(rcpOrigine.date_acte || rcpOrigine.notaire?.nom || rcpOrigine.date_etat_descriptif);
+
             return (
               <div style={{ marginTop: 18 }}>
+                {/* Acte fondateur : sa date et son notaire figurent presque toujours
+                    dans les modificatifs, même quand le règlement lui-même est absent. */}
+                {aRcpOrigine && (
+                  <div style={{ marginBottom: 14, padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #fdfbf5, #f6f0e3)', border: '1px solid #e6dcc6' }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#8a7a5c', letterSpacing: '0.06em', marginBottom: 8 }}>📜 RÈGLEMENT DE COPROPRIÉTÉ D&apos;ORIGINE</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 13, color: '#0f2d3d' }}>
+                      {rcpOrigine!.date_acte && <span>📅 Acte du <strong>{safeStr(rcpOrigine!.date_acte)}</strong></span>}
+                      {rcpOrigine!.notaire?.nom && (
+                        <span>⚖️ {[`Me ${safeStr(rcpOrigine!.notaire!.nom)}`, safeStr(rcpOrigine!.notaire!.etude), safeStr(rcpOrigine!.notaire!.ville)].filter(Boolean).join(' · ')}</span>
+                      )}
+                      {rcpOrigine!.date_etat_descriptif && <span>📐 État descriptif du {safeStr(rcpOrigine!.date_etat_descriptif)}</span>}
+                      {rcpOrigine!.publication_fonciere?.service && (
+                        <span>🏛️ Publié au {safeStr(rcpOrigine!.publication_fonciere!.service)}{rcpOrigine!.publication_fonciere!.date ? ` le ${safeStr(rcpOrigine!.publication_fonciere!.date)}` : ''}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <SectionTitle emoji="📜" text={`Modificatifs du règlement (${modifs.length} acte${modifs.length > 1 ? 's' : ''})`} tooltip="Le règlement de copropriété peut être modifié au fil du temps par des actes notariés (changement d'usage, fusion de lots, servitudes…)." />
 
                 <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
@@ -2083,10 +2111,21 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                             <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
                               {m.type_modification ? (labelsType[m.type_modification] || labelsType.autre) : labelsType.autre}
                             </div>
-                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>
-                              {m.date_acte && `Acte du ${m.date_acte}`}
-                              {m.date_acte && m.notaire && ' — '}
-                              {m.notaire}
+                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.6 }}>
+                              {m.date_acte && <span>📅 Acte du {m.date_acte}</span>}
+                              {(() => {
+                                const n = m.notaire;
+                                const txt = typeof n === 'string'
+                                  ? n
+                                  : [n?.nom ? `Me ${safeStr(n.nom)}` : null, safeStr(n?.etude), safeStr(n?.ville)].filter(Boolean).join(' · ');
+                                return txt ? <span>{m.date_acte ? ' · ' : ''}⚖️ {txt}</span> : null;
+                              })()}
+                              {m.publication_fonciere && (m.publication_fonciere.service || m.publication_fonciere.date) && (
+                                <div style={{ marginTop: 2 }}>
+                                  🏛️ Publié{m.publication_fonciere.service ? ` au ${safeStr(m.publication_fonciere.service)}` : ''}
+                                  {m.publication_fonciere.date ? ` le ${safeStr(m.publication_fonciere.date)}` : ''}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
