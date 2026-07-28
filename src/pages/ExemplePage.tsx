@@ -22,7 +22,7 @@ const MOCK_COMPLETE_PAYLOAD = {
   titre: '24 rue des Lilas, Lyon 6e — Appartement 4B',
   type_bien: 'appartement',
   annee_construction: '1978',
-  score: 14.8,
+  score: 15,
   score_niveau: 'Bien sain',
   resume: {
     le_bien: "Appartement T3 de 62 m² Carrez situé dans une copropriété lyonnaise. Le lot comprend l'appartement principal, une cave et un emplacement de parking. Charges annuelles estimées à 2 400 € pour le lot.",
@@ -197,8 +197,8 @@ const MOCK_COMPLETE_PAYLOAD = {
   },
   pre_etat_date: { present: false },
   categories: {
-    travaux: { note: 2.5, note_max: 5 },
-    procedures: { note: 2.5, note_max: 4 },
+    travaux: { note: 3.5, note_max: 5 },
+    procedures: { note: 3.5, note_max: 4 },
     finances: { note: 3, note_max: 4 },
     diags_privatifs: { note: 3, note_max: 4 },
     diags_communs: { note: 2, note_max: 3 },
