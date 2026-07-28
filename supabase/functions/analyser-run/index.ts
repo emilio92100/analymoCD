@@ -82,7 +82,7 @@ interface RapportShape {
     impayes?: number | null;
   };
   vie_copropriete?: {
-    dtg?: { present?: boolean; etat_general?: string; budget_urgent_3ans?: number | null };
+    dtg?: { present?: boolean; etat_general?: string; budget_urgent_3ans?: number | null; budget_total_10ans?: number | null };
     syndic?: { statut?: string };
     participation_ag?: Array<{ quitus?: { soumis?: boolean; approuve?: boolean } }>;
   };
@@ -145,7 +145,12 @@ function recalculerCategoriesMaison(rapport: RapportShape, _profil: string, anne
   } else {
     noteDiags = 5;
     const requis: string[] = [];
-    if (!anneeNum || anneeNum < 2010) requis.push('ELECTRICITE');
+    // Annee inconnue = on ne reclame RIEN. Avant, `!anneeNum ||` rendait le
+    // diagnostic electrique obligatoire des que l'annee n'avait pas ete extraite :
+    // -0,75 point sur une hypothese. Et le seuil (2010) ne correspondait pas a
+    // celui de la checklist (2011), donc le rapport pouvait signaler un document
+    // manquant sans que la note ne bouge, ou l'inverse.
+    if (anneeNum && anneeNum < REGLES.ANNEE_ELEC) requis.push('ELECTRICITE');
     if (anneeNum && anneeNum < 1997) requis.push('AMIANTE');
     if (anneeNum && anneeNum < 1949) requis.push('PLOMB');
     if (secDiags.some(d => String(d.type || '').toUpperCase() === 'GAZ')) requis.push('GAZ');
@@ -511,6 +516,97 @@ function appliquerRecomptageDocument(doc: Record<string, unknown>): void {
   if (totalAnnonce == null) doc.total_lots = res.total;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 📚 CADRE REGLEMENTAIRE — etat du droit au 28 juillet 2026
+// ──────────────────────────────────────────────────────────────────────
+// Source unique des seuils utilises par le scoring ET par la checklist.
+// Toute evolution legislative se corrige ICI, pas dans dix endroits.
+//
+// DPE — reforme du 1er janvier 2026 : le coefficient de conversion de
+//   l'electricite en energie primaire passe de 2,3 a 1,9. Environ 850 000
+//   logements sortent des classes F/G SANS TRAVAUX. Aucune classe ne se
+//   degrade. Un DPE etabli avant 2026 sur un logement chauffe a l'electricite
+//   est donc potentiellement pessimiste -> point de vigilance, jamais un malus.
+// DPE — interdiction de location (loi Climat et Resilience, metropole) :
+//   G depuis le 01/01/2025 · F au 01/01/2028 · E au 01/01/2034.
+//   Outre-mer : G au 01/01/2028 · F au 01/01/2031.
+// AUDIT ENERGETIQUE de vente : maisons individuelles et immeubles en
+//   MONOPROPRIETE uniquement. F et G depuis le 01/04/2023, E depuis le
+//   01/01/2025, D a partir de 2034. Un appartement en copropriete en est
+//   dispense quelle que soit sa classe — c'est pour cela que la regle ne se
+//   declenche que sur type_bien = 'maison'.
+// PPT (plan pluriannuel de travaux) : obligatoire depuis le 01/01/2025 pour
+//   TOUTES les coproprietes de plus de 15 ans, quelle que soit leur taille
+//   (deploiement 2023 > 200 lots, 2024 51-200 lots, 2025 <= 50 lots).
+// DPE COLLECTIF : depuis le 01/01/2026, obligatoire pour toutes les
+//   coproprietes de plus de 15 ans, y compris celles de 50 lots ou moins.
+// FONDS DE TRAVAUX (art. 14-2 loi du 10 juillet 1965) : obligatoire pour les
+//   immeubles de plus de 10 ans. DOUBLE PLANCHER depuis 2025 —
+//   sans PPT adopte : >= 5 % du budget previsionnel ;
+//   avec PPT adopte : >= 5 % du budget previsionnel ET >= 2,5 % du montant
+//   des travaux prevus au plan, le PLUS ELEVE des deux s'appliquant.
+//   Consequence : une copropriete a 5 % pile mais dotee d'un PPT lourd est
+//   EN DESSOUS du minimum legal. L'ancienne version la declarait « conforme ».
+// AMIANTE : permis de construire anterieur au 01/07/1997 (privatif et communs).
+// PLOMB (CREP) : construction anterieure a 1949.
+// ELECTRICITE / GAZ : installations de plus de 15 ans.
+// ══════════════════════════════════════════════════════════════════════
+const REGLES = {
+  ANNEE_AMIANTE: 1997,
+  ANNEE_PLOMB: 1949,
+  // Diagnostic electrique : installations de PLUS DE 15 ANS. Le seuil GLISSE avec
+  // l'annee en cours — le figer a 2011 aurait ete juste en 2026 et faux en 2030.
+  ANNEE_ELEC: new Date().getFullYear() - 15,
+  AGE_COPRO_PPT: 15,          // PPT + DPE collectif : coproprietes de plus de 15 ans
+  AGE_FONDS_TRAVAUX: 10,      // fonds de travaux obligatoire : immeubles de plus de 10 ans
+  DUREE_DECENNALE: 10,        // garantie decennale des parties communes
+  FONDS_PCT_BUDGET: 0.05,     // 5 % du budget previsionnel
+  FONDS_PCT_PPT: 0.025,       // 2,5 % du montant des travaux du PPT adopte
+  DPE_REFORME_ANNEE: 2026,    // reforme du coefficient electricite
+} as const;
+
+// ══════════════════════════════════════════════════════════════════════
+// 🗓️ ANNEE DE CONSTRUCTION — bornes et franchissement de seuil
+// ──────────────────────────────────────────────────────────────────────
+// Le probleme : une FOURCHETTE ne peut pas trancher un seuil qu'elle chevauche.
+// Un DPE qui annonce « 1989-2000 » ne dit PAS si le bati est anterieur a 1997 :
+// decider a pile ou face reviendrait soit a reclamer un diagnostic amiante qui
+// n'est pas du, soit — bien pire — a n'en reclamer aucun sur un immeuble qui y
+// est soumis. Meme chose pour la date du reglement de copropriete, qui est une
+// BORNE SUPERIEURE : un reglement de 1951 garantit que l'immeuble est anterieur
+// a 1951, pas qu'il est posterieur a 1949.
+//
+// D'ou trois reponses possibles, jamais deux : 'avant', 'apres', 'indetermine'.
+// Sur 'indetermine', on s'abstient et on le DIT au client.
+// ══════════════════════════════════════════════════════════════════════
+type PositionSeuil = 'avant' | 'apres' | 'indetermine';
+
+function bornesConstruction(r: Record<string, unknown>): { annee: number | null; min: number | null; max: number | null; fourchette: boolean } {
+  const brut = String(r.annee_construction ?? '').match(/\d{4}/);
+  const annee = brut ? parseInt(brut[0]) : null;
+  const f = r.annee_construction_fourchette as { min?: number | null; max?: number | null } | null | undefined;
+  const precision = String(r.annee_construction_precision ?? '');
+
+  if (f && (f.min != null || f.max != null)) {
+    return { annee, min: f.min ?? null, max: f.max ?? null, fourchette: true };
+  }
+  // Date d'un acte (reglement de copropriete) : l'immeuble existait AU PLUS TARD
+  // a cette date. Rien ne dit qu'il n'est pas bien plus ancien.
+  if (precision === 'borne_superieure' && annee != null) {
+    return { annee, min: null, max: annee, fourchette: true };
+  }
+  return { annee, min: annee, max: annee, fourchette: false };
+}
+
+function positionSeuil(b: { min: number | null; max: number | null }, seuil: number): PositionSeuil {
+  if (b.min == null && b.max == null) return 'indetermine';
+  const min = b.min ?? -Infinity;
+  const max = b.max ?? Infinity;
+  if (max < seuil) return 'avant';
+  if (min >= seuil) return 'apres';
+  return 'indetermine';
+}
+
 function recalculerCategories(rapport: RapportShape, profil: string): RapportShape {
   // 🔢 Recomptage deterministe des lots — AVANT tout le reste et pour TOUS les
   // types de bien (une maison en copro a aussi une composition de copropriete).
@@ -526,6 +622,8 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
   const diagsCommuns = diagnostics.filter(d => d.perimetre === 'parties_communes');
 
   const anneeNum = rapport.annee_construction ? Number(String(rapport.annee_construction).replace(/[^0-9]/g, '')) : null;
+  const bornes = bornesConstruction(rapport as unknown as Record<string, unknown>);
+  const anneeRefScore = new Date().getFullYear();
   const typeBien = rapport.type_bien || 'appartement';
   const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
 
@@ -643,18 +741,61 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
     console.log(`[analyser-run] Fonds travaux statut recalcule: ${fin.fonds_travaux_statut} (ratio ${(ratio * 100).toFixed(1)}% — exercice ${ftAnnee || btcAnnee || '?'})`);
   }
 
+  // Le fonds de travaux n'est obligatoire que pour les immeubles de PLUS DE 10 ANS
+  // (art. 14-2 de la loi de 1965). Une copropriete plus recente qui n'en a pas
+  // n'est pas en faute : la penaliser revenait au meme faux positif que reclamer
+  // un diagnostic amiante sur du bati de 2015. Les bonus, eux, restent acquis :
+  // une jeune copropriete qui cotise deja merite d'etre creditee.
+  // Exigible seulement si l'immeuble a CERTAINEMENT plus de 10 ans. Sur une
+  // fourchette qui chevauche le seuil, on ne penalise pas.
+  const posFonds = positionSeuil(bornes, anneeRefScore - REGLES.AGE_FONDS_TRAVAUX);
+  const fondsExigible = posFonds !== 'apres';
+  const ageImmeubleFin = bornes.annee ? anneeRefScore - bornes.annee : null;
+
   const fondsStatut = fin.fonds_travaux_statut;
   if (fondsStatut === 'excellent') noteFinances += 1.5;
   else if (fondsStatut === 'bien') noteFinances += 1;
   else if (fondsStatut === 'conforme') noteFinances += 0.5;
-  else if (fondsStatut === 'insuffisant') noteFinances -= 0.5;
-  else if (fondsStatut === 'absent') noteFinances -= 1;
+  else if (fondsStatut === 'insuffisant') noteFinances -= fondsExigible ? 0.5 : 0;
+  else if (fondsStatut === 'absent') noteFinances -= fondsExigible ? 1 : 0;
+  if (!fondsExigible && (fondsStatut === 'absent' || fondsStatut === 'insuffisant')) {
+    (fin as unknown as Record<string, unknown>).fonds_travaux_non_exigible = true;
+    console.log(`[analyser-run] Fonds travaux non exigible (immeuble de ${ageImmeubleFin} an(s)) — aucun malus applique`);
+  }
 
   const budget = fin.budget_total_copro || 0;
   const impayes = fin.impayes || 0;
   if (budget > 0 && impayes > 0 && impayes / budget > 0.15) noteFinances -= 0.5;
 
   if (rapport.pre_etat_date?.present && rapport.pre_etat_date?.impayes_vendeur === 0) noteFinances += 0.5;
+
+  // ── DOUBLE PLANCHER DU FONDS DE TRAVAUX (regime applicable depuis 2025) ──
+  // Le seuil de 5 % du budget n'est que le premier plancher. Des qu'un plan
+  // pluriannuel de travaux chiffre existe, la cotisation doit AUSSI atteindre
+  // 2,5 % du montant des travaux planifies — et c'est le plus eleve des deux
+  // qui s'impose. Une copropriete a 5 % pile avec un PPT de 600 000 € cotise
+  // 4 000 €/an la ou la loi en exige 15 000 : l'ancienne version la classait
+  // « conforme », ce qui rassurait a tort sur le poste le plus couteux.
+  //
+  // On applique un malus mesure (-0,5) plutot que de basculer le statut en
+  // « insuffisant » : l'adoption formelle du PPT en AG n'est pas detectable de
+  // facon certaine dans les documents, et le statut pilote l'affichage partout.
+  // Le point de vigilance associe est pose par validateDiagsManquants.
+  const dtgFin = rapport.vie_copropriete?.dtg;
+  const travauxPPT = dtgFin?.present && typeof dtgFin.budget_total_10ans === 'number' && dtgFin.budget_total_10ans > 0
+    ? dtgFin.budget_total_10ans : null;
+  if (travauxPPT && ftMontant != null && ftMontant > 0) {
+    const minPPT = travauxPPT * REGLES.FONDS_PCT_PPT;
+    if (ftMontant < minPPT * 0.95) {
+      noteFinances -= 0.5;
+      (fin as unknown as Record<string, unknown>).fonds_travaux_plancher_ppt = {
+        requis_annuel: Math.round(minPPT),
+        constate_annuel: Math.round(ftMontant),
+        travaux_plan: Math.round(travauxPPT),
+      };
+      console.log(`[analyser-run] Fonds travaux SOUS le plancher PPT : ${Math.round(ftMontant)} € constates vs ${Math.round(minPPT)} € requis (2,5 % de ${Math.round(travauxPPT)} €)`);
+    }
+  }
 
   const hasFinancesData = !!(fin.budget_total_copro || fin.charges_annuelles_lot || fin.fonds_travaux || rapport.pre_etat_date?.present);
   noteFinances = clamp(noteFinances, hasFinancesData ? 1 : 0, 4);
@@ -665,7 +806,12 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
     noteDiagsPrivatifs = 0;
   } else {
     const requis = ['DPE'];
-    if (!anneeNum || anneeNum < 2010) requis.push('ELECTRICITE');
+    // Annee inconnue = on ne reclame RIEN. Avant, `!anneeNum ||` rendait le
+    // diagnostic electrique obligatoire des que l'annee n'avait pas ete extraite :
+    // -0,75 point sur une hypothese. Et le seuil (2010) ne correspondait pas a
+    // celui de la checklist (2011), donc le rapport pouvait signaler un document
+    // manquant sans que la note ne bouge, ou l'inverse.
+    if (anneeNum && anneeNum < REGLES.ANNEE_ELEC) requis.push('ELECTRICITE');
     if (anneeNum && anneeNum < 1997) requis.push('AMIANTE');
     if (anneeNum && anneeNum < 1949) requis.push('PLOMB');
     const aGaz = diagsPrivatifs.some(d => d.type === 'GAZ');
@@ -726,14 +872,22 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
   //   exigible ET rien fourni                 -> 1.5 (la vraie lacune)
   // Les bonus/malus DTG et les anomalies s'appliquent ensuite dans tous les cas :
   // un immeuble recent dote d'un DTG degrade redescend normalement.
-  const diagsCommunsAttendus = anneeNum !== null && anneeNum < 1997;
+  // ⚠️ TROIS etats, pas deux. « Rien n'est exigible » et « on ne sait pas » ne
+  // doivent PAS produire le meme resultat : sans cette distinction, un immeuble
+  // de 1900 dont l'annee n'a pas ete extraite heritait d'un 3/3 « sans objet »,
+  // soit un point offert sur une ignorance.
+  const posAmiante = positionSeuil(bornes, REGLES.ANNEE_AMIANTE);
+  const diagsCommunsAttendus = posAmiante === 'avant';
+  const diagsCommunsSansObjet = posAmiante === 'apres';
+  const anneeConnue = posAmiante !== 'indetermine';
   const dtg = rapport.vie_copropriete?.dtg;
   const hasCommunsData = diagsCommuns.length > 0 || Boolean(dtg?.present);
 
   let noteDiagsCommuns: number;
-  if (!diagsCommunsAttendus) noteDiagsCommuns = 3;
-  else if (hasCommunsData) noteDiagsCommuns = 2;
-  else noteDiagsCommuns = 1.5;
+  if (diagsCommunsSansObjet) noteDiagsCommuns = 3;      // bati >= 1997 : rien a fournir
+  else if (!anneeConnue) noteDiagsCommuns = 2;          // annee inconnue : socle neutre
+  else if (hasCommunsData) noteDiagsCommuns = 2;        // bati ancien, documents fournis
+  else noteDiagsCommuns = 1.5;                          // bati ancien, rien fourni
 
   if (dtg?.present) {
     if (dtg.etat_general === 'bon') noteDiagsCommuns += 1;
@@ -755,7 +909,7 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
     procedures: { note: Math.round(noteProcedures * 2) / 2, note_max: 4 },
     finances: { note: Math.round(noteFinances * 2) / 2, note_max: 4 },
     diags_privatifs: { note: Math.round(noteDiagsPrivatifs * 2) / 2, note_max: 4 },
-    diags_communs: { note: Math.round(noteDiagsCommuns * 2) / 2, note_max: 3, sans_objet: !diagsCommunsAttendus },
+    diags_communs: { note: Math.round(noteDiagsCommuns * 2) / 2, note_max: 3, sans_objet: diagsCommunsSansObjet },
   };
 
   console.log('[analyser-run] Categories recalculees:', JSON.stringify(categoriesRecalculees));
@@ -918,6 +1072,12 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
   const anneeStr = String(r.annee_construction ?? '');
   const anneeMatch = anneeStr.match(/\d{4}/);
   const annee = anneeMatch ? parseInt(anneeMatch[0]) : null;
+  // Bornes reelles : une fourchette de DPE ou une date d'acte ne tranchent pas
+  // les seuils de la meme facon qu'une annee exacte.
+  const bornesV = bornesConstruction(r);
+  const posElec = positionSeuil(bornesV, REGLES.ANNEE_ELEC);
+  const posAmianteV = positionSeuil(bornesV, REGLES.ANNEE_AMIANTE);
+  const posPlombV = positionSeuil(bornesV, REGLES.ANNEE_PLOMB);
 
   const diagnostics = Array.isArray(r.diagnostics) ? r.diagnostics as Array<Record<string, unknown>> : [];
   const docsAnalyses = Array.isArray(r.documents_analyses) ? r.documents_analyses as Array<Record<string, unknown>> : [];
@@ -984,13 +1144,13 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
   }
 
   // ── ELECTRICITE (installation > 15 ans, donc en pratique année < 2011)
-  if (annee && annee < 2011 && !diagPresent('ELECTRICITE')) {
+  if (posElec === 'avant' && !diagPresent('ELECTRICITE')) {
     ajouter("Diagnostic électrique (obligatoire pour les installations de plus de 15 ans)");
     ajouterVigilance("Diagnostic électrique manquant — Non détecté. Obligatoire pour une installation de plus de 15 ans, à demander au vendeur.");
   }
 
   // ── AMIANTE privatif (construction avant 1997)
-  if (annee && annee < 1997) {
+  if (posAmianteV === 'avant') {
     const amiantePrivatif = diagnostics.some(d => {
       const t = String(d.type || '').toUpperCase();
       const perimetre = String(d.perimetre || '').toLowerCase();
@@ -1004,7 +1164,7 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
   }
 
   // ── PLOMB (construction avant 1949)
-  if (annee && annee < 1949 && !diagPresent('PLOMB')) {
+  if (posPlombV === 'avant' && !diagPresent('PLOMB')) {
     ajouter("Constat de risque d'exposition au plomb — CREP (obligatoire pour les biens construits avant 1949)");
     ajouterVigilance("Plomb (CREP) manquant — Le constat plomb (CREP) n'a pas été détecté. Obligatoire pour un bien construit avant 1949, à demander au vendeur.");
   }
@@ -1015,8 +1175,13 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
     ajouterVigilance(`Audit énergétique manquant — Non détecté. Obligatoire pour la vente d'une maison classée ${dpeClasse}, à demander au vendeur.`);
   }
 
-  // ── ASSAINISSEMENT (maison non raccordée au tout-à-l'égout)
-  if (typeBien === 'maison' && !docPresent('ASSAINISSEMENT')) {
+  // ── ASSAINISSEMENT (maison NON raccordée au tout-à-l'égout uniquement)
+  // Le controle SPANC ne concerne que l'assainissement NON COLLECTIF. Une maison
+  // raccordee au tout-a-l'egout n'a aucun document a fournir : le reclamer etait
+  // le meme faux positif que l'amiante sur un immeuble recent.
+  const assainR = (r as Record<string, unknown>).assainissement as { type_reseau?: string } | undefined;
+  const reseauCollectif = String(assainR?.type_reseau || '').toLowerCase() === 'collectif';
+  if (typeBien === 'maison' && !reseauCollectif && !docPresent('ASSAINISSEMENT')) {
     ajouter("Diagnostic assainissement (si non raccordé au tout-à-l'égout)");
     ajouterVigilance("Diagnostic assainissement manquant — Non détecté. Obligatoire si la maison n'est pas raccordée au tout-à-l'égout, à vérifier avec le vendeur.");
   }
@@ -1025,6 +1190,86 @@ function validateDiagsManquants(rapport: RapportShape): RapportShape {
   // On NE met PAS dans documents_manquants (incertain), juste un point de vigilance neutre
   if (!diagPresent('TERMITES')) {
     ajouterVigilance("État termites à vérifier — Vérifiez auprès de la mairie ou du notaire si la commune est en zone termites (arrêté préfectoral). Si oui, l'état termites est obligatoire pour la vente.");
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 🆕 VIGILANCES REGLEMENTAIRES 2026
+  // ══════════════════════════════════════════════════════════════
+
+  // ── Reforme du DPE au 1er janvier 2026 ──
+  // Le coefficient de conversion de l'electricite est passe de 2,3 a 1,9 :
+  // environ 850 000 logements sortent des classes F/G sans le moindre travail.
+  // Un DPE etabli AVANT 2026 sur un bien classe E, F ou G peut donc etre
+  // pessimiste. On informe l'acheteur — sans malus, la classe lue reste la
+  // seule opposable tant qu'un nouveau DPE n'a pas ete etabli.
+  if (dpeClasse && ['E', 'F', 'G'].includes(dpeClasse)) {
+    const anneeDpeDoc = docsAnalyses
+      .filter(d => ['DPE', 'DDT'].includes(String(d.type || '').toUpperCase()))
+      .map(d => Number(String(d.annee ?? '').replace(/[^0-9]/g, '')))
+      .filter(n => Number.isFinite(n) && n > 1990);
+    const dpeAvantReforme = anneeDpeDoc.length > 0 && Math.max(...anneeDpeDoc) < REGLES.DPE_REFORME_ANNEE;
+    if (dpeAvantReforme) {
+      ajouterVigilance(`DPE antérieur à la réforme de 2026 — le mode de calcul a changé le 1er janvier 2026 (coefficient de conversion de l'électricité ramené de 2,3 à 1,9). Ce logement est classé ${dpeClasse} sur un diagnostic établi avant cette date : s'il est chauffé à l'électricité, un DPE refait aujourd'hui peut aboutir à une meilleure classe sans aucun travaux. À vérifier avant de négocier sur la performance énergétique.`);
+    }
+  }
+
+  // ── Fonds de travaux sous le plancher PPT (art. 14-2) ──
+  // Le drapeau est pose par recalculerCategories, qui dispose des montants.
+  const plancherPPT = ((r.finances || {}) as Record<string, unknown>).fonds_travaux_plancher_ppt as
+    { requis_annuel?: number; constate_annuel?: number; travaux_plan?: number } | undefined;
+  if (plancherPPT?.requis_annuel) {
+    ajouterVigilance(`Fonds de travaux sous le minimum légal — un plan pluriannuel de travaux chiffre ${(plancherPPT.travaux_plan || 0).toLocaleString('fr-FR')} € de travaux. La cotisation annuelle doit alors atteindre au minimum 2,5 % de ce montant, soit ${(plancherPPT.requis_annuel || 0).toLocaleString('fr-FR')} €, alors que ${(plancherPPT.constate_annuel || 0).toLocaleString('fr-FR')} € sont constatés. Un rattrapage ou des appels de fonds exceptionnels sont probables. À confirmer avec le syndic : le plancher de 2,5 % ne s'applique qu'une fois le plan adopté en assemblée générale.`);
+  }
+
+  // ── ANNEE DE CONSTRUCTION INTROUVABLE ──
+  // Plusieurs obligations en dependent (amiante, plomb, electricite, fonds de
+  // travaux, plan pluriannuel). Sans elle, Verimo ne les reclame pas — mieux vaut
+  // ne rien affirmer que d'accuser a tort. Mais le client doit savoir que cette
+  // partie de l'analyse est en suspens, sinon il lit un silence comme un feu vert.
+  const seuilsIndetermines: string[] = [];
+  if (annee && posAmianteV === 'indetermine') seuilsIndetermines.push('amiante (seuil : juillet 1997)');
+  if (annee && posPlombV === 'indetermine') seuilsIndetermines.push('plomb / CREP (seuil : 1949)');
+  if (annee && posElec === 'indetermine') seuilsIndetermines.push('diagnostic électrique (installation de plus de 15 ans)');
+  if (seuilsIndetermines.length > 0) {
+    const bornesTxt = bornesV.fourchette
+      ? (bornesV.min != null && bornesV.max != null
+          ? `entre ${bornesV.min} et ${bornesV.max}`
+          : bornesV.max != null ? `avant ${bornesV.max}` : `après ${bornesV.min}`)
+      : String(annee);
+    ajouterVigilance(`Période de construction imprécise (${bornesTxt}) — elle ne permet pas de trancher pour : ${seuilsIndetermines.join(', ')}. Verimo s'abstient plutôt que de conclure à tort dans un sens ou dans l'autre. Le règlement de copropriété d'origine, le carnet d'entretien ou la fiche synthétique donnent une date précise : ajoutez l'un d'eux pour lever le doute.`);
+  }
+
+  if (!annee) {
+    ajouterVigilance("Année de construction non identifiée dans le dossier — plusieurs obligations en dépendent directement : diagnostic amiante (bâti antérieur à juillet 1997), constat plomb (antérieur à 1949), diagnostic électrique (installation de plus de 15 ans) et fonds de travaux (immeuble de plus de 10 ans). Faute de cette donnée, ces points n'ont pas pu être vérifiés. Le DPE, le carnet d'entretien ou la fiche synthétique de copropriété la mentionnent : ajoutez l'un de ces documents pour compléter l'analyse.");
+  }
+
+  // ── IMMEUBLE RECENT : décennale, réserves VEFA, litiges promoteur ──
+  // Un bâti récent n'a ni amiante ni plomb, mais il a ses risques propres, que
+  // le score seul ne dit pas : désordres de construction, réserves non levées,
+  // contentieux contre le promoteur, et surtout une garantie décennale qui court
+  // — ou vient de s'éteindre. C'est souvent l'information la plus utile à
+  // l'acheteur d'un immeuble de moins de quinze ans.
+  if ((typeBien === 'appartement' || typeBien === 'maison_copro') && annee && !bornesV.fourchette) {
+    const ageBati = new Date().getFullYear() - annee;
+    const finDecennale = annee + REGLES.DUREE_DECENNALE;
+    if (ageBati < REGLES.DUREE_DECENNALE) {
+      ajouterVigilance(`Immeuble récent — la garantie décennale des parties communes court jusqu'aux environs de ${finDecennale} (dix ans à compter de la réception des travaux). Vérifiez dans les PV d'assemblée générale si des réserves restent non levées, si des désordres ont été signalés et si une procédure est en cours contre le promoteur ou les constructeurs : un recours engagé avant l'échéance protège la copropriété, un désordre découvert après ne sera plus couvert.`);
+    } else if (ageBati <= REGLES.DUREE_DECENNALE + 2) {
+      ajouterVigilance(`Garantie décennale échue — la couverture des parties communes a pris fin vers ${finDecennale}. Tout désordre de construction découvert désormais reste à la charge de la copropriété. Vérifiez dans les PV d'assemblée générale qu'aucun désordre n'a été signalé sans suite avant l'échéance.`);
+    }
+    if (ageBati <= REGLES.AGE_COPRO_PPT) {
+      ajouterVigilance("Copropriété jeune — les charges des premières années sont souvent calées sur un budget établi par le promoteur, plus optimiste que la réalité. Comparez les budgets votés d'un exercice à l'autre : une hausse marquée après deux ou trois ans est fréquente et doit être intégrée à votre calcul.");
+    }
+  }
+
+  // ── PPT et DPE collectif pour les copropriétés de plus de 15 ans ──
+  const posPpt = positionSeuil(bornesV, new Date().getFullYear() - REGLES.AGE_COPRO_PPT);
+  if ((typeBien === 'appartement' || typeBien === 'maison_copro') && posPpt === 'avant') {
+    const dtgVc = (r.vie_copropriete as Record<string, unknown> | undefined)?.dtg as Record<string, unknown> | undefined;
+    if (!dtgVc?.present) {
+      ajouterVigilance("Plan pluriannuel de travaux non identifié — depuis le 1er janvier 2025, toutes les copropriétés de plus de 15 ans doivent en être dotées. Son absence n'est pas sanctionnée pénalement, mais elle prive l'acheteur de toute visibilité sur les travaux des dix prochaines années. À demander au syndic.");
+      ajouterVigilance("DPE collectif non identifié — depuis le 1er janvier 2026, il est obligatoire pour toutes les copropriétés de plus de 15 ans, y compris celles de 50 lots ou moins. Il sert de base au plan pluriannuel de travaux.");
+    }
   }
 
   console.log(`[analyser-run] validateDiagsManquants: ${docsManquants.length} docs manquants, ${pointsVigilance.length} points vigilance`);
@@ -1072,6 +1317,9 @@ function construireChecklist(rapport: RapportShape): RapportShape {
     ? Number(String(r.annee_construction).replace(/[^0-9]/g, '')) : null;
   const annee = anneeBrute && anneeBrute > 1700 && anneeBrute < 2100 ? anneeBrute : null;
   const anneeRef = new Date().getFullYear();
+  // Un seuil n'est reclame que s'il est CERTAINEMENT franchi ('avant').
+  const bornesCk = bornesConstruction(r);
+  const exige = (seuil: number) => positionSeuil(bornesCk, seuil) === 'avant';
 
   // ── helpers ──
   const ofType = (t: string) =>
@@ -1169,11 +1417,11 @@ function construireChecklist(rapport: RapportShape): RapportShape {
     { id: 'erp', type: 'ERP', label: 'ERP — État des risques et pollutions', requis: true },
     { id: 'carrez', type: 'CARREZ', label: 'Mesurage loi Carrez', requis: isCopro,
       tooltip: 'Obligatoire en copropriété. Un écart de plus de 5 % ouvre droit à une réduction du prix.' },
-    { id: 'elec', type: 'ELECTRICITE', label: 'Diagnostic électrique', requis: annee !== null && annee < 2011,
+    { id: 'elec', type: 'ELECTRICITE', label: 'Diagnostic électrique', requis: exige(REGLES.ANNEE_ELEC),
       tooltip: 'Obligatoire pour une installation de plus de 15 ans.' },
-    { id: 'amiante', type: 'AMIANTE', label: 'Diagnostic amiante privatif', requis: annee !== null && annee < 1997, privatif: true,
-      tooltip: 'Obligatoire pour les biens dont le permis de construire est antérieur à juillet 1997.' },
-    { id: 'plomb', type: 'PLOMB', label: 'CREP — Constat de risque d\'exposition au plomb', requis: annee !== null && annee < 1949,
+    { id: 'amiante', type: 'AMIANTE', label: 'Diagnostic amiante privatif', requis: exige(REGLES.ANNEE_AMIANTE), privatif: true,
+      tooltip: 'Obligatoire pour les biens dont le permis de construire est antérieur au 1er juillet 1997.' },
+    { id: 'plomb', type: 'PLOMB', label: 'CREP — Constat de risque d\'exposition au plomb', requis: exige(REGLES.ANNEE_PLOMB),
       tooltip: 'Obligatoire pour les biens construits avant 1949.' },
   ];
   for (const g of regles) {
@@ -1189,11 +1437,17 @@ function construireChecklist(rapport: RapportShape): RapportShape {
     if (['E', 'F', 'G'].includes(classeDpe)) {
       push('audit', 'Audit énergétique réglementaire',
         has('AUDIT_ENERGETIQUE') ? 'ok' : 'manquant', 'essentiel', null,
-        `Obligatoire à la vente d'une maison classée ${classeDpe}.`);
+        `Obligatoire à la vente d'une maison individuelle ou d'un immeuble en monopropriété classé ${classeDpe} : classes F et G depuis le 1er avril 2023, classe E depuis le 1er janvier 2025. Un appartement en copropriété en est dispensé.`);
     }
-    push('assainissement', 'Diagnostic assainissement',
-      has('ASSAINISSEMENT') ? 'ok' : 'manquant', 'essentiel', null,
-      'Obligatoire si le bien n\'est pas raccordé au tout-à-l\'égout (contrôle SPANC).');
+    // Le controle SPANC ne vise que l'assainissement NON COLLECTIF : sur une
+    // maison raccordee au tout-a-l'egout, il n'y a rien a fournir.
+    const assainCk = r.assainissement as { type_reseau?: string } | undefined;
+    const surTouteAlEgout = String(assainCk?.type_reseau || '').toLowerCase() === 'collectif';
+    if (!surTouteAlEgout) {
+      push('assainissement', 'Diagnostic assainissement',
+        has('ASSAINISSEMENT') ? 'ok' : 'manquant', 'essentiel', null,
+        'Obligatoire si le bien n\'est pas raccordé au tout-à-l\'égout (contrôle SPANC). Valable 3 ans.');
+    }
     push('taxe_fonciere', 'Taxe foncière',
       has('TAXE_FONCIERE') ? 'ok' : 'manquant', 'essentiel', null, null);
   }
@@ -1210,10 +1464,19 @@ function construireChecklist(rapport: RapportShape): RapportShape {
       ?.dtg as Record<string, unknown> | undefined)?.present);
     push('dtg', 'DTG — Diagnostic Technique Global',
       dtgPresent ? 'ok' : 'manquant', 'secondaire', null,
-      'Bilan complet de l\'état de l\'immeuble. Permet d\'anticiper les grands travaux.');
-    push('ppt', 'PPT — Plan Pluriannuel de Travaux',
-      'manquant', 'secondaire', null,
-      'Planning des travaux sur 10 ans établi à partir du DTG.');
+      'Bilan complet de l\'état de l\'immeuble. Obligatoire à la mise en copropriété d\'un immeuble de plus de 10 ans, et sur injonction de l\'administration.');
+
+    // PPT et DPE collectif : n'ont de sens que pour une copropriete de plus de
+    // 15 ans. Sur un immeuble recent ils ne sont pas exigibles — on ne les
+    // reclame donc pas, exactement comme pour les diagnostics de parties communes.
+    if (exige(anneeRef - REGLES.AGE_COPRO_PPT)) {
+      push('ppt', 'PPT — Plan pluriannuel de travaux',
+        dtgPresent ? 'ok' : 'manquant', 'secondaire', null,
+        'Obligatoire depuis le 1er janvier 2025 pour toutes les copropriétés de plus de 15 ans, quelle que soit leur taille. Il chiffre et planifie les travaux sur 10 ans — et conditionne le montant du fonds de travaux.');
+      push('dpe_collectif', 'DPE collectif de l\'immeuble',
+        has('DIAGNOSTIC_PARTIES_COMMUNES') ? 'ok' : 'manquant', 'secondaire', null,
+        'Obligatoire depuis le 1er janvier 2026 pour toutes les copropriétés de plus de 15 ans, y compris celles de 50 lots ou moins. Il sert de socle au plan pluriannuel de travaux.');
+    }
     push('taxe_fonciere_sec', 'Taxe foncière',
       has('TAXE_FONCIERE') ? 'ok' : 'manquant', 'secondaire', null, null);
   }
@@ -2400,6 +2663,16 @@ En cas de doute, utiliser la moitie de la note_max (ex : 2 sur 4) et expliquer d
 - Budget stable ou en legere hausse sur plusieurs exercices : +0.5
 - Plancher : 1 si au moins un document financier a ete analyse
 
+--- annee_construction : OU LA TROUVER (champ critique) ---
+Ce champ conditionne la plupart des obligations reglementaires. Le chercher activement, dans cet ORDRE DE FIABILITE, et s arreter au premier trouve :
+1. DPE ou DDT — rubrique "annee de construction" ou "periode de construction". Source la plus fiable.
+2. Carnet d entretien de l immeuble — champ annee_construction.
+3. Fiche synthetique de copropriete — caracteristiques techniques.
+4. DTG ou audit energetique — descriptif du bati.
+5. Reglement de copropriete ou etat descriptif de division d origine : a defaut d annee explicite, la date de l acte donne une borne SUPERIEURE credible (l immeuble existait deja). Ne l utiliser que si aucune source ci-dessus n existe, et ne jamais inventer une precision qui n y figure pas.
+Si le document indique une PERIODE ("avant 1948", "1949-1974", "entre 1975 et 1977"), retenir la borne la plus DEFAVORABLE a l acheteur, c est-a-dire la plus ancienne : "1949-1974" donne 1949.
+Si AUCUN document ne permet de l etablir, laisser null. Ne JAMAIS deduire une annee du style architectural, du quartier ou d une impression : une valeur inventee ferait sauter ou declencher a tort des obligations (amiante, plomb, electricite).
+
 --- categories.diags_privatifs (note_max = 4) ---
 INTELLIGENCE REGLEMENTAIRE : avant de noter, determine d abord quels diagnostics sont REGLEMENTAIREMENT REQUIS pour ce bien selon ces criteres :
 
@@ -2766,7 +3039,7 @@ REGLE ANTI-DOUBLON avec points_forts et points_vigilance :
 - L avis_verimo ne refait PAS ces listes. Il synthetise en une lecture globale (verdict) + cadrage (contexte) + pistes pour approfondir (demarches).
 
 
-{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"cotisation_fonds_travaux_lot_annuelle":null,"fonds_rattaches_lot":{"avance_tresorerie":null,"fonds_travaux_alur":null,"source":null},"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_pct_vote":null,"fonds_travaux_resolution_adoptee":null,"fonds_travaux_total_constitue":null,"fonds_travaux_total_constitue_date":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|HISTORIQUE_TRAVAUX|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"asl_mentionnee":{"detectee":false,"statut":null,"source":null},"vie_asl":{"present":false,"structures":[]},"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"maisons":null,"chambres_service":null,"parkings":null,"caves":null,"commerces":null,"autres":null},"lots_enumeres":[{"numero":null,"designation":"...","categorie":"logements|maisons|chambres_service|parkings|caves|commerces|autres","tantiemes":null}],"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"titre_propriete":{"present":false,"nature":"attestation_propriete|acte_de_vente|attestation_succession|donation|autre","date_acte":null,"date_entree_jouissance":null,"anciennete_detention_annees":null,"prix_acquisition":null,"notaire":{"nom":null,"etude":null,"ville":null},"proprietaires_actuels":[{"nom_complet":null,"profession":null,"nationalite":null,"adresse":null,"situation_matrimoniale_citation":null,"peut_vendre_seul":null,"part_indivision":null}],"vendeurs_precedents":[{"nom_complet":null,"qualite":null}],"references_cadastrales":[{"section":null,"numero":null,"lieudit":null,"contenance":null}],"date_etat_descriptif_origine":null,"lots_detenus":[{"numero":null,"designation":null,"etage":null,"nb_pieces":null,"tantiemes":null,"base_tantiemes":null}],"coherence":{"vendeur_conforme_compromis":null,"lots_conformes_compromis":null,"tantiemes_conformes":null,"ecarts":[]}},"quote_part_tantiemes":null,"parties_privatives":[{"numero_lot":null,"designation":"...","tantiemes":null}],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]},"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}},"historique_travaux":{"present":false,"entreprise":{"nom":null,"siret":null,"contact":null,"assurance_decennale":null},"travaux":[{"poste":null,"description":null,"montant":null,"date":null}],"montant_total":null,"date_plus_recente":null,"garantie_decennale_possible":null},"assainissement":{"present":false,"type_reseau":"collectif|non_collectif|null","conforme":null,"date_controle":null,"observations":null},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
+{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"annee_construction_source":null,"annee_construction_precision":null,"annee_construction_fourchette":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"cotisation_fonds_travaux_lot_annuelle":null,"fonds_rattaches_lot":{"avance_tresorerie":null,"fonds_travaux_alur":null,"source":null},"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_pct_vote":null,"fonds_travaux_resolution_adoptee":null,"fonds_travaux_total_constitue":null,"fonds_travaux_total_constitue_date":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"chauffage_individuel":null,"eau_chaude_individuelle":null,"taxe_fonciere_annuelle":null,"taxe_fonciere_annee":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|HISTORIQUE_TRAVAUX|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"asl_mentionnee":{"detectee":false,"statut":null,"source":null},"vie_asl":{"present":false,"structures":[]},"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"maisons":null,"chambres_service":null,"parkings":null,"caves":null,"commerces":null,"autres":null},"lots_enumeres":[{"numero":null,"designation":"...","categorie":"logements|maisons|chambres_service|parkings|caves|commerces|autres","tantiemes":null}],"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"titre_propriete":{"present":false,"nature":"attestation_propriete|acte_de_vente|attestation_succession|donation|autre","date_acte":null,"date_entree_jouissance":null,"anciennete_detention_annees":null,"prix_acquisition":null,"notaire":{"nom":null,"etude":null,"ville":null},"proprietaires_actuels":[{"nom_complet":null,"profession":null,"nationalite":null,"adresse":null,"situation_matrimoniale_citation":null,"peut_vendre_seul":null,"part_indivision":null}],"vendeurs_precedents":[{"nom_complet":null,"qualite":null}],"references_cadastrales":[{"section":null,"numero":null,"lieudit":null,"contenance":null}],"date_etat_descriptif_origine":null,"lots_detenus":[{"numero":null,"designation":null,"etage":null,"nb_pieces":null,"tantiemes":null,"base_tantiemes":null}],"coherence":{"vendeur_conforme_compromis":null,"lots_conformes_compromis":null,"tantiemes_conformes":null,"ecarts":[]}},"quote_part_tantiemes":null,"parties_privatives":[{"numero_lot":null,"designation":"...","tantiemes":null}],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[],"compromis":{"present":false,"type_avant_contrat":null,"date_signature":null,"date_acte_prevue":null,"delai_acte_mois":null,"vendeurs":[],"acheteurs":[],"notaires":[],"agence":null,"bien":{"adresse_complete":null,"reference_cadastrale_principale":null,"type_bien_global":null,"nb_pieces":null,"etage":null,"surface_carrez":null,"usage_declare":null,"lots_cedes":[],"rcp_date_acte":null,"rcp_nb_modificatifs":null,"origine_propriete":{"date_acquisition_vendeur":null,"mode_acquisition":null}},"finances":{"prix_net_vendeur":null,"prix_mobilier":null,"honoraires_agence":null,"honoraires_charge":null,"honoraires_pct":null,"prix_total_acte":null,"depot_garantie_montant":null,"depot_garantie_pct":null,"depot_garantie_detenteur":null,"prorata_taxe_fonciere":null,"clause_penale_pct":null,"frais_notaire_estimes_verimo":null,"frais_notaire_pct_verimo":null,"cout_total_estime_acheteur_verimo":null},"financement":{"modalite":null,"apport":null,"montant_pret_max":null,"duree_pret_max_mois":null,"taux_pret_max_pct":null,"etablissement_pressenti":null},"conditions_suspensives":[],"calendrier":[],"droits_preemption":[],"diagnostics_annexes":[],"annexes_copropriete_l721_2":null,"copropriete_finances_synthese":null,"situation_locative":null,"clauses_critiques":[],"servitudes":[]}},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_travaux_ancien":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null,"provisions_hors_budget":null}]},"dpe_recommandations":{"present":false,"format":"standard|ancien|aucune","version_methode":"3CL_2021|3CL_2012|factures|inconnue","evolution_etiquette":{"actuelle":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1":{"classe":null,"kwh_m2":null,"ges_kg_m2":null},"apres_pack_1_et_2":{"classe":null,"kwh_m2":null,"ges_kg_m2":null}},"pack_1":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]},"pack_2":{"cout_min":null,"cout_max":null,"travaux":[{"poste":"mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre","description":"...","performance_cible":null,"decision_copropriete":false,"autorisation_urbanisme":false}]}},"historique_travaux":{"present":false,"entreprise":{"nom":null,"siret":null,"contact":null,"assurance_decennale":null},"travaux":[{"poste":null,"description":null,"montant":null,"date":null}],"montant_total":null,"date_plus_recente":null,"garantie_decennale_possible":null},"assainissement":{"present":false,"type_reseau":"collectif|non_collectif|null","conforme":null,"date_controle":null,"observations":null},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
 }
 
 // Attend que le status soit files_ready puis lance l'analyse
