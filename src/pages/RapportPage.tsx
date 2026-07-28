@@ -623,7 +623,7 @@ function RapportHeader({ rapport, isShared, backUrl, hideVerimoBranding }: { rap
             <div className="hero-tags" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
               <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>{getProfilLabel(rapport.profil)}</span>
-              {rapport.annee_construction && <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>Construit en {rapport.annee_construction}</span>}
+              {libelleAnneeConstruction(rapport as unknown as Record<string, unknown>) && <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>{libelleAnneeConstruction(rapport as unknown as Record<string, unknown>)}</span>}
               <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.65)' }}>Analysé le {rapport.date}</span>
             </div>
 
@@ -874,7 +874,11 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
   const buildKpis = () => {
     const kpis: { icon: string; label: string; value: string; color?: string; severity: KpiSeverity }[] = [];
     if (nbLots) kpis.push({ icon: '🏢', label: 'Nombre de lots', value: String(nbLots), severity: 'neutral' });
-    if (rapport.annee_construction) kpis.push({ icon: '📅', label: 'Année de construction', value: safeStr(rapport.annee_construction), severity: 'neutral' });
+    if (rapport.annee_construction) {
+      const lib = libelleAnneeConstruction(rapport as unknown as Record<string, unknown>);
+      const valeur = lib ? lib.replace(/^Construit /, '') : safeStr(rapport.annee_construction);
+      kpis.push({ icon: '📅', label: 'Année de construction', value: valeur, severity: 'neutral' });
+    }
     if (chargesLotNum > 0) kpis.push({ icon: '💰', label: 'Charges annuelles', value: `${chargesLotNum.toLocaleString('fr-FR')} €/an`, severity: 'neutral' });
     if (totalTravauxVotes > 0) kpis.push({ icon: '🏗', label: 'Travaux votés', value: `~${totalTravauxVotes.toLocaleString('fr-FR')} €`, severity: 'warn' });
     if (nbTravauxEvoques > 0) kpis.push({ icon: '⚠️', label: 'Travaux évoqués', value: `${nbTravauxEvoques} mentionné${nbTravauxEvoques > 1 ? 's' : ''}`, severity: 'warn' });
@@ -4560,6 +4564,24 @@ type ChecklistItemVue = {
   detail: string | null;
   tooltip: string | null;
 };
+
+/* Libellé de la période de construction. Une fourchette de DPE ou une date
+   d'acte notarié ne sont pas une année exacte : on ne les affiche pas comme
+   telles, sinon le client croit à une précision qui n'existe pas. */
+function libelleAnneeConstruction(rapport: Record<string, unknown>): string | null {
+  const brut = String(rapport.annee_construction ?? '').match(/\d{4}/);
+  if (!brut) return null;
+  const annee = brut[0];
+  const f = rapport.annee_construction_fourchette as { min?: number | null; max?: number | null } | null | undefined;
+  const precision = String(rapport.annee_construction_precision ?? '');
+  if (f && (f.min != null || f.max != null)) {
+    if (f.min != null && f.max != null) return `Construit entre ${f.min} et ${f.max}`;
+    if (f.max != null) return `Construit avant ${f.max}`;
+    return `Construit après ${f.min}`;
+  }
+  if (precision === 'borne_superieure') return `Construit avant ${annee}`;
+  return `Construit en ${annee}`;
+}
 
 function lireChecklist(rapport: Record<string, unknown>): ChecklistItemVue[] | null {
   const c = rapport.checklist as { items?: unknown } | undefined;
