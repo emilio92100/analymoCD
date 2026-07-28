@@ -19,72 +19,69 @@ const etapes = [
 
 const penalties = [
   { cat: 'Travaux', items: [
-    { l: 'Travaux lourds évoqués non votés (toiture, ravalement, chaudière, ascenseur)', v: '-3' },
-    { l: 'Travaux légers évoqués non votés', v: '-1' },
+    { l: 'Travail lourd évoqué non voté (toiture, ravalement, chaudière, ascenseur, façade, structure) — par travail, max -3', v: '-1,5' },
+    { l: 'Travail léger évoqué non voté — par travail, max -1,5', v: '-0,5' },
   ]},
   { cat: 'Procédures', items: [
-    { l: 'Procédure significative (litige bloquant, administration provisoire)', v: '-3' },
-    { l: 'Procédure mineure (petit litige, mise en demeure)', v: '-1,5' },
-    { l: 'Tensions avec syndic documentées (quitus refusé + conflit)', v: '-0,5' },
+    { l: 'Procédure de gravité élevée', v: '-2' },
+    { l: 'Procédure de gravité modérée', v: '-1' },
+    { l: 'Procédure de gravité faible', v: '-0,5' },
+    { l: 'Quitus refusé au syndic', v: '-0,5' },
   ]},
   { cat: 'Finances', items: [
-    { l: 'Fonds travaux nul ou absent', v: '-1' },
-    { l: 'Fonds travaux insuffisant (< 5% du budget)', v: '-0,5' },
-    { l: 'Impayés anormaux (> 15% du budget)', v: '-1' },
+    { l: 'Fonds de travaux absent', v: '-1' },
+    { l: 'Fonds de travaux sous 5 % du budget prévisionnel', v: '-0,5' },
+    { l: 'Fonds sous le plancher du plan pluriannuel (2,5 % des travaux planifiés)', v: '-0,5' },
+    { l: 'Impayés supérieurs à 15 % du budget', v: '-0,5' },
   ]},
   { cat: 'Diagnostics privatifs', items: [
-    { l: 'Diagnostic obligatoire manquant', v: '-0,75' },
-    { l: 'DPE F (résidence principale)', v: '-2' },
-    { l: 'DPE G (résidence principale)', v: '-3' },
-    { l: 'DPE F (investissement)', v: '-4' },
-    { l: 'DPE G (investissement)', v: '-6' },
-    { l: 'Électricité : anomalies majeures', v: '-2' },
-    { l: 'Électricité : anomalies mineures', v: '-0,3' },
-    { l: 'Gaz : anomalies A1 (risque immédiat)', v: '-1' },
-    { l: 'Gaz : anomalies A2 (réparation urgente)', v: '-0,5' },
+    { l: 'DPE G — investissement locatif', v: '-2' },
+    { l: 'Termites détectés', v: '-2' },
+    { l: 'DPE G — résidence principale', v: '-1,5' },
+    { l: 'DPE F — investissement locatif', v: '-1,5' },
+    { l: 'DPE F — résidence principale', v: '-1' },
+    { l: 'Électricité : anomalie majeure', v: '-1' },
+    { l: 'Gaz : anomalie A1 (danger immédiat)', v: '-1' },
     { l: 'Amiante privatif : matériaux dégradés', v: '-1' },
-    { l: 'Amiante privatif : matériaux suspects non prélevés', v: '-0,3' },
     { l: 'Plomb (CREP) : revêtements dégradés', v: '-1' },
+    { l: 'Diagnostic obligatoire manquant — par diagnostic', v: '-0,75' },
+    { l: 'Gaz : anomalie A2 (réparation urgente)', v: '-0,5' },
+    { l: 'Amiante privatif : matériaux à surveiller', v: '-0,3' },
+    { l: 'Électricité : anomalie simple', v: '-0,3' },
   ]},
   { cat: 'Diagnostics communs', items: [
-    { l: 'Amiante parties communes dégradé', v: '-2' },
-    { l: 'Termites parties communes', v: '-2' },
-    { l: 'DTG état dégradé', v: '-2' },
-    { l: 'DTG budget urgent > 50 000 €', v: '-2' },
-    { l: 'DTG budget urgent < 50 000 €', v: '-1' },
+    { l: 'DTG : état général dégradé', v: '-1' },
+    { l: 'Amiante parties communes, action corrective (AC1)', v: '-1' },
+    { l: 'Termites en parties communes', v: '-1' },
+    { l: 'DTG : travaux urgents > 50 000 €', v: '-0,5' },
   ]},
 ];
 
 const bonuses = [
-  { cat: 'Travaux', items: [
-    { l: 'Travaux votés repris par le vendeur (petits/moyens)', v: '+2' },
-    { l: 'Gros travaux votés repris par le vendeur', v: '+3' },
-    { l: 'Garantie décennale récente', v: '+2' },
+  { cat: 'Point de départ', items: [
+    { l: 'Travaux', v: '5 / 5' },
+    { l: 'Procédures', v: '4 / 4' },
+    { l: 'Finances (socle neutre)', v: '2 / 4' },
+    { l: 'Diagnostics privatifs (0 si aucun diagnostic fourni)', v: '4 / 4' },
+    { l: 'Diagnostics communs — immeuble après 1997, sans objet', v: '3 / 3' },
+    { l: 'Diagnostics communs — avant 1997, diagnostics fournis', v: '2 / 3' },
+    { l: 'Diagnostics communs — avant 1997, aucun diagnostic', v: '1,5 / 3' },
   ]},
-  { cat: 'Procédures', items: [
-    { l: 'Aucune procédure détectée', v: '+1' },
+  { cat: 'Travaux', items: [
+    { l: 'Travaux votés repris par le vendeur — par travail, max +2', v: '+0,5' },
   ]},
   { cat: 'Finances', items: [
-    { l: 'Fonds travaux conforme légal (5%)', v: '+0,5' },
-    { l: 'Fonds travaux bien (6–9%)', v: '+1' },
-    { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5' },
-    { l: 'Vendeur à jour de ses charges', v: '+0,5' },
-    { l: 'Budget stable sur plusieurs exercices', v: '+0,5' },
-  ]},
-  { cat: 'Diagnostics privatifs', items: [
-    { l: 'DPE A, B ou C', v: '+1,5' },
-    { l: 'DPE D', v: '+1' },
-    { l: 'Diagnostics complets sans anomalie (hors ERP) + DPE ≤ D', v: '+2' },
+    { l: 'Fonds de travaux ≥ 10 % du budget', v: '+1,5' },
+    { l: 'Fonds de travaux ≥ 7,5 % du budget', v: '+1' },
+    { l: 'Fonds de travaux ≥ 5 % du budget (minimum légal)', v: '+0,5' },
+    { l: 'Pré-état daté sans impayé du vendeur', v: '+0,5' },
   ]},
   { cat: 'Diagnostics communs', items: [
-    { l: 'DTG état bon', v: '+1' },
-    { l: 'Diagnostics parties communes complets sans alerte', v: '+0,5' },
-    { l: 'Entretien chaudière certifié', v: '+0,5' },
-    { l: 'Immeuble bien entretenu', v: '+0,5' },
+    { l: 'DTG : état général bon', v: '+1' },
+    { l: 'DTG : état général moyen', v: '+0,5' },
   ]},
 ];
 
-// ════════ MAISON HORS COPRO / ASL ════════
 const penaltiesMaison = [
   { cat: 'Performance énergétique', items: [
     { l: 'DPE E / F / G', v: '3 à 1 /5' },
