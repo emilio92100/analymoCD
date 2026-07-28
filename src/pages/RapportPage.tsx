@@ -2056,16 +2056,18 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             };
             const vieCopro = rapport.vie_copropriete as Record<string, unknown> | null;
             const modifs = (vieCopro?.modificatifs_rcp as ModifT[] | null) || [];
-            if (modifs.length === 0) return null;
+            const rcpOrigine = vieCopro?.reglement_copropriete as
+              { present?: boolean; date_acte?: string | null; notaire?: NotaireT | null; publication_fonciere?: PublicationT | null; date_etat_descriptif?: string | null } | undefined;
+            const aRcpOrigine = !!rcpOrigine?.present && !!(rcpOrigine.date_acte || rcpOrigine.notaire?.nom || rcpOrigine.date_etat_descriptif);
+            // 🐛 Avant : `if (modifs.length === 0) return null` sortait AVANT le bloc du
+            // reglement d'origine. Un dossier avec un RCP mais sans acte modificatif
+            // n'affichait donc rien — alors que c'est le cas le plus frequent.
+            if (modifs.length === 0 && !aRcpOrigine) return null;
             const labelsType: Record<string, string> = {
               creation_lot: 'Création de lot', suppression_lot: 'Suppression de lot',
               changement_usage: "Changement d'usage", mise_a_jour_tantiemes: 'Mise à jour des tantièmes',
               servitude: 'Servitude', fusion_lots: 'Fusion de lots', autre: 'Modification',
             };
-            const rcpOrigine = vieCopro?.reglement_copropriete as
-              { present?: boolean; date_acte?: string | null; notaire?: NotaireT | null; publication_fonciere?: PublicationT | null; date_etat_descriptif?: string | null } | undefined;
-            const aRcpOrigine = !!rcpOrigine?.present && !!(rcpOrigine.date_acte || rcpOrigine.notaire?.nom || rcpOrigine.date_etat_descriptif);
-
             return (
               <div style={{ marginTop: 18 }}>
                 {/* Acte fondateur : sa date et son notaire figurent presque toujours
@@ -2085,6 +2087,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                     </div>
                   </div>
                 )}
+                {modifs.length > 0 && (<>
                 <SectionTitle emoji="📜" text={`Modificatifs du règlement (${modifs.length} acte${modifs.length > 1 ? 's' : ''})`} tooltip="Le règlement de copropriété peut être modifié au fil du temps par des actes notariés (changement d'usage, fusion de lots, servitudes…)." />
 
                 <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
@@ -2160,6 +2163,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                     );
                   })}
                 </div>
+                </>)}
               </div>
             );
           })()}
