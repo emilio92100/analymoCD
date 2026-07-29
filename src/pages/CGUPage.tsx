@@ -14,7 +14,7 @@
 import { useSEO } from '../hooks/useSEO';
 import { LegalLayout, Section, SubTitle, Liste, Table, Callout, EnClair, BlocContact } from '../components/LegalPage';
 import type { SectionRef } from '../components/LegalPage';
-import { FileText, KeyRound, UserPlus, AlertTriangle, ClipboardCheck, CreditCard, Copyright, ShieldAlert, Activity, Lock, RefreshCw, X, Scale, Mail } from 'lucide-react';
+import { ScrollText, FileText, KeyRound, UserPlus, AlertTriangle, ClipboardCheck, CreditCard, Copyright, ShieldAlert, Activity, Lock, RefreshCw, X, Scale, Mail } from 'lucide-react';
 
 const SECTIONS: SectionRef[] = [
   { id: 'presentation',   label: '1. Présentation' },
@@ -45,6 +45,7 @@ export default function CGUPage() {
       titre="Conditions Générales d'Utilisation"
       chapeau="Ce que Verimo fait, ce qu'il ne fait pas, vos droits et les nôtres. À lire avant de créer un compte."
       maj="mai 2026"
+      badge={{ icon: ScrollText, label: "DOCUMENT CONTRACTUEL · TOUS UTILISATEURS" }}
       sections={SECTIONS}>
 
       <EnClair points={[
