@@ -13,7 +13,7 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_FILES_URL = 'https://api.anthropic.com/v1/files';
 // ⚠️ A INCREMENTER A CHAQUE LIVRAISON. Loguee au demarrage de chaque invocation :
 // c'est le seul moyen fiable de savoir quelle version tourne vraiment en prod.
-const BUILD_VERSION = '2026-07-28-rcp-origine';
+const BUILD_VERSION = '2026-07-29-purge-absence';
 
 const AI_MODEL = 'claude-sonnet-4-6';
 const AI_VERSION = '2023-06-01';
@@ -4503,10 +4503,16 @@ function purgerDocsManquants(rapport: Record<string, unknown>): void {
   const vie = (rapport.vie_copropriete || {}) as Record<string, unknown>;
   const lot = (rapport.lot_achete || {}) as Record<string, unknown>;
 
+  // ⚠️ Un diagnostic compte des qu'il a ete REALISE, quel que soit son resultat.
+  // presence='absence' = diagnostic fait, substance NON detectee = le meilleur cas
+  // possible. Le compter comme "non fourni" faisait reclamer au client un document
+  // qu'il avait deja remis (amiante / plomb / termites : les seuls types ou
+  // 'absence' est un resultat normal). Meme regle qu'en ligne ~1090
+  // (validateDiagsManquants) et ~1340 (construireChecklist) : ne pas la faire diverger.
   const diagPresent = (type: string): boolean => diags.some(d => {
     const t = String(d.type || '').toUpperCase();
     const pres = String(d.presence || '').toLowerCase();
-    return t === type && pres !== 'non_realise' && pres !== 'absence';
+    return t === type && pres !== 'non_realise';
   });
   const docPresent = (...types: string[]): boolean =>
     docs.some(d => types.includes(String(d.type || '').toUpperCase()));
