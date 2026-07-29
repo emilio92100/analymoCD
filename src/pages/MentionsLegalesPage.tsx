@@ -12,7 +12,7 @@
 import { useSEO } from '../hooks/useSEO';
 import { LegalLayout, Section, SubTitle, Liste, Table, Callout, Fiche, EnClair, BlocContact } from '../components/LegalPage';
 import type { SectionRef } from '../components/LegalPage';
-import { Building2, Server, Copyright, ShieldAlert, Lock, Cookie, Scale, Mail } from 'lucide-react';
+import { Landmark, Building2, Server, Copyright, ShieldAlert, Lock, Cookie, Scale, Mail } from 'lucide-react';
 
 const SECTIONS: SectionRef[] = [
   { id: 'editeur',        label: '1. Éditeur du site' },
@@ -37,6 +37,7 @@ export default function MentionsLegalesPage() {
       titre="Mentions légales"
       chapeau="Qui édite verimo.fr, où le site est hébergé, à qui appartiennent les contenus, et vers qui vous tourner en cas de litige."
       maj="mai 2026"
+      badge={{ icon: Landmark, label: "INFORMATIONS LÉGALES · LCEN" }}
       sections={SECTIONS}>
 
       <EnClair points={[
