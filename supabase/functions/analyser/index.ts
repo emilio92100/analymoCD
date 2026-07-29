@@ -460,6 +460,10 @@ Deno.serve(async (req) => {
       analyseId: string; mode: string; profil: 'rp' | 'invest';
       typeBienDeclare?: 'appartement' | 'maison' | 'maison_copro' | 'indetermine' | null;
       storagePaths?: string[]; fileNames?: string[];
+      // 🆕 Nombre de pages par PDF, compté côté front avant l'upload. Sert à
+      // analyser-run pour découper les gros documents en plusieurs appels.
+      // Optionnel : absent ou 0 → aucun découpage, comportement inchangé.
+      filePages?: number[];
     };
 
     const { analyseId, mode, profil, typeBienDeclare } = body;
@@ -598,7 +602,8 @@ Deno.serve(async (req) => {
     // ══════════════════════════════════════════════════════════
     // DOWNLOAD STORAGE + UPLOAD FILES API
     // ══════════════════════════════════════════════════════════
-    const fileIds: Array<{ id: string; name: string }> = [];
+    // `pages` n'est présent que si le front a su compter les pages du PDF.
+    const fileIds: Array<{ id: string; name: string; pages?: number }> = [];
     const documentsIgnores: string[] = [];
     const uploadErrors: UploadError[] = [];
 
@@ -626,7 +631,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        fileIds.push({ id: result.id!, name: fileName });
+        // On ne pousse `pages` que si la valeur est exploitable : une valeur
+        // absente ou aberrante doit laisser analyser-run sur son chemin normal.
+        const nbPages = Number(body.filePages?.[i]);
+        fileIds.push(
+          Number.isFinite(nbPages) && nbPages > 0
+            ? { id: result.id!, name: fileName, pages: Math.round(nbPages) }
+            : { id: result.id!, name: fileName },
+        );
       }
 
       // ══════════════════════════════════════════════════════════
