@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { PDFDocument } from 'pdf-lib';
 
 const EDGE_FUNCTION_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1/analyser';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk';
@@ -9,6 +10,26 @@ const STORAGE_BUCKET = 'analyse-temp';
 // ce marqueur pour ne PAS afficher "Rapport prêt !" à tort dans le popup).
 // ⚠️ MIROIR : chaîne complète définie dans analyser/analyser-run/watchdog (COMPLEMENT_FAILED_MSG).
 const COMPLEMENT_FAILED_PREFIX = 'La mise à jour du dossier n\'a pas abouti';
+
+/**
+ * Compte les pages d'un PDF déjà lu en mémoire.
+ *
+ * Sert au serveur à découper les gros documents en plusieurs appels d'analyse
+ * (un PV d'AG de 58 pages a trop à retranscrire pour un appel unique).
+ *
+ * ⚠️ NE DOIT JAMAIS BLOQUER UN UPLOAD. Un PDF corrompu, protégé ou exotique
+ * renvoie 0 → le serveur retombe simplement sur son comportement habituel.
+ */
+async function compterPagesPdf(buffer: ArrayBuffer, nomFichier: string): Promise<number> {
+  try {
+    const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true, updateMetadata: false });
+    const n = pdf.getPageCount();
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (e) {
+    console.warn('[Verimo] Nombre de pages illisible pour', nomFichier, e);
+    return 0;
+  }
+}
 
 export type AnalyseMode = 'complete' | 'document' | 'complement';
 export type TypeBienDeclare = 'appartement' | 'maison' | 'maison_copro' | 'indetermine';
@@ -58,6 +79,7 @@ export async function lancerAnalyseEdge(params: {
 
     // ── 1. Upload PDFs dans Storage ───────────────────────────
     const storagePaths: string[] = [];
+    const filePages: number[] = [];
 
     for (let i = 0; i < files.length; i++) {
       onProgress?.({
@@ -81,6 +103,8 @@ export async function lancerAnalyseEdge(params: {
           return { success: false, error: 'unknown', errorMessage: `Le fichier "${files[i].name}" semble vide ou inaccessible. Vérifiez qu'il est bien téléchargé sur votre appareil avant de l'uploader.` };
         }
         fileToUpload = new Blob([arrayBuffer], { type: 'application/pdf' });
+        // Le PDF est déjà en mémoire : on en profite pour compter ses pages.
+        filePages.push(await compterPagesPdf(arrayBuffer, files[i].name));
       } catch (readErr) {
         console.error('[Verimo] Impossible de lire le fichier:', files[i].name, readErr);
         return { success: false, error: 'unknown', errorMessage: `Impossible de lire "${files[i].name}". Sur mobile, assurez-vous que le fichier est téléchargé localement (pas dans le cloud).` };
@@ -119,6 +143,7 @@ export async function lancerAnalyseEdge(params: {
           typeBienDeclare: typeBienDeclare || null,
           storagePaths,
           fileNames: files.map(f => f.name),
+          filePages,
         }),
         signal: controller.signal,
       });
