@@ -1687,32 +1687,32 @@ function FaqSection() {
 
   const faqs = [
     {
-      q: "Mes documents sont-ils supprimés après traitement ?",
+      q: "Mes documents sont-ils supprimés après traitement ?",
       emoji: "🔒",
       a: "Oui, automatiquement et immédiatement. Vos fichiers sont chiffrés dès l'upload et supprimés de nos serveurs dès que votre rapport est généré. Aucun stockage permanent — seul le rapport final est conservé dans votre espace personnel. Aucun humain ne consulte vos documents.",
     },
     {
-      q: "Ça fonctionne avec tous les types de documents ?",
+      q: "Ça fonctionne avec tous les types de documents ?",
       emoji: "📄",
       a: "L'analyse simple (1 document) est prête en environ 30 secondes pour un PDF natif. L'analyse complète (plusieurs documents) prend généralement entre 1 et 5 minutes selon le nombre et la taille des fichiers. Les documents scannés peuvent nécessiter un délai supplémentaire. Les formats Word, JPEG ou PNG ne sont pas pris en charge — convertissez-les d'abord en PDF.",
     },
     {
-      q: "Et si je n'ai qu'un seul document ?",
+      q: "Et si je n'ai qu'un seul document ?",
       emoji: "📋",
       a: "L'analyse simple à 4,90€ est faite exactement pour ça. Elle analyse un seul document (PV d'AG, DPE, règlement de copropriété…) et vous donne les informations clés, les points forts et les vigilances détectés — sans score /20. L'analyse complète à 19,90€ accepte plusieurs documents et génère un score global du bien.",
     },
     {
-      q: "Le rapport est-il garanti exact ?",
+      q: "Le rapport est-il garanti exact ?",
       emoji: "⚖️",
       a: "Notre outil analyse les informations présentes dans vos documents avec soin, mais il reste un outil d'aide à la décision. Il travaille sur ce que vous lui transmettez — si un document est manquant, l'analyse sera partielle. Nous recommandons de confirmer les éléments importants avec un professionnel (notaire, avocat) avant toute signature.",
     },
     {
-      q: "Puis-je partager le rapport avec mon notaire ou mon banquier ?",
+      q: "Puis-je partager le rapport avec mon notaire ou mon banquier ?",
       emoji: "📤",
       a: "Absolument. Le rapport est téléchargeable en PDF et peut être partagé librement avec qui vous le souhaitez. De nombreux utilisateurs l'envoient à leur notaire avant la signature, ou l'utilisent pour justifier une demande de baisse de prix auprès du vendeur ou de son agent.",
     },
     {
-      q: "Comment fonctionne la comparaison de biens ?",
+      q: "Comment fonctionne la comparaison de biens ?",
       emoji: "⚖️",
       a: "C'est une fonctionnalité dédiée, pensée pour vous aider à trancher entre plusieurs biens. Verimo génère une vue côte à côte avec un classement, une synthèse des points forts et faibles de chaque bien, et un récap des écarts importants (charges, travaux, DPE, copropriété…). Vous voyez d'un coup d'œil lequel est le plus sain — et pourquoi. La comparaison se débloque dès que vous avez 2 analyses complètes dans votre espace (via un Pack ou séparément). Le Pack 3 biens permet en plus un classement automatique des 3 biens.",
     },
@@ -1751,7 +1751,7 @@ function FaqSection() {
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.25 }}>
-                            <div className="px-5 md:px-6 pb-5 pt-1 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-50 pl-[72px]">
+                            <div className="px-5 md:px-6 pb-5 pt-1 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-50 pl-5 md:pl-[72px]">
                               {faq.a}
                             </div>
                           </motion.div>
