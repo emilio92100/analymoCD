@@ -610,6 +610,41 @@ export default function DashboardPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [rapportSupprime, setRapportSupprime] = useState(false);
 
+  // ══════════════════════════════════════════════════════════════════════
+  // 🔒 VERROU DE SCROLL — menu mobile ouvert = page de fond FIGÉE
+  // ──────────────────────────────────────────────────────────────────────
+  // `overscroll-behavior` sur le menu ne suffit pas : il empêche seulement la
+  // PROPAGATION du scroll depuis le menu. Toucher ailleurs (voile, bord de
+  // l'écran) faisait toujours défiler le dashboard derrière.
+  //
+  // On fige donc le <body> lui-même. `overflow:hidden` seul est IGNORÉ par
+  // Safari iOS : il faut `position:fixed`, ce qui ramène la page en haut — d'où
+  // la mémorisation de `scrollY`, compensée par un `top` négatif, puis restaurée
+  // à la fermeture. L'utilisateur retrouve exactement sa position.
+  //
+  // Le nettoyage restaure les valeurs PRÉCÉDENTES et non des valeurs en dur :
+  // une autre modale qui verrouillerait déjà le scroll n'est pas déverrouillée
+  // par erreur en fermant le menu.
+  // ══════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const y = window.scrollY;
+    const b = document.body;
+    const avant = { overflow: b.style.overflow, position: b.style.position, top: b.style.top, width: b.style.width };
+    b.style.overflow = 'hidden';
+    b.style.position = 'fixed';
+    b.style.top = `-${y}px`;
+    b.style.width = '100%';
+    return () => {
+      b.style.overflow = avant.overflow;
+      b.style.position = avant.position;
+      b.style.top = avant.top;
+      b.style.width = avant.width;
+      window.scrollTo(0, y);
+    };
+  }, [mobileOpen]);
+
+
   // ─── Notifications : rapports terminés + notifications BDD ────────────────────
   type PartNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean; link?: string };
   const [notifications, setNotifications] = useState<PartNotification[]>([]);
@@ -779,7 +814,8 @@ export default function DashboardPage() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ position:'fixed', inset:0, zIndex:200 }}>
-            <div onClick={()=>setMobileOpen(false)} style={{ position:'absolute', inset:0, background:'rgba(15,45,61,0.45)' }}/>
+            {/* touchAction:'none' → aucun geste ne passe par le voile. */}
+            <div onClick={()=>setMobileOpen(false)} style={{ position:'absolute', inset:0, background:'rgba(15,45,61,0.45)', touchAction:'none' }}/>
             <motion.div initial={{ x:-260 }} animate={{ x:0 }} exit={{ x:-260 }} transition={{ type:'spring', stiffness:320, damping:32 }}
               style={{ position:'absolute', left:0, top:0, bottom:0, width:260 }}>
               <Sidebar onClose={()=>setMobileOpen(false)} unreadTickets={unreadTickets}/>
