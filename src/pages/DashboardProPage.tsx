@@ -377,8 +377,13 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       </div>
 
       {/* Toggle clair/sombre — affiché en HAUT sur mobile uniquement (entre logo et CTA) */}
+      {/* ⚠️ position+zIndex INDISPENSABLES : le logo au-dessus porte un
+          marginBottom NEGATIF (-5 en clair, -32 en sombre) qui remonte ce bloc
+          SOUS lui, et son conteneur est en position:relative donc il se peint
+          au-dessus. Sans ça, les taps sur le haut du bouton atterrissent sur le
+          <Link to="/"> du logo et renvoient à l'accueil. */}
       {isMobile && (
-        <div style={{ padding: '12px 14px 0' }}>
+        <div style={{ padding: '12px 14px 0', position: 'relative', zIndex: 2 }}>
           {themeToggle}
         </div>
       )}
@@ -619,7 +624,8 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
       </div>
 
       {/* Navigation avec séparateurs entre groupes */}
-      <nav style={{ flex: 1, padding: '8px 10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+      {/* overscrollBehavior:'contain' → le scroll du menu ne se propage plus au dashboard de fond. */}
+      <nav style={{ flex: 1, padding: '8px 10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', overscrollBehavior: 'contain' }}>
         {getProNavGroups(agenceRole).map((group, gIdx) => (
           <div key={group.title}>
             {gIdx > 0 && (
@@ -789,11 +795,12 @@ function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, n
         <AnimatePresence>
         {bellOpen && (
           <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="notif-panel"
             style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 440, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
             </div>
-            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+            <div className="notif-list" style={{ maxHeight: 400, overflowY: 'auto', overscrollBehavior: 'contain' }}>
               {(!notifications || notifications.length === 0) ? (
                 <div style={{ padding: '24px 16px', textAlign: 'center' }}>
                   <Bell size={20} style={{ color: '#e2e8f0', marginBottom: 8 }} />
@@ -8076,7 +8083,7 @@ export default function DashboardProPage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       {/* Sidebar desktop */}
       <div className="desktop-sidebar" style={{ width: 260, flexShrink: 0 }}>
-        <div style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50, overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50, overflowY: 'auto', overscrollBehavior: 'contain' }}>
           <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} creditsLoading={loading} agenceRole={proProfile.agence_role} />
         </div>
       </div>
@@ -8522,6 +8529,18 @@ export default function DashboardProPage() {
 
       <style>{`
         @media (max-width: 767px) {
+          /* Panneau notifications : 440px est une largeur pensée pour le bureau.
+             Ancré sur la cloche (right:0), il débordait à GAUCHE de l'écran sur
+             mobile et le texte était coupé. On l'épingle dans le viewport. */
+          .notif-panel {
+            position: fixed !important;
+            left: 10px !important;
+            right: 10px !important;
+            top: 70px !important;
+            width: auto !important;
+            max-width: none !important;
+          }
+          .notif-list { max-height: 60vh !important; }
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
