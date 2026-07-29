@@ -9,7 +9,7 @@
 import { useSEO } from '../hooks/useSEO';
 import { LegalLayout, Section, SubTitle, Liste, Table, Callout, EnClair, BlocContact } from '../components/LegalPage';
 import type { SectionRef } from '../components/LegalPage';
-import { Building2, Database, Target, FileSearch, Server, Clock, UserCheck, Cookie, Lock, Mail } from 'lucide-react';
+import { ShieldCheck, Building2, Database, Target, FileSearch, Server, Clock, UserCheck, Cookie, Lock, Mail } from 'lucide-react';
 
 const SECTIONS: SectionRef[] = [
   { id: 'qui',           label: '1. Qui sommes-nous ?' },
@@ -36,6 +36,7 @@ export default function ConfidentialitePage() {
       titre="Politique de confidentialité"
       chapeau="Quelles données nous collectons, ce que deviennent vos documents après l'analyse, qui y a accès, et comment exercer vos droits."
       maj="mai 2026"
+      badge={{ icon: ShieldCheck, label: "PROTECTION DES DONNÉES · RGPD" }}
       sections={SECTIONS}>
 
       <EnClair points={[
