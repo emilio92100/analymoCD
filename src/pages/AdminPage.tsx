@@ -1504,7 +1504,17 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserI
           </motion.div>
         ) : (
           <motion.div key={selectedUserId + '-' + selectedTicketId} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2, ease: 'easeOut' }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            /* ⚠️ minHeight:0 INDISPENSABLE. Sans lui, ce conteneur garde sa taille
+               naturelle (min-height:auto par défaut en flex) : il grandit avec le
+               nombre de messages, déborde du parent en height:calc(100vh-110px) +
+               overflow:hidden, et la BARRE DE RÉPONSE se retrouve coupée hors du
+               cadre — inaccessible, y compris en scrollant, puisque c'est le cadre
+               qui est figé. Symptôme trompeur : dézoomer la page la fait réapparaître.
+               La zone des messages en dessous porte déjà minHeight:0, mais la chaîne
+               doit être ininterrompue de haut en bas pour que le rétrécissement se
+               propage. Le côté client (dashboard/Support.tsx) n'a pas cette couche
+               intermédiaire, d'où l'absence du bug là-bas. */
+            style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             {/* 🆕 minWidth:0 sur le conteneur ET sur le bloc identite : sans ca, un
                 flex enfant refuse de se compresser sous sa taille naturelle et
