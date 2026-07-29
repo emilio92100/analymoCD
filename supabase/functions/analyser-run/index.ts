@@ -13,7 +13,7 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_FILES_URL = 'https://api.anthropic.com/v1/files';
 // ⚠️ A INCREMENTER A CHAQUE LIVRAISON. Loguee au demarrage de chaque invocation :
 // c'est le seul moyen fiable de savoir quelle version tourne vraiment en prod.
-const BUILD_VERSION = '2026-07-29-purge-absence';
+const BUILD_VERSION = '2026-07-29-decoupage-pages';
 
 const AI_MODEL = 'claude-sonnet-4-6';
 const AI_VERSION = '2023-06-01';
@@ -36,6 +36,29 @@ const SEUIL_MAP_REDUCE = 6;
 const MAP_MAX_TOKENS = 32000;      // sortie max par extraction — large pour les gros PV d'AG (JSON tronqué sinon)
 const MAP_TIMEOUT_MS = 350000;     // 350s par extraction — les gros docs (PV AG, RCP) ont besoin de 3-4 min pour écrire leur extraction complète. Tout est parallèle : l'invocation dure au pire 350s + sauvegarde, sous les 400s. NE PAS remonter au-dessus de 370000.
 const MAP_RETRY_WINDOW_MS = 60000; // retry uniquement si le 1er essai a échoué en moins de 60s (échec rapide type JSON malformé) — un essai long ne laisse pas le budget pour un 2ème
+
+// ══════════════════════════════════════════════════════════════
+// 📄 DÉCOUPAGE DES GROS DOCUMENTS (29 juillet 2026)
+// ──────────────────────────────────────────────────────────────
+// Le mur des 350s n'est PAS la lecture (prefill, rapide même sur 60 pages)
+// mais l'ÉCRITURE (~60-90 tokens/s). Un document RICHE — typiquement un PV
+// d'AG de 40 résolutions — a plus à retranscrire que MAP_TIMEOUT_MS ne le
+// permet : il meurt en timeout sans rien rendre. Et la richesse ne se déduit
+// PAS du nombre de pages (un RCP de 70 pages écrit moins qu'un PV de 40).
+//
+// Solution : plusieurs appels EN PARALLÈLE sur le MÊME file_id, chacun ne
+// retranscrivant qu'une PLAGE DE PAGES. Chacun LIT le document entier (le
+// contexte, les renvois et les abréviations restent disponibles), chacun
+// ÉCRIT 3 à 4 fois moins. Les extraits sont recollés EN CODE — jamais par
+// le modèle, donc aucun risque de fusion hasardeuse.
+//
+// ⚠️ INTERRUPTEUR D'URGENCE : mettre DECOUPAGE_SEUIL_PAGES à 9999 pour
+// désactiver le découpage et revenir à 100% du comportement précédent
+// (un seul appel par document). Redéployer après modification.
+// ══════════════════════════════════════════════════════════════
+const DECOUPAGE_SEUIL_PAGES = 25;       // ≤ 25 pages → 1 seul appel, comportement STRICTEMENT inchangé
+const DECOUPAGE_PAGES_PAR_TRANCHE = 20; // taille visée d'une tranche
+const DECOUPAGE_MAX_TRANCHES = 8;       // garde-fou anti rate-limit : 8 appels max par document
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -3542,6 +3565,16 @@ interface ExtraitDoc {
   extraction?: Record<string, unknown>;
 }
 
+// Un document à lire. `pages` vient du front (compté sur le PDF avant upload)
+// et transite par `analyser`. ABSENT ou 0 = on ne sait pas → aucun découpage,
+// comportement identique à avant. Le découpage ne peut donc jamais se
+// déclencher par accident sur un dossier dont on ignore la pagination.
+interface FichierMap {
+  id: string;
+  name: string;
+  pages?: number;
+}
+
 /* ══════════════════════════════════════════════════════════════
    📋 LOTS RECONSTRUITS DEPUIS LES EXTRAITS (gros dossier)
    ──────────────────────────────────────────────────────────────
@@ -3588,8 +3621,32 @@ function construireLotsDepuisExtraits(extraits: ExtraitDoc[]): LotEnumere[] {
   return lots;
 }
 
-function buildMapPrompt(): string {
-  return `Tu es le moteur d'extraction documentaire de Verimo, service d'analyse de biens immobiliers.
+function buildMapPrompt(plage?: { debut: number; fin: number; total: number }): string {
+  // En-tête présent UNIQUEMENT sur les gros documents découpés. Sans plage,
+  // le prompt est rigoureusement identique à la version précédente.
+  const entete = plage ? `⚠️ MISSION PARTIELLE — PAGES ${plage.debut} À ${plage.fin} (document de ${plage.total} pages)
+
+Tu reçois le document ENTIER. LIS-LE EN ENTIER : le contexte, les renvois, les
+abréviations et les tableaux récapitulatifs peuvent se trouver hors de ta plage.
+Mais tu ne RETRANSCRIS que ce qui se situe entre les pages ${plage.debut} et ${plage.fin} incluses.
+
+RÈGLE D'APPARTENANCE — un élément appartient à la tranche où il COMMENCE :
+- il commence AVANT la page ${plage.debut} → tu ne l'extrais PAS, même s'il se poursuit
+  dans ta plage. Une autre tranche s'en charge : ne le duplique pas.
+- il commence dans ta plage et se poursuit APRÈS la page ${plage.fin} → tu l'extrais
+  EN ENTIER, sans le tronquer. C'est ta responsabilité, personne d'autre ne le prendra.
+
+Le champ "page" de chaque élément porte sa page de DÉBUT, donc une valeur comprise
+entre ${plage.debut} et ${plage.fin}. Ne renseigne jamais une page hors de cette plage.
+
+Les champs type_detecte, titre_document et date_document décrivent le document ENTIER :
+renseigne-les normalement, même si l'information se trouve hors de ta plage.
+
+Si ta plage ne contient aucun fait exploitable, renvoie des tableaux vides.
+Ne JAMAIS combler une plage vide par des faits vus ailleurs dans le document.
+
+` : '';
+  return `${entete}Tu es le moteur d'extraction documentaire de Verimo, service d'analyse de biens immobiliers.
 On te donne UN SEUL document. Ta mission : retranscrire TOUS les faits qu'il contient, sans jugement d'importance. Tu n'écris pas de rapport, tu ne donnes pas d'avis — tu extrais.
 
 RÈGLES ABSOLUES :
@@ -3624,10 +3681,164 @@ FORMAT DE SORTIE — JSON STRICT, rien d'autre (pas de markdown, pas de commenta
 {"type_detecte":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|TITRE_PROPRIETE|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUDIT_ENERGETIQUE|ASSAINISSEMENT|ASL_CHIFFRES|ASL_REGLES|HISTORIQUE_TRAVAUX|AUTRE","titre_document":"...","date_document":"AAAA-MM-JJ ou AAAA ou null","chiffres_cles":[{"intitule":"...","valeur":"...","unite":"€|m²|classe|%|kWh/m²|tantiemes|null","statut":"vote|evoque|realise|constate|null","page":0,"citation":null}],"alertes":[{"description":"...","gravite":"info|attention|critique","page":0}],"faits":[{"description":"...","page":0}],"elements_illisibles":[]}`;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🧩 RECOLLAGE DES TRANCHES — 100% déterministe, jamais par le modèle
+// ──────────────────────────────────────────────────────────────────────
+// Les 3 listes du schéma MAP (chiffres_cles, alertes, faits) sont mises
+// bout à bout dans l'ordre des pages. Les métadonnées (type, titre, date)
+// sont prises sur la PREMIÈRE tranche qui les fournit — la tranche 1 voit
+// l'en-tête du document, c'est donc elle qui fait autorité.
+//
+// Dédoublonnage par CONTENU (le champ `page` est ignoré dans la clé : un
+// même fait vu par deux tranches peut porter une page différente). Filet de
+// sécurité seulement : la règle d'appartenance du prompt ("un élément
+// appartient à la tranche où il commence") est censée empêcher les doublons
+// en amont. On ne SUPPRIME jamais sur un critère de page — un modèle qui se
+// tromperait de numéro ferait alors disparaître de la donnée réelle.
+// ══════════════════════════════════════════════════════════════════════
+function fusionnerTranches(parts: Array<Record<string, unknown> | null>): Record<string, unknown> | null {
+  const valides = parts.filter((p): p is Record<string, unknown> => !!p);
+  if (valides.length === 0) return null;
+
+  const normVal = (v: unknown): string =>
+    (v && typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''))
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const cleDedup = (o: unknown): string => {
+    if (!o || typeof o !== 'object') return normVal(o);
+    const r = o as Record<string, unknown>;
+    return Object.keys(r).filter(k => k !== 'page').sort()
+      .map(k => `${k}=${normVal(r[k])}`).join('|');
+  };
+
+  const concatDedup = (cle: string): unknown[] => {
+    const vus = new Set<string>();
+    const out: unknown[] = [];
+    let doublons = 0;
+    for (const p of valides) {
+      const liste = Array.isArray(p[cle]) ? p[cle] as unknown[] : [];
+      for (const el of liste) {
+        const k = cleDedup(el);
+        if (k && vus.has(k)) { doublons++; continue; }
+        if (k) vus.add(k);
+        out.push(el);
+      }
+    }
+    if (doublons > 0) console.log(`[analyser-run][MAP] 🧩 ${cle} : ${doublons} doublon(s) de jonction retiré(s)`);
+    return out;
+  };
+
+  // Métadonnées : première valeur non vide, tranches parcourues dans l'ordre.
+  const premiereMeta = (cle: string): unknown => {
+    for (const p of valides) {
+      const v = p[cle];
+      if (v !== undefined && v !== null && String(v).trim() !== '' && String(v) !== 'null') return v;
+    }
+    return null;
+  };
+
+  return {
+    type_detecte: premiereMeta('type_detecte') ?? 'AUTRE',
+    titre_document: premiereMeta('titre_document'),
+    date_document: premiereMeta('date_document'),
+    chiffres_cles: concatDedup('chiffres_cles'),
+    alertes: concatDedup('alertes'),
+    faits: concatDedup('faits'),
+    elements_illisibles: concatDedup('elements_illisibles'),
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 📄 EXTRACTION D'UN GROS DOCUMENT — N appels parallèles, une plage chacun
+// ──────────────────────────────────────────────────────────────────────
+// Appelée UNIQUEMENT depuis extractOneDoc, donc la suppression RGPD du
+// `finally` de l'appelant s'applique de la même façon qu'au chemin normal.
+// ══════════════════════════════════════════════════════════════════════
+async function extraireParTranches(file: FichierMap, apiKey: string, nbPages: number): Promise<ExtraitDoc> {
+  const nbTranches = Math.min(DECOUPAGE_MAX_TRANCHES, Math.ceil(nbPages / DECOUPAGE_PAGES_PAR_TRANCHE));
+  const taille = Math.ceil(nbPages / nbTranches);
+
+  const plages: Array<{ debut: number; fin: number; total: number }> = [];
+  for (let i = 0; i < nbTranches; i++) {
+    const debut = i * taille + 1;
+    if (debut > nbPages) break;
+    plages.push({ debut, fin: Math.min((i + 1) * taille, nbPages), total: nbPages });
+  }
+
+  console.log(`[analyser-run][MAP] 📄 "${file.name}" — ${nbPages} pages → ${plages.length} tranche(s) en parallèle (${plages.map(p => `${p.debut}-${p.fin}`).join(', ')})`);
+
+  const t0 = Date.now();
+  const settled = await Promise.allSettled(plages.map(p => callAI({
+    system: buildMapPrompt(p),
+    userContent: [
+      { type: 'document', source: { type: 'file', file_id: file.id } },
+      { type: 'text', text: `[Document : ${file.name}] Extrais les faits des pages ${p.debut} à ${p.fin} de ce document. JSON strict uniquement.` },
+    ],
+    maxTokens: MAP_MAX_TOKENS,
+    apiKey,
+    timeoutMs: MAP_TIMEOUT_MS,
+  })));
+
+  const parts: Array<Record<string, unknown> | null> = [];
+  const echouees: string[] = [];
+  let premiereRaison = '';
+
+  settled.forEach((s, i) => {
+    const label = `${plages[i].debut}-${plages[i].fin}`;
+    if (s.status !== 'fulfilled') {
+      console.error(`[analyser-run][MAP] ✗ "${file.name}" pages ${label} : erreur_interne`);
+      premiereRaison = premiereRaison || 'erreur_interne';
+      echouees.push(label); parts.push(null); return;
+    }
+    if (s.value.error) {
+      console.error(`[analyser-run][MAP] ✗ "${file.name}" pages ${label} : ${s.value.error}`);
+      premiereRaison = premiereRaison || s.value.error;
+      echouees.push(label); parts.push(null); return;
+    }
+    const j = parseJson<Record<string, unknown>>(s.value.text);
+    if (!j) {
+      console.error(`[analyser-run][MAP] ✗ "${file.name}" pages ${label} : json_invalide`);
+      premiereRaison = premiereRaison || 'json_invalide';
+      echouees.push(label); parts.push(null); return;
+    }
+    const nb = (Array.isArray(j.chiffres_cles) ? j.chiffres_cles.length : 0)
+             + (Array.isArray(j.alertes) ? j.alertes.length : 0)
+             + (Array.isArray(j.faits) ? j.faits.length : 0);
+    console.log(`[analyser-run][MAP] ✓ "${file.name}" pages ${label} — ${nb} élément(s)`);
+    parts.push(j);
+  });
+
+  const dureeS = Math.round((Date.now() - t0) / 1000);
+  const extraction = fusionnerTranches(parts);
+
+  // Toutes les tranches ont échoué → échec franc, comme avant.
+  if (!extraction) {
+    console.error(`[analyser-run][MAP] Échec extraction "${file.name}" : ${plages.length}/${plages.length} tranches en échec (${dureeS}s)`);
+    return { file_name: file.name, statut: 'echec', raison: premiereRaison || 'timeout' };
+  }
+
+  // Une partie seulement a échoué → on garde ce qu'on a, mais on NOMME le trou.
+  // Un rapport amputé en silence est pire qu'un rapport amputé annoncé.
+  if (echouees.length > 0) {
+    extraction.extraction_partielle = {
+      tranches_total: plages.length,
+      tranches_reussies: plages.length - echouees.length,
+      pages_non_couvertes: echouees,
+    };
+    console.warn(`[analyser-run][MAP] ⚠️ "${file.name}" PARTIEL — pages non couvertes : ${echouees.join(', ')}`);
+  }
+
+  const total = (extraction.chiffres_cles as unknown[]).length
+              + (extraction.alertes as unknown[]).length
+              + (extraction.faits as unknown[]).length;
+  console.log(`[analyser-run][MAP] OK "${file.name}" (${dureeS}s, ${plages.length - echouees.length}/${plages.length} tranches, ${total} éléments, type détecté: ${extraction.type_detecte || '?'})`);
+  return { file_name: file.name, statut: 'ok', extraction };
+}
+
 // Extraction d'UN document — appelée en parallèle pour tous les docs.
 // Retourne toujours un ExtraitDoc (jamais de throw) : statut ok ou echec.
 async function extractOneDoc(
-  file: { id: string; name: string },
+  file: FichierMap,
   apiKey: string,
   deleteAfter = true, // 🆕 le COMPLEMENT garde les PDF le temps des extractions ciblees
 ): Promise<ExtraitDoc> {
@@ -3637,6 +3848,15 @@ async function extractOneDoc(
   ];
 
   try {
+    // 🆕 GROS DOCUMENT → N appels parallèles, une plage de pages chacun.
+    // Le `finally` ci-dessous (suppression RGPD) s'applique aux DEUX chemins.
+    // Si `pages` est absent ou sous le seuil, rien ne change : on tombe sur
+    // le code d'origine, à l'identique.
+    const nbPages = Number(file.pages) || 0;
+    if (nbPages > DECOUPAGE_SEUIL_PAGES) {
+      return await extraireParTranches(file, apiKey, nbPages);
+    }
+
     const t0 = Date.now();
     let result = await callAI({ system: buildMapPrompt(), userContent, maxTokens: MAP_MAX_TOKENS, apiKey, timeoutMs: MAP_TIMEOUT_MS });
     let extraction = result.error ? null : parseJson<Record<string, unknown>>(result.text);
@@ -3674,7 +3894,7 @@ async function extractOneDoc(
 // ─── PHASE MAP — invocation 1 ───
 async function runPhaseMap(
   analyseId: string,
-  files: Array<{ id: string; name: string }>,
+  files: FichierMap[],
   profil: string,
   supabaseAdmin: SupabaseClient,
   apiKey: string,
@@ -3690,7 +3910,7 @@ async function runPhaseMap(
 
     // Compteur de progression partagé entre les extractions parallèles
     let done = 0;
-    const withProgress = async (file: { id: string; name: string }): Promise<ExtraitDoc> => {
+    const withProgress = async (file: FichierMap): Promise<ExtraitDoc> => {
       const extrait = await extractOneDoc(file, apiKey);
       done++;
       await supabaseAdmin.from('analyses').update({
@@ -4567,7 +4787,7 @@ function purgerDocsManquants(rapport: Record<string, unknown>): void {
 // ══ PHASE 1 — extraction des nouveaux documents ══
 async function runComplementMap(
   analyseId: string,
-  files: Array<{ id: string; name: string }>,
+  files: FichierMap[],
   supabaseAdmin: SupabaseClient,
   apiKey: string,
 ): Promise<void> {
@@ -5005,7 +5225,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, analyseId, phase: 'complement-merge' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
+    const fileIds = (body?.fileIds as FichierMap[]) || [];
     const mode = body?.mode as string || 'complete';
     const profil = body?.profil as string || 'rp';
     const typeBienDeclare = (body?.typeBienDeclare as string) || null;
