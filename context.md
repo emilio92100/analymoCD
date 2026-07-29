@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 28 juillet 2026 (mis à jour après la session notation / documents manquants)
+# VERIMO — Contexte projet — 29 juillet 2026 (mis à jour après la session découpage des gros documents)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -26,7 +26,117 @@
 
 ---
 
-## 🆕 DERNIÈRE SESSION — 28 juillet 2026 ⭐⭐⭐
+## 🆕 DERNIÈRE SESSION — 29 juillet 2026 ⭐⭐⭐
+
+> Point de départ : un ticket support d'Alain CADIER (PRO) — « Compléter mon dossier » a rejeté un **PV d'AG de 58 pages**. A dérivé sur la refonte de la lecture des gros documents, plus deux correctifs et quatre découvertes non traitées.
+> 🧭 **Leçon de méthode n°1 — j'ai conclu trois fois trop vite, et trois fois à tort.** (a) J'ai affirmé qu'un document en échec entrait dans `documents_analyses` en lisant `for (const e of extraits)` **sans remonter 99 lignes plus haut**, où `extraits` est déjà filtré sur `statut === 'ok'`. (b) J'ai décrit l'ordre du schéma MAP en citant celui de `buildDocumentPrompt` (analyse simple) — deux schémas différents. (c) J'ai annoncé que la composition de la copropriété était faussée en confondant `lots_enumeres` (liste énumérée) et `nb_lots_detail` (répartition affichée). **Règle : tracer une variable jusqu'à sa construction avant d'affirmer quoi que ce soit. Un `grep` sur une ligne n'est pas une lecture.**
+> 🧭 **Leçon de méthode n°2 — la bonne solution vient d'Alex.** Mes quatre propositions successives étaient soit du sauvetage (récupérer le JSON tronqué), soit dépendantes d'un chiffre jamais mesuré (retirer `citation`, passer le MAP sur Haiku), soit mal découpées (séparer par champ, alors que `chiffres_cles` fait ~80 % du volume). Le découpage **par plages de pages** s'auto-dimensionne et ne dépend d'aucune mesure préalable.
+> 🧭 **Leçon de méthode n°3 — le nombre de pages ne prédit PAS le volume à écrire.** Un RCP de 70 pages (texte juridique) écrit moins qu'un PV d'AG de 40 pages dense en résolutions. C'est le nombre de FAITS à retranscrire qui compte. D'où l'invisibilité du problème : certains gros documents passaient, d'autres non, sans règle apparente.
+
+### ✅ Chantiers livrés
+
+**1. 🔴 DÉCOUPAGE DES GROS DOCUMENTS EN PLAGES DE PAGES — le chantier de la session**
+
+- **Diagnostic** : `MAP_MAX_TOKENS = 32000` et `MAP_TIMEOUT_MS = 350000` sont **mathématiquement incompatibles**. 32 000 tokens ÷ 60-90 tok/s = **355 à 533 s**. Le plafond n'est jamais atteignable. Preuve dans les logs : l'erreur est `timeout`, **jamais** `truncated` — le modèle écrivait encore quand on l'a coupé.
+- **Pourquoi ça passait hors complément** : une analyse complète ≤ 5 docs part en **single-call**, où le modèle écrit *le rapport* (borné par le schéma). Le MAP lui demande de *tout retranscrire* (borné par la richesse du document). Le complément passe **toujours** par le MAP, même pour 1 seul document. ⚠️ Une analyse complète **≥ 6 docs** aurait planté à l'identique.
+- **Solution** : au-delà de `DECOUPAGE_SEUIL_PAGES` (25 pages), **N appels PARALLÈLES sur le MÊME `file_id`**, chacun portant une plage de pages. Chacun **LIT le document entier** (contexte, renvois et abréviations préservés), chacun **ÉCRIT 3-4× moins**.
+- **Règle d'appartenance** (dans le prompt) : un élément appartient à la tranche **où il COMMENCE**. Il commence avant → pas extrait. Il commence dedans et déborde → extrait EN ENTIER. Plages contiguës, **aucun chevauchement**, aucune troncature d'élément.
+- **Recollage `fusionnerTranches()` — 100 % en code, jamais par le modèle.** Concaténation des 3 listes dans l'ordre des pages + dédoublonnage **par contenu** (le champ `page` est exclu de la clé : le même fait vu par deux tranches peut porter une page différente). Métadonnées (`type_detecte`, `titre_document`, `date_document`) = première tranche qui les fournit. **Aucune suppression sur un critère de page** — un modèle qui se tromperait de numéro ferait sinon disparaître de la donnée réelle.
+- **Échec partiel** : les tranches réussies sont conservées, `extraction_partielle {tranches_total, tranches_reussies, pages_non_couvertes[]}` est écrit dans l'extrait, et un log ⚠️ **nomme** les pages manquantes. Toutes les tranches en échec → échec franc, comme avant.
+- **Nombre de pages compté côté FRONT** (`pdf-lib`, sur le PDF déjà lu en mémoire), transmis via `filePages[]` → `analyser` → `fileIds[].pages`. **Absent, 0 ou illisible → aucun découpage**, comportement strictement inchangé. Un PDF corrompu ou protégé ne bloque jamais l'upload.
+- 🔌 **Interrupteur d'urgence** : `DECOUPAGE_SEUIL_PAGES = 9999` → retour à 100 % du comportement précédent.
+- Couvre le **COMPLÉMENT** et l'**analyse complète ≥ 6 docs** — même `extractOneDoc`, une seule correction.
+- ✅ **VALIDÉ EN PRODUCTION** le 29/07 (analyse 11 docs, `5709058a`) :
+
+| Document | Pages | Tranches | Durée | Éléments |
+|---|---|---|---|---|
+| C0278 RCP P1 PARTIE 1 | 104 | 6 | 159 s | 375 |
+| C0278 RCP P1 PARTIE 2 | 70 | 4 | **210 s** | 471 |
+| DDT BENOIST-LUCY | 66 | 4 | 111 s | 283 |
+| C0281 PV AG 25/06/24 | 41 | 3 | 138 s | 328 |
+
+  `MAP Terminé — 11 OK, 0 échec` · REDUCE 11/11 · dédoublonnage actif (4 doublons retirés sur le DDT, 1 sur un RCP, 1 alerte).
+- ⚠️ **Marge réelle plus courte qu'annoncé** : 210 s sur 350 pour le pire cas, pas ~120 s. Si un document plus dense se tend, **descendre `DECOUPAGE_PAGES_PAR_TRANCHE` à 15**.
+- ⚠️ **Plafond `DECOUPAGE_MAX_TRANCHES = 8`** (garde-fou rate limit) : au-delà de ~200 pages les tranches s'élargissent (un RCP de 284 p → 8 × 36 p).
+- ⚠️ **`analyser-retry`** (reprise après surcharge) ne transporte pas `filePages` → repli sur l'ancien comportement. Sans danger, non traité.
+
+**2. 🔴 `purgerDocsManquants` — la 3ᵉ copie de `diagPresent`, oubliée le 28/07**
+
+- Le correctif du 28/07 sur `presence: 'absence'` avait été appliqué à **2 endroits sur 3**. La copie de `purgerDocsManquants` gardait `pres !== 'absence'`.
+- Conséquence : un **amiante / plomb / termites** revenu « réalisé, substance non détectée » — le meilleur résultat possible — restait réclamé dans `documents_manquants`.
+- Cas réel `#602a51fa` : DDT fourni, amiante `presence: 'absence'` + `perimetre: 'lot_privatif'`. La checklist serveur disait correctement `diag_amiante: statut "ok"`, et le rapport affichait quand même « Diagnostic amiante privatif » en essentiel.
+- Corrigé, avec un commentaire renvoyant explicitement aux 2 autres copies (`validateDiagsManquants` l.~1090, `construireChecklist` l.~1340).
+- ⚠️ **Ne concerne QUE amiante / plomb / termites** — seuls types où `absence` est un résultat normal. DPE, Carrez, électricité et ERP reviennent en `detectee` et étaient déjà purgés correctement (log du cas réel : *6 documents retirés*).
+- 🩹 **Rapport client corrigé à la main** en SQL (`documents_manquants` moins l'entrée amiante) : un rapport déjà généré ne se recorrige pas tout seul, la liste est figée dans `result`.
+
+**3. 🔴 AdminPage — barre de réponse support inaccessible**
+
+- Le `motion.div` de la conversation n'avait pas `minHeight: 0`. En flexbox, `min-height: auto` empêche un enfant de rétrécir sous sa taille naturelle : il grandissait avec le nombre de messages, débordait du conteneur `height: calc(100vh - 110px)` + `overflow: hidden`, et la **barre de réponse passait sous le bord**, inaccessible — le scroll ne servant à rien puisque le cadre est figé.
+- Symptôme trompeur : **dézoomer la page la faisait réapparaître** (plus de place dans les 100 % de hauteur).
+- La zone des messages portait déjà `minHeight: 0`, mais la chaîne doit être **ininterrompue de haut en bas**.
+- ✅ **Côté client jamais touché** — `dashboard/Support.tsx` n'a pas cette couche intermédiaire, sa zone de messages est enfant direct du conteneur.
+
+### ⚠️ Découvertes NON corrigées — à traiter en priorité
+
+**A. 🔴 `parseJson` fragile — `identite_bien` échoue en prod depuis sa livraison**
+- `parseJson` découpe du premier `{` au **dernier** `}`. Si le modèle écrit quoi que ce soit **après** son objet (commentaire, second bloc), le slice ramasse tout et `JSON.parse` casse.
+- Cas réel : `SyntaxError: Unexpected non-whitespace character after JSON at position 166`. La donnée était **BONNE** (`{"annee_construction":1958,"annee_construction_source":"dpe_ddt",...}`) — c'est l'emballage qui a tué la section.
+- **Aucun retry sur `json_invalide`** dans `regenererSection`. Échec en **12 s** sur une fenêtre de 400 s : le budget était largement là. (Le MAP a sa fenêtre `MAP_RETRY_WINDOW_MS`, pas le complément.)
+- **Impact** : la section créée le 28/07 pour casser le cercle vicieux de l'année de construction **n'a jamais fonctionné en production**. Et le risque vaut pour **toutes** les sections — le jour où ça tombe sur `finances`, tout le bloc financier du complément saute en silence.
+- `console.error(..., 'raw:', raw.slice(0, 100))` : **100 caractères** rendent cette famille de bugs quasi indiagnosticable. → monter à ~600.
+- **Correctif** : extraction du premier objet JSON **équilibré** (comptage d'accolades, en respectant les chaînes) + retry une fois sur échec rapide.
+
+**B. Garde de fiabilité de l'année neutralisée sur les rapports d'avant le 28/07**
+- `const rangActuel = RANG[String(rapportRec.annee_construction_precision ?? '')] ?? 0;`
+- Sur un rapport antérieur au 28/07, le champ `annee_construction_precision` **n'existe pas** → `rangActuel = 0` → `rangNouveau < 0` est toujours faux → **n'importe quelle source écrase le RCP**, y compris une fourchette de DPE.
+- **Correctif** : traiter « année présente sans `precision` » comme au moins `borne_superieure` (rang 2).
+- 🧭 **Point métier tranché avec Alex** : un RCP est une **borne supérieure**, pas une année exacte — il prouve que l'immeuble existait à cette date, pas qu'il a été construit cette année-là. Un carnet d'entretien donnant une année exacte est donc **plus** fiable, et ne le contredit pas. La hiérarchie **par précision** (exacte > borne_superieure > fourchette) est plus juste qu'une hiérarchie par type de document.
+
+**C. Tentative de complément décomptée AVANT de connaître le résultat**
+- `analyser/index.ts` l.~569 : `complement_attempts` est incrémenté **au lancement**. Un timeout technique coûte une tentative sur 3 au client.
+- Cas réel : Alain CADIER passé à 2/3 pour un mur mathématique qu'aucune relance n'aurait franchi.
+- **Correctif** : ne décompter qu'en cas de succès, ou rembourser sur échec technique (`timeout`, `overload`, `rate_limit`).
+
+**D. `extraireLotsRCP` absent du chemin MAP-REDUCE — impact FAIBLE, ne pas dramatiser**
+- Le rattrapage dédié d'énumération des lots existe dans `runAnalyseWithData`, `runAnalyse` et le complément. **Pas** dans `runPhaseReduce` — et il **ne peut pas** y être : les PDF sont supprimés à la fin du MAP. Il devrait se déclencher **pendant** la lecture (comme le complément, qui diffère la suppression pour ça).
+- Cas réel 29/07 : `📋 Lots — lecture: 73 | synthèse: 0 | annoncé: 305`. Le modèle a énuméré 73 lots sur 305 puis s'est arrêté (comportement connu sur les listes très longues).
+- ✅ **LE RAPPORT AFFICHÉ ÉTAIT JUSTE** : `nb_lots_detail` (77 appartements + 151 parkings + 77 caves = 305) vient du **récapitulatif du document**, pas de la liste énumérée. Le garde-fou `recomptageRate` a correctement **refusé** d'écraser la répartition avec une liste incomplète, et `nb_lots_detail_verifie` est passé à `false`.
+- Seul manque : le détail lot par lot. Sur une copro de 305 lots dont le client en achète un, **intérêt quasi nul**. À classer tout en bas.
+
+### 📁 Fichiers livrés (5)
+
+| Fichier | Contenu | Déploiement |
+|---|---|---|
+| `package.json` | ajout `pdf-lib` ^1.17.1 | GitHub → Vercel — **AVANT** `analyse-client.ts` |
+| `src/lib/analyse-client.ts` | `compterPagesPdf()` + `filePages[]` dans le payload | GitHub → Vercel |
+| `supabase/functions/analyser/index.ts` | `filePages` dans le body → `fileIds[].pages` | GitHub **+ Supabase MANUEL** |
+| `supabase/functions/analyser-run/index.ts` | découpage, `fusionnerTranches`, prompt de plage, fix `diagPresent` | GitHub **+ Supabase MANUEL** |
+| `src/pages/AdminPage.tsx` | `minHeight: 0` sur le conteneur de conversation | GitHub → Vercel |
+
+> ✅ **DÉPLOYÉ ET VALIDÉ EN PRODUCTION** le 29/07 — logs : `🏷️ BUILD 2026-07-29-decoupage-pages`.
+> **Aucun SQL.** Ordre imposé : `package.json` avant `analyse-client.ts` (sinon build Vercel cassé sur import introuvable).
+
+### 🗄️ SQL manuel de la session
+
+```sql
+-- Retrait de l'entrée amiante périmée sur le rapport d'Alain CADIER
+update analyses
+set result = jsonb_set(result, '{documents_manquants}',
+      (result->'documents_manquants')
+        - 'Diagnostic amiante privatif (obligatoire pour les biens construits avant 1997)')
+where id = '602a51fa-cf04-4fb3-876a-1a442df248fb';
+```
+
+### 🧾 Points annexes établis
+
+- **Files API** : un `file_id` supprimé est **définitivement perdu**. Vérifié sur le PV du client via Postman Web (`GET /v1/files/{id}` → `404 not_found_error`). Le log `Supprimé:` est fiable (écrit uniquement si `res.ok`).
+- **Il n'existe AUCUNE colonne `storage_paths`** dans `analyses` : les chemins transitent dans le payload HTTP et ne sont jamais persistés. Le PDF du bucket `analyse-temp` est supprimé (`analyser/index.ts` l.~639) dès l'upload Files API réussi — sauf en cas d'`overload`, où il est conservé pour le cron `analyser-retry` via `metadata_queue`. **Le cron de 3 h ne conserve rien, il nettoie les orphelins.**
+- **Postman Web** est l'outil de vérification Files API (Alex est sur Windows, pas de terminal). En-têtes : `x-api-key`, `anthropic-version: 2023-06-01`, `anthropic-beta: files-api-2025-04-14`.
+- ⚠️ **Le mapper de `RapportPage.tsx` est une LISTE BLANCHE** (l.~5678, champ par champ, aucun spread). `checklist`, `annee_construction_precision` et `annee_construction_fourchette` **y sont absents** → `lireChecklist()` renvoie `null` et tout le chantier checklist du 28/07 est **invisible en production** (repli silencieux sur l'ancienne logique). **Non corrigé** : le basculement change les libellés, fait apparaître les badges `INCOMPLET` et le bloc « DÉJÀ AU DOSSIER » sur tous les rapports — chemin d'affichage jamais éprouvé en prod. À faire à froid, après avoir inspecté `result->'checklist'->'items'` sur plusieurs dossiers réels. **Tout nouveau champ serveur destiné au rapport doit recevoir sa ligne dans ce mapper, sinon il est silencieusement jeté.**
+
+---
+
+## 📌 SESSION — 28 juillet 2026 ⭐⭐⭐
 
 > Point de départ : une question d'Alex sur la concurrence (« si 2 clients lancent une analyse en même temps ? »). A dérivé sur un audit complet du système de notation et des documents manquants, où **une famille entière de bugs** a été trouvée : le code confondait *« pas exigible »* et *« absent »*.
 > 🧭 **Leçon de méthode n°1** : la même règle métier était écrite **6 fois** (1 serveur + 3 dans `RapportPage.tsx` + `Aide.tsx` + `MethodePage.tsx`). Elles avaient dérivé. Le rapport affichait « Aucun matériau contenant de l'amiante repéré » et, trois écrans plus bas, « Diagnostic amiante manquant ». **Une règle = un endroit, côté serveur.**
@@ -112,7 +222,8 @@
 | `ExemplePage.tsx` | score cohérent | GitHub → Vercel |
 | `DocumentRenderer.tsx` | onglet Propriété aligné (cosmétique) | GitHub → Vercel |
 
-> ⚠️ **ORDRE OBLIGATOIRE** : `RapportPage.tsx` **AVANT** `index.ts`. Le nouveau moteur écrit `modificatifs_rcp[].notaire` en **objet** ; l'ancien front fait `{m.notaire}` en JSX brut et **React refuse de rendre un objet** → onglet Copropriété en erreur.
+> ✅ **DÉPLOYÉ** (confirmé le 29/07 : `BUILD 2026-07-28-rcp-origine` vu dans les logs).
+> ⚠️ **ORDRE OBLIGATOIRE** (pour mémoire) : `RapportPage.tsx` **AVANT** `index.ts`. Le nouveau moteur écrit `modificatifs_rcp[].notaire` en **objet** ; l'ancien front fait `{m.notaire}` en JSX brut et **React refuse de rendre un objet** → onglet Copropriété en erreur.
 > ✅ **Vérifier le déploiement** : logs Supabase → `[analyser-run] 🏷️ BUILD 2026-07-28-rcp-origine`.
 > **Aucun SQL** — `checklist` et les nouveaux champs vivent dans `analyses.result` (jsonb).
 
@@ -896,7 +1007,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ---
 
-## ⚙️ Architecture ANALYSE — ÉTAT ACTUEL (vérifié dans le code le 27 juillet, **soir**) ⭐⭐⭐
+## ⚙️ Architecture ANALYSE — ÉTAT ACTUEL (vérifié dans le code le **29 juillet**) ⭐⭐⭐
 
 > Source de vérité = le code du repo. Remplace les anciennes sections « MAP-REDUCE 03 juin » et « CHANTIER 400 SECONDES ».
 
@@ -905,6 +1016,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 2. **`analyser-run` (étape 2)** — **🔒 27/07 : fonction INTERNE**, exige `Authorization === SERVICE_ROLE_KEY`. Aiguillage (ordre exact) : `mode='complement'` → **COMPLÉMENT v2** (nouveau, 27/07 soir) ; sinon `mode='complete'` **ET ≥ 6 docs** (`SEUIL_MAP_REDUCE = 6`) → **MAP-REDUCE v2** ; sinon (dont `document`) → **single-call v7**.
    - **⚠️ `callAI` est en `stream: true` depuis le 27/07 soir** (parsing SSE) + lecture du `stop_reason` (erreur `truncated`, jamais relancée). Sans streaming, un `abort()` était **facturé en entier**.
    - **MAP** (`MAP_TIMEOUT_MS = 350000`, ne pas dépasser 370000) : lecture parallèle, **faits en texte libre** + `chiffres_cles` + `alertes` par doc, suppression du PDF Files API APRÈS sauvegarde en base (`map_resultats` jsonb). Prompt ~1 860 tokens, **13 types de documents** précisés (27/07). Retry uniquement si l'échec a été **rapide** (`MAP_RETRY_WINDOW_MS`).
+   - **🆕 29/07 — DÉCOUPAGE PAR PLAGES DE PAGES** : au-delà de `DECOUPAGE_SEUIL_PAGES = 25`, `extractOneDoc` bascule sur `extraireParTranches()` → `Math.ceil(pages / 20)` appels **parallèles sur le même `file_id`**, plafonnés à `DECOUPAGE_MAX_TRANCHES = 8`. Chacun lit le PDF entier, n'écrit que sa plage (`buildMapPrompt(plage)`), et les extraits sont recollés **en code** par `fusionnerTranches()` (dédoublonnage par contenu, `page` exclu de la clé). Le nombre de pages vient du **front** (`pdf-lib`) via `filePages[]` → `fileIds[].pages` ; absent ou 0 → **aucun découpage**. Le `finally` de suppression RGPD couvre les deux chemins. 🔌 `DECOUPAGE_SEUIL_PAGES = 9999` = interrupteur.
    - **REDUCE** (self-invoke, service-role) : empile les extraits, 1 appel `buildSystemPrompt('complete')`, post-traitement déterministe, écrit `result`, nettoie `map_resultats`, notifie.
    - **Post-traitement déterministe** (tous modes ≠ `document`) : `retryDpeCarrez` · `recalculerCategories` / `recalculerCategoriesMaison` (score = somme des catégories) · **`recompterLots` + `retirerLotsRemplaces`** (27/07) · `validateDiagsManquants` (**réparé** 27/07) · **`croiserTitrePropriete`** (27/07 soir, **sans impact sur la note**) · **extraction dédiée EDD** si la liste des lots est douteuse (appel court ~500 tokens, avant suppression RGPD).
    - **COMPLÉMENT v2** (2 invocations, budget neuf pour chacune) :
@@ -922,13 +1034,15 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 | `buildDocumentPrompt` | ~16 400 | analyse simple — **schémas structurés par type** |
 | `buildComplementPrompt` | **INUTILISÉ depuis le 27/07 soir** | remplacé par `referentielMetier()` par section |
 | `referentielMetier()` | **~19 700** | complément — par SECTION, sortie ≤ 3 000 tk |
-| `buildMapPrompt` | ~1 950 | lecture d'un doc — **faits en texte libre** |
+| `buildMapPrompt()` | ~1 950 | lecture d'un doc — **faits en texte libre** |
+| `buildMapPrompt(plage)` | ~2 250 | 🆕 29/07 — idem + en-tête de plage de pages (gros documents) |
 
 > 🔴 **RÈGLE CORRIGÉE LE 27/07 (soir)** — la version du matin (« ne jamais gonfler le prompt de complément ») était **incomplète et trompeuse**. Le mur n'est pas l'entrée, c'est la **sortie** :
 > - **Entrée = prefill**, plusieurs milliers de tokens/seconde. 20 000 tokens de consignes coûtent quelques secondes.
 > - **Sortie = génération**, ~60-90 tokens/seconde. **12 000 tokens à écrire = 150-200 s minimum.**
 > - **Les PDFs joints** sont le poste le plus cher : décodage page par page, bien plus lent que du texte. Le REDUCE écrit le rapport entier **sans jamais recevoir de PDF** — c'est pour ça qu'il tient.
 > ➡️ **Règle utile** : plafonner ce que chaque appel doit ÉCRIRE, et ne jamais mettre PDFs + gros contexte + grosse sortie dans le même appel.
+> 🆕 **Corollaire établi le 29/07** : le nombre de PAGES ne prédit pas le volume à écrire. Un RCP de 70 p (texte juridique) écrit moins qu'un PV d'AG de 40 p dense en résolutions. C'est le nombre de FAITS à retranscrire qui compte — d'où l'impossibilité de prédire quels documents passeront, et donc le choix de **découper systématiquement au-delà de 25 pages** plutôt que de chercher un seuil de densité.
 
 ### Points de vigilance connus (backlog)
 - **🎯 IDÉE ALEX (27/07) — schémas par type en phase MAP.** Différence de fond : l'analyse simple donne au moteur un **formulaire à cases** par type de document ; MAP lui donne une **feuille blanche** (faits libres + page). D'où l'écart : documents simples (taxe foncière, appels de charges) → OK avec l'extraction générique ; documents complexes (compromis ~20 champs, carnet d'entretien, DTG) → les faits libres ne se mappent pas sur les blocs. **Faisabilité vérifiée : 49 noms de champs identiques** entre le schéma COMPROMIS de `buildDocumentPrompt` et le bloc `compromis` du rapport final → reprise quasi mécanique. Obstacles : (a) le type est détecté *pendant* la lecture, or il faudrait le connaître *avant* pour n'injecter que le bon schéma (~1 500 tokens/doc au lieu de 16 400) ; (b) REDUCE est écrit pour consommer du vrac, à réécrire ; (c) ~15 champs de `buildDocumentPrompt` n'ont pas d'équivalent dans le rapport → à verser dans un champ de **texte libre** conservé à côté du structuré. **Décision : à faire à froid, avec un dossier de référence pour comparer avant/après.**
@@ -937,7 +1051,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 - **`retryDpeCarrez` / `extraireLotsRCP` sans `timeoutMs` propre** (héritent de 385 s). Bornées en complément (`avecDelai`), **pas** dans `runAnalyseWithData` : un appel principal long + une extraction de lots longue peut théoriquement dépasser 400 s. Rare (RCP uniquement).
 - **Document lu PARTIELLEMENT non détecté** : le prompt MAP demande `elements_illisibles` mais le champ n'est **pas exploité**. Un PV illisible à partir de la page 30 passe pour intégralement traité. Piste : le remonter dans `DocumentsNonTraitesModal`.
 - **Écriture du drapeau `documents_non_traites.vu` faite depuis le navigateur** : si une RLS l'interdit, la popup revient à chaque ouverture du rapport (gênant, pas bloquant).
-- **Doc en échec après retries = sauté** du REDUCE — MAIS injecté dans `documents_non_analyses` (déterministe, l.~3186) donc **signalé au client**. Cas réel 27/07 : « PV AGO 30102025 Compressé.pdf » → `lecture_trop_longue` (350 s dépassées). Le timeout est **déjà au plafond** → la seule piste est de **repasser le doc raté seul** dans une invocation dédiée.
+- ~~**Doc en échec après retries = sauté** du REDUCE — le timeout est déjà au plafond, seule piste : repasser le doc seul~~ → ✅ **RÉSOLU 29/07** par le **découpage en plages de pages**. La piste envisagée (repasser le doc raté seul) était mauvaise : elle aurait retimeouté à l'identique. Un doc en échec reste injecté dans `documents_non_analyses` (REDUCE) et `documents_non_traites` (colonne BDD → `DocumentsNonTraitesModal`) — **deux champs distincts, ne pas les confondre**.
 - **Mort brutale d'invocation** (~400 s) : rien n'attrape → processing jusqu'au watchdog (1h). Plan heartbeat validé, non codé.
 - **Estimation de durée** basée sur le nb de docs seulement.
 - **`MAX_TOKENS_OUTPUT = 64000` inatteignable** : le mur des ~400 s coupe bien avant (~20 000 mots max). Le vrai plafond est le **temps**, pas le réglage.
@@ -950,7 +1064,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ---
 
-## 🔴 BACKLOG PRIORISÉ (au 27 juillet 2026, **soir**)
+## 🔴 BACKLOG PRIORISÉ (revu le **29 juillet 2026**)
 
 ### Sécurité — par ordre
 1. **🔴 Rotation de la clé service_role** (exposée en mai, jamais tournée). Devenue **plus** critique : le verrou d'`analyser-run` s'appuie dessus.
@@ -960,13 +1074,13 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 5. **🆕 Onboarding pro contournable (constaté 27/07 soir)** : `createUser` pose `email_confirm: true`, donc **« Mot de passe oublié » fonctionne dès la création**. Un client peut se connecter **sans jamais passer par le lien d'invitation** → `pro_onboarding_done` reste `false` ET **les CGV Pro ne sont jamais acceptées** (bandeau « CGV Pro non acceptées » sur des comptes actifs qui consomment des analyses). Correction : écrire `pro_onboarding_done` à la **première connexion**, quel que soit le chemin, et déclencher `CgvProConsentDialog` à ce moment (le composant existe déjà, il se base sur `cgv_pro_accepted_at`).
 6. **README** : documente `VITE_ANTHROPIC_API_KEY=sk-ant-…` — le préfixe `VITE_` **bundle la variable côté client**. Personne ne l'utilise (`.env.example` est propre) mais l'instruction est dangereuse. À supprimer. Fichier vide `supabase/functions/a` à supprimer aussi.
 
-### Qualité de code (constaté 27/07)
-- `AdminPage` 8 874 lignes · `DashboardProPage` 8 519 · `RapportPage` 5 764 · `analyser-run` ~3 300 — pour **6 composants partagés**.
+### Qualité de code (chiffres remesurés le 29/07)
+- `AdminPage` **9 158** lignes · `DashboardProPage` **8 634** · `RapportPage` **6 494** · `analyser-run` **5 262** — pour **6 composants partagés**. *(mesuré le 29/07)*
 - **8 763 `style={{}}` inline contre 869 `className`** : Tailwind installé, quasi inutilisé. Changer une couleur de marque = 8 763 endroits.
 - **253 `any`**, dont dans `stripe-webhook-pro`. `tsconfig.app.json` n'inclut que `src` → **les edge functions ne sont typecheckées par personne**.
 - 47 guides importés statiquement → `GuideArticlePage` pèse **101 kB gzip** pour lire un article (pages purement SEO). `import.meta.glob` lazy → < 15 kB.
 - **Piste de refactoring utile** : `supabase/functions/_shared/prompts.ts` (module partagé). Les Edge Functions ne partagent pas leur code → dupliquer un prompt entre 2 fonctions recréerait exactement le bug du complément. **Une edge function séparée pour le complément serait contre-productive.**
-  - ✅ **Position confirmée le 27/07 soir**, question posée par Alex. Le complément utilise `recalculerCategories`, `validateDiagsManquants`, `buildSystemPrompt`, `callAI`, `extractOneDoc`, `retryDpeCarrez`, `extraireLotsRCP`, `handleAnalyseFailure` — soit l'essentiel du fichier. Une fonction séparée imposerait **2 redéploiements manuels** par correction et ouvrirait la porte à **2 barèmes de score divergents**. Ce qui donne le budget neuf de 400 s, c'est le **self-invoke**, pas le fichier. `analyser-run` fait désormais **~4 400 lignes** : si découpage un jour, sortir ce qui est **stable et non métier** (notation, helpers JSON, appels API), pas une fonctionnalité.
+  - ✅ **Position confirmée le 27/07 soir**, question posée par Alex. Le complément utilise `recalculerCategories`, `validateDiagsManquants`, `buildSystemPrompt`, `callAI`, `extractOneDoc`, `retryDpeCarrez`, `extraireLotsRCP`, `handleAnalyseFailure` — soit l'essentiel du fichier. Une fonction séparée imposerait **2 redéploiements manuels** par correction et ouvrirait la porte à **2 barèmes de score divergents**. Ce qui donne le budget neuf de 400 s, c'est le **self-invoke**, pas le fichier. `analyser-run` fait désormais **~5 260 lignes** : si découpage un jour, sortir ce qui est **stable et non métier** (notation, helpers JSON, appels API), pas une fonctionnalité.
 
 ### Produit
 - **Récupération des documents** (idée retenue) : le mandataire envoie un lien au vendeur, checklist ✅/❌, relances auto, analyse lancée quand complet. Se place **avant** l'analyse dans la chaîne → attrape le client plus tôt. Validation terrain proposée : appeler 5 mandataires, une seule question — *« le plus pénible, obtenir les documents ou les comprendre ? »*
@@ -1113,7 +1227,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### Sessions récentes (mai-juillet 2026)
 
-- **Session 25 juillet 2026 ⭐⭐⭐ : Fiabilisation — composition lots, blindage complément, comparaison financière, sticky bar, compteur, fonds travaux millésime** — voir « 🆕 DERNIÈRE SESSION » en tête de fichier.
+- **Session 25 juillet 2026 ⭐⭐⭐ : Fiabilisation — composition lots, blindage complément, comparaison financière, sticky bar, compteur, fonds travaux millésime** — voir la section « 📌 SESSION — 25 juillet 2026 » plus haut.
 - **Session 24 juillet 2026 ⭐⭐⭐ : UX/affichage + fiabilisation comparaison** (temps estimé figé, carnet d'entretien, points forts harmonisés, popup aide, ordre des biens figé + statut processing en base + barre flottante createPortal) + point SEO (24/47 indexés, 1 client venu via Claude) — voir section dédiée.
 
 - **Session 26 juin 2026 ⭐⭐⭐ : Scoring MAISON hors copro / ASL (étapes 1-3)**
@@ -1237,17 +1351,28 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 🎯 Prochaine session — Actions prioritaires
 
-### 🧪 D'abord : valider les déploiements du 25 juillet
-1. **Tester le complément de bout en bout** sur une analyse > 1h (le cas qui plantait) : solde crédits STRICTEMENT inchangé, bandeau bleu au retour sur le rapport, cloche, bouton grisé après succès. Puis un échec simulé si possible → bandeau ambre + Réessayer, rapport d'origine visible.
-2. **Compteur** : analyse 9 docs → « Document 1 sur 9 » … « Synthèse du rapport en cours… ».
-3. **Comparaison** (simple refresh) : taxe foncière visible, totaux justes, cotisation « déjà incluse », barre sticky desktop.
-4. **Fonds travaux** : NOUVELLE analyse du dossier Auteuil → 5,0 % conforme + « Fonds constitué : 13 201 € » + score sans la pénalité −0,5.
+### 🔴 D'abord : les 3 découvertes non corrigées du 29/07
+Toutes dans `analyser-run/index.ts` sauf la n°3 — **un seul redéploiement Supabase** pour 1 et 2.
+1. **`parseJson` robuste + retry sur `json_invalide`** — la section `identite_bien` n'a jamais fonctionné en prod, et le risque vaut pour les 16 sections. Monter aussi `raw.slice(0, 100)` à ~600.
+2. **Garde `annee_construction`** : « année présente sans `precision` » doit valoir au moins `borne_superieure`, sinon n'importe quelle source écrase le RCP sur les rapports d'avant le 28/07.
+3. **`complement_attempts`** (`analyser/index.ts` l.~569) : ne pas décompter une tentative sur un échec technique.
+
+### 🧪 À surveiller sur les prochains gros dossiers
+- Durée de la tranche la plus lente : **210 s constatées** sur 350. Si ça se tend → `DECOUPAGE_PAGES_PAR_TRANCHE` à 15.
+- Durée du REDUCE : il reçoit désormais **beaucoup plus de matière** (471 éléments pour un seul RCP). 385 s, jamais atteint à ce jour.
+- Volume d'appels parallèles : 11 docs × jusqu'à 8 tranches. Aucun rate limit constaté, à surveiller.
+- Répondre à Alain CADIER : lui redemander son PV par mail, le tester sur compte démo, **puis** relancer son complément.
 
 ### 🔒 Sécurité (état au 23 juin, inchangé)
 **Solide** : RLS 34 tables · webhooks signés · admin verrouillé · aucun secret front · prix cohérents · tarifs pro non publics. **🔴 Reste LE must-do : régénérer la clé `service_role`** (dernier verrou avant vraies agences ; démarchage/démos = OK). Puis durcir auth analyser/analyser-run + restreindre CORS.
 
 ### 📋 Rappels transverses
+- ⚠️ **Mapper `RapportPage.tsx` = liste blanche** : `checklist` et les champs `annee_construction_*` y manquent → le chantier checklist du 28/07 est invisible en prod. Tout nouveau champ serveur doit y recevoir sa ligne.
+- `extraireLotsRCP` absent du chemin MAP-REDUCE (impact faible, tout en bas de liste).
+- `DTG_PPT` absent de la liste `type_detecte` du prompt MAP — 1 ligne à ajouter.
+- `elements_illisibles` extrait par le prompt MAP mais **jamais exploité** côté front.
 - Gap renderer : fiche dédiée **FICHE_SYNTHETIQUE** à créer (tombe sur RendererAutre).
+- Fichier vide `supabase/functions/a` à supprimer · `README` documente `VITE_ANTHROPIC_API_KEY` (dangereux, à retirer).
 - Session lifecycle pro (suspendre/résilier/past_due/badges) — session dédiée.
 - Funnel pro : rapport exemple anonymisé PDF, 3 templates emails, argumentaire objections.
 - Réactiver cron `sync-stripe-payments` quand possible ; fix `stripe_payment_id = NULL` upgrades ; upsert atomique webhook.
@@ -1256,5 +1381,6 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 1. Coller ce context.md en début de conversation
 2. Valider chaque chantier avant de coder
 3. Une étape à la fois, fichiers COMPLETS livrés via `present_files` depuis `/mnt/user-data/outputs/`
-4. Builds Vercel complets (`tsc -b && vite build`) avant toute livraison front
-5. Tester sur compte pro démo / agence test après chaque étape
+4. Builds Vercel complets (`npm install` puis `tsc -b && vite build`) avant toute livraison front ; esbuild sur les edge functions
+5. **Tracer une variable jusqu'à sa construction avant d'affirmer un bug** (leçon du 29/07)
+6. Tester sur compte pro démo / agence test après chaque étape
