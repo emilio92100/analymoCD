@@ -18,12 +18,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, Mail } from 'lucide-react';
+import { ChevronRight, Mail, ArrowLeft } from 'lucide-react';
 
 const ENCRE = '#0f2d3d';
 const ACCENT = '#2a7d9c';
 const TRAIT = '#e2e8f0';
 const ACCENT_PALE = '#f0f7fb';
+const CIEL = '#7dd3fc';   // liseré et accents sur fond sombre
 
 export type SectionRef = { id: string; label: string };
 
@@ -31,14 +32,17 @@ export type SectionRef = { id: string; label: string };
    COQUILLE — en-tête, sommaire collant, suivi de lecture
    ══════════════════════════════════════════════════════════════════════ */
 export function LegalLayout({
-  titre, chapeau, maj, sections, children,
+  titre, chapeau, maj, badge, sections, children,
 }: {
   titre: string;
   chapeau: string;
   maj: string;
+  /** Pastille du bandeau : qualifie la nature du document, jamais décorative. */
+  badge: { icon: LucideIcon; label: string };
   sections: SectionRef[];
   children: React.ReactNode;
 }) {
+  const BadgeIcon = badge.icon;
   const [active, setActive] = useState(sections[0]?.id ?? '');
 
   // Suivi de lecture : la section active est la dernière dont le haut est
@@ -72,26 +76,46 @@ export function LegalLayout({
         }
         .legal-corps a { color: ${ACCENT}; font-weight: 600; }
         .legal-somm-lien:hover { background: ${ACCENT_PALE} !important; color: ${ENCRE} !important; }
+        .legal-retour { transition: background .18s, border-color .18s, transform .18s; }
+        .legal-retour:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.45) !important; transform: translateX(-2px); }
+        .legal-retour:focus-visible { outline: 2px solid ${CIEL}; outline-offset: 3px; }
         @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
       `}</style>
 
-      <section style={{ maxWidth: 1120, margin: '0 auto', padding: '44px 24px 88px' }}>
+      {/* ═══ BANDEAU — même grammaire que CGVProPage : dégradé encre→accent,
+           liseré ciel de 4px en pied. C'est le seul moment appuyé de la page :
+           tout le reste reste sobre. ═══ */}
+      <section style={{ background: `linear-gradient(135deg, ${ENCRE} 0%, ${ACCENT} 100%)`, padding: '52px 24px 68px', borderBottom: `4px solid ${CIEL}` }}>
+        <div style={{ maxWidth: 1120, margin: '0 auto' }}>
 
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: ACCENT, textDecoration: 'none', fontWeight: 600, marginBottom: 28 }}>
-          ← Retour à l&apos;accueil
-        </Link>
+          {/* Bouton retour encadré — lisible sur le dégradé, cible tactile large */}
+          <Link to="/" className="legal-retour"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 28,
+              padding: '8px 16px 8px 9px', borderRadius: 100, textDecoration: 'none',
+              background: 'rgba(255,255,255,0.10)', border: '1.5px solid rgba(255,255,255,0.24)',
+              color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.01em',
+            }}>
+            <span aria-hidden style={{ width: 25, height: 25, borderRadius: 100, background: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <ArrowLeft size={14} />
+            </span>
+            Retour à l&apos;accueil
+          </Link>
 
-        {/* En-tête : le chapeau annonce en une phrase ce que la page règle. */}
-        <header style={{ marginBottom: 40, paddingBottom: 28, borderBottom: `2px solid ${TRAIT}` }}>
-          <h1 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, color: ENCRE, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(125,211,250,0.18)', border: '1.5px solid rgba(125,211,250,0.4)', marginBottom: 18 }}>
+            <BadgeIcon size={14} style={{ color: CIEL }} />
+            <span style={{ fontSize: 11, fontWeight: 800, color: CIEL, letterSpacing: '0.12em' }}>{badge.label}</span>
+          </div>
+
+          <h1 style={{ fontSize: 'clamp(30px,5vw,50px)', fontWeight: 900, color: '#fff', marginBottom: 14, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
             {titre}
           </h1>
-          <p style={{ fontSize: 16.5, color: '#475569', lineHeight: 1.65, maxWidth: 720, marginBottom: 16 }}>{chapeau}</p>
-          <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, color: ACCENT, background: ACCENT_PALE, border: `1px solid rgba(42,125,156,0.18)`, borderRadius: 100, padding: '5px 13px', letterSpacing: '0.02em' }}>
-            À jour au {maj}
-          </span>
-        </header>
+          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.85)', maxWidth: 760, lineHeight: 1.6, margin: 0 }}>{chapeau}</p>
+          <p style={{ marginTop: 22, fontSize: 13, color: 'rgba(255,255,255,0.72)' }}>Dernière mise à jour : {maj}</p>
+        </div>
+      </section>
 
+      <section style={{ maxWidth: 1120, margin: '0 auto', padding: '52px 24px 88px' }}>
         <div className="legal-grille">
 
           {/* Sommaire — colonne collante sur grand écran */}
@@ -148,22 +172,22 @@ export function LegalLayout({
    ══════════════════════════════════════════════════════════════════════ */
 export function EnClair({ points }: { points: { texte: string; ancre: string; ancreLabel: string }[] }) {
   return (
-    <div style={{ background: `linear-gradient(135deg, ${ENCRE}, #1c4a5f)`, borderRadius: 18, padding: '26px 28px', marginBottom: 48 }}>
-      <p style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
+    <div style={{ background: '#fff', border: `1.5px solid ${TRAIT}`, borderLeft: `4px solid ${ACCENT}`, borderRadius: 14, padding: '24px 26px', marginBottom: 48 }}>
+      <p style={{ fontSize: 11, fontWeight: 800, color: ACCENT, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
         En clair
       </p>
-      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 20, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20, lineHeight: 1.5 }}>
         L&apos;essentiel en quelques lignes. Ce résumé n&apos;a pas de valeur contractuelle : le texte complet fait foi.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {points.map((p, i) => (
           <div key={i} style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}>
-            <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, background: 'rgba(125,211,250,0.16)', border: '1px solid rgba(125,211,250,0.3)', color: '#7dd3fc', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+            <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, background: ACCENT_PALE, border: `1px solid rgba(42,125,156,0.25)`, color: ACCENT, fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
               {i + 1}
             </span>
-            <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.92)', lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontSize: 14.5, color: '#374151', lineHeight: 1.6, margin: 0 }}>
               {p.texte}{' '}
-              <a href={`#${p.ancre}`} style={{ color: '#7dd3fc', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              <a href={`#${p.ancre}`} style={{ color: ACCENT, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                 {p.ancreLabel} →
               </a>
             </p>
