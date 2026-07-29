@@ -157,8 +157,16 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
       </div>
 
       {/* Toggle clair/sombre — affiché en HAUT sur mobile uniquement (entre logo et CTA) */}
+      {/* ⚠️ position+zIndex INDISPENSABLES : le logo au-dessus porte un
+          marginBottom NEGATIF (-8 en clair, -35 en sombre) qui remonte ce bloc
+          SOUS lui. Et comme le conteneur du logo est en position:relative, il
+          se peint AU-DESSUS de ce bloc statique : les taps sur le haut du
+          bouton atterrissaient sur le <Link to="/"> du logo et renvoyaient à
+          l'accueil (une fois sur deux, selon l'endroit touché — et quasi
+          systematiquement en mode sombre où le recouvrement fait 35px).
+          Ne pas retirer sans supprimer d'abord la marge négative du logo. */}
       {isMobile && (
-        <div style={{ padding: '6px 14px 0' }}>
+        <div style={{ padding: '6px 14px 0', position: 'relative', zIndex: 2 }}>
           {themeToggle}
         </div>
       )}
@@ -190,7 +198,9 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto' }}>
+      {/* overscrollBehavior:'contain' → arrivé en haut/bas de ce menu, le geste
+          ne se propage PLUS au dashboard derrière (scroll chaining). */}
+      <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto', overscrollBehavior:'contain' }}>
         <p style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.12em', padding:'10px 10px 5px', textTransform:'uppercase' }}>Menu</p>
         {navItems.map(item => {
           const Icon = item.icon;
@@ -359,11 +369,12 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
         <AnimatePresence>
         {bellOpen && (
           <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="notif-panel"
             style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 440, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
             </div>
-            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+            <div className="notif-list" style={{ maxHeight: 400, overflowY: 'auto', overscrollBehavior: 'contain' }}>
               {(!notifications || notifications.length === 0) ? (
                 <div style={{ padding: '24px 16px', textAlign: 'center' }}>
                   <Bell size={20} style={{ color: '#e2e8f0', marginBottom: 8 }} />
@@ -761,7 +772,7 @@ export default function DashboardPage() {
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'#f5f9fb', fontFamily:"'DM Sans', system-ui, sans-serif" }}>
       <div className="desktop-sidebar" style={{ width:260, flexShrink:0 }}>
-        <div style={{ position:'fixed', top:0, left:0, width:260, height:'100vh', zIndex:50, overflowY:'auto' }}>
+        <div style={{ position:'fixed', top:0, left:0, width:260, height:'100vh', zIndex:50, overflowY:'auto', overscrollBehavior:'contain' }}>
           <Sidebar unreadTickets={unreadTickets}/>
         </div>
       </div>
@@ -1005,6 +1016,20 @@ export default function DashboardPage() {
 
       <style>{`
         @media (max-width: 767px) {
+          /* Panneau notifications — la largeur de 440px a été pensée pour le
+             bureau. Sur mobile, ancré sur la cloche (right:0), il débordait à
+             GAUCHE de l'écran et le texte était coupé. On l'épingle donc dans
+             le viewport : left+right fixes, plus aucun débordement possible
+             quelle que soit la largeur de l'écran. */
+          .notif-panel {
+            position: fixed !important;
+            left: 10px !important;
+            right: 10px !important;
+            top: 70px !important;
+            width: auto !important;
+            max-width: none !important;
+          }
+          .notif-list { max-height: 60vh !important; }
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
