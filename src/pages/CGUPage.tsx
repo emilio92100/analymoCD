@@ -1,174 +1,182 @@
-import { Link } from 'react-router-dom';
+/**
+ * CGU — refonte visuelle du 29 juillet 2026
+ * Texte juridique repris à l'identique. Seule la présentation change.
+ *
+ * ⚠️ L'ancre #retractation est CONSERVÉE (section 6) : elle est utilisée par
+ * le tunnel de paiement, qui renvoie l'utilisateur vers /cgu#retractation.
+ * Ne pas la renommer sans vérifier les liens sortants.
+ *
+ * ⚠️ Ce texte nomme « l'intelligence artificielle », contrairement à la règle
+ * qui l'interdit sur les pages publiques. C'est probablement volontaire : la
+ * nature automatisée du service fonde la clause de limitation de
+ * responsabilité. Formulation laissée telle quelle — décision à trancher.
+ */
 import { useSEO } from '../hooks/useSEO';
+import { LegalLayout, Section, SubTitle, Liste, Table, Callout, EnClair, BlocContact } from '../components/LegalPage';
+import type { SectionRef } from '../components/LegalPage';
+import { FileText, KeyRound, UserPlus, AlertTriangle, ClipboardCheck, CreditCard, Copyright, ShieldAlert, Activity, Lock, RefreshCw, X, Scale, Mail } from 'lucide-react';
+
+const SECTIONS: SectionRef[] = [
+  { id: 'presentation',   label: '1. Présentation' },
+  { id: 'acces',          label: '2. Accès au service' },
+  { id: 'compte',         label: '3. Création de compte' },
+  { id: 'limites',        label: '4. Nature et limites' },
+  { id: 'obligations',    label: '5. Vos obligations' },
+  { id: 'retractation',   label: '6. Tarifs et paiement' },
+  { id: 'propriete',      label: '7. Propriété intellectuelle' },
+  { id: 'responsabilite', label: '8. Responsabilité' },
+  { id: 'disponibilite',  label: '9. Disponibilité' },
+  { id: 'donnees',        label: '10. Données personnelles' },
+  { id: 'modif',          label: '11. Modification des CGU' },
+  { id: 'resiliation',    label: '12. Résiliation' },
+  { id: 'droit',          label: '13. Droit applicable' },
+  { id: 'contact',        label: '14. Contact' },
+];
 
 export default function CGUPage() {
   useSEO({
     title: "Conditions Générales d'Utilisation — Verimo",
-    description: "Conditions générales d'utilisation du service Verimo : règles d'usage, engagements et responsabilités.",
+    description: "Conditions générales d'utilisation du service Verimo : règles d'usage, tarifs, rétractation, responsabilités et résiliation.",
     canonical: '/cgu',
   });
 
   return (
-    <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
-      <section style={{ maxWidth: 960, margin: '0 auto', padding: '52px 24px 88px' }}>
+    <LegalLayout
+      titre="Conditions Générales d'Utilisation"
+      chapeau="Ce que Verimo fait, ce qu'il ne fait pas, vos droits et les nôtres. À lire avant de créer un compte."
+      maj="mai 2026"
+      sections={SECTIONS}>
 
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#2a7d9c', textDecoration: 'none', fontWeight: 600, marginBottom: 32 }}>
-          ← Retour à l'accueil
-        </Link>
+      <EnClair points={[
+        { texte: "Verimo est une aide à la décision, pas un conseil juridique, financier ou technique. Consultez un professionnel avant d'acheter.", ancre: 'limites', ancreLabel: 'Voir les limites' },
+        { texte: "Un crédit non utilisé est remboursable pendant 14 jours. Une analyse lancée ne l'est plus.", ancre: 'retractation', ancreLabel: 'Voir la rétractation' },
+        { texte: "Vous ne déposez que des documents dont vous avez légalement la possession.", ancre: 'obligations', ancreLabel: 'Voir vos obligations' },
+        { texte: "Vous supprimez votre compte quand vous voulez, depuis votre espace personnel.", ancre: 'resiliation', ancreLabel: 'Voir la résiliation' },
+      ]} />
 
-        <h1 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 8, letterSpacing: '-0.025em' }}>
-          Conditions Générales d'Utilisation
-        </h1>
-        <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 48 }}>Dernière mise à jour : mai 2026</p>
+      <Section id="presentation" icon={FileText} title="1. Présentation du service">
+        <p>Verimo est un service en ligne d&apos;aide à la lecture et à la compréhension de documents immobiliers, fondé et exploité par Alexandre ROGELET (ci-après « Verimo », « nous » ou « le Prestataire »), joignable à l&apos;adresse <a href="mailto:hello@verimo.fr">hello@verimo.fr</a>.</p>
+        <p>Le service est accessible à l&apos;adresse <a href="https://verimo.fr">https://verimo.fr</a> et permet à l&apos;utilisateur de soumettre des documents immobiliers (procès-verbaux d&apos;assemblée générale, règlements de copropriété, diagnostics techniques, appels de charges, compromis de vente, etc.) afin d&apos;en obtenir une analyse structurée générée par intelligence artificielle.</p>
+        <p>Les présentes Conditions Générales d&apos;Utilisation (CGU) régissent l&apos;accès et l&apos;utilisation du service Verimo. En créant un compte ou en utilisant le service, l&apos;utilisateur accepte sans réserve les présentes CGU.</p>
+      </Section>
 
-        {[
-          {
-            title: '1. Présentation du service',
-            content: `Verimo est un service en ligne d'aide à la lecture et à la compréhension de documents immobiliers, fondé et exploité par Alexandre ROGELET (ci-après "Verimo", "nous" ou "le Prestataire"), joignable à l'adresse hello@verimo.fr.
+      <Section id="acces" icon={KeyRound} title="2. Accès au service">
+        <p>Le service Verimo est accessible à toute personne physique majeure ou personne morale disposant d&apos;un accès à Internet et ayant créé un compte utilisateur.</p>
+        <p>L&apos;inscription est gratuite. Certaines fonctionnalités sont soumises à un paiement selon les tarifs en vigueur sur <a href="/tarifs">verimo.fr/tarifs</a>.</p>
+        <p>Verimo se réserve le droit de refuser l&apos;accès au service, de suspendre ou de supprimer un compte en cas de violation des présentes CGU, sans préavis ni indemnité.</p>
+      </Section>
 
-Le service est accessible à l'adresse https://verimo.fr et permet à l'utilisateur de soumettre des documents immobiliers (procès-verbaux d'assemblée générale, règlements de copropriété, diagnostics techniques, appels de charges, compromis de vente, etc.) afin d'en obtenir une analyse structurée générée par intelligence artificielle.
+      <Section id="compte" icon={UserPlus} title="3. Création de compte">
+        <p>L&apos;utilisateur s&apos;engage à fournir des informations exactes, complètes et à jour lors de la création de son compte. Il est seul responsable de la confidentialité de ses identifiants de connexion.</p>
+        <p>Toute utilisation du service avec ses identifiants est réputée effectuée par l&apos;utilisateur lui-même. En cas de perte, de vol ou d&apos;utilisation non autorisée de ses identifiants, l&apos;utilisateur doit en informer Verimo sans délai à l&apos;adresse <a href="mailto:hello@verimo.fr">hello@verimo.fr</a>.</p>
+      </Section>
 
-Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service Verimo. En créant un compte ou en utilisant le service, l'utilisateur accepte sans réserve les présentes CGU.`
-          },
-          {
-            title: '2. Accès au service',
-            content: `Le service Verimo est accessible à toute personne physique majeure ou personne morale disposant d'un accès à Internet et ayant créé un compte utilisateur.
+      <Section id="limites" icon={AlertTriangle} title="4. Nature et limites du service">
+        <p>Verimo est un outil d&apos;aide à la décision. Les rapports générés sont produits automatiquement par un système d&apos;intelligence artificielle à partir des documents fournis par l&apos;utilisateur.</p>
+        <Callout type="warning" title="Ce que les analyses Verimo ne sont pas">
+          Les analyses sont données à titre purement informatif. Elles ne constituent en aucun cas un conseil juridique ou une consultation juridique, un conseil financier ou une expertise comptable, un diagnostic technique certifié, ni une garantie sur l&apos;état du bien immobilier analysé.
+        </Callout>
+        <p>Verimo n&apos;est pas un cabinet d&apos;expertise, de notaires, d&apos;avocats ou de conseillers financiers. L&apos;utilisateur est seul responsable des décisions qu&apos;il prend sur la base des rapports fournis par le service.</p>
+        <p>Verimo recommande à l&apos;utilisateur de consulter un professionnel qualifié (notaire, avocat, expert immobilier) avant toute décision d&apos;achat immobilier.</p>
+      </Section>
 
-L'inscription est gratuite. Certaines fonctionnalités sont soumises à un paiement selon les tarifs en vigueur sur https://verimo.fr/tarifs.
+      <Section id="obligations" icon={ClipboardCheck} title="5. Obligations de l'utilisateur">
+        <p>L&apos;utilisateur s&apos;engage à :</p>
+        <Liste items={[
+          'Utiliser le service conformément à sa destination et aux présentes CGU',
+          <>Ne soumettre que des documents dont il est <strong>légalement en possession</strong></>,
+          'Ne pas tenter de contourner les mécanismes de sécurité du service',
+          "Ne pas utiliser le service à des fins illicites, frauduleuses ou contraires à l'ordre public",
+          'Ne pas reproduire, revendre ou exploiter commercialement les rapports générés sans autorisation écrite préalable de Verimo',
+          'Respecter les droits de propriété intellectuelle de Verimo',
+        ]} />
+        <p>L&apos;utilisateur garantit qu&apos;il dispose des droits nécessaires sur les documents qu&apos;il soumet à l&apos;analyse.</p>
+      </Section>
 
-Verimo se réserve le droit de refuser l'accès au service, de suspendre ou de supprimer un compte en cas de violation des présentes CGU, sans préavis ni indemnité.`
-          },
-          {
-            title: '3. Création de compte',
-            content: `L'utilisateur s'engage à fournir des informations exactes, complètes et à jour lors de la création de son compte. Il est seul responsable de la confidentialité de ses identifiants de connexion.
+      <Section id="retractation" icon={CreditCard} title="6. Tarifs et paiement">
+        <p>Les tarifs du service sont indiqués en euros toutes taxes comprises (TTC) sur la page <a href="/tarifs">verimo.fr/tarifs</a>.</p>
+        <p>Le paiement est effectué en ligne via Stripe, prestataire de paiement sécurisé. Verimo ne stocke aucune donnée bancaire.</p>
 
-Toute utilisation du service avec ses identifiants est réputée effectuée par l'utilisateur lui-même. En cas de perte, de vol ou d'utilisation non autorisée de ses identifiants, l'utilisateur doit en informer Verimo sans délai à l'adresse hello@verimo.fr.`
-          },
-          {
-            title: '4. Nature et limites du service',
-            content: `Verimo est un outil d'aide à la décision. Les rapports générés sont produits automatiquement par un système d'intelligence artificielle à partir des documents fournis par l'utilisateur.
+        <SubTitle>Droit de rétractation</SubTitle>
+        <p>Conformément à l&apos;article L221-28, 13° du Code de la consommation, les contenus numériques fournis sur support immatériel dont l&apos;exécution commence avec l&apos;accord exprès du consommateur et après son renoncement exprès à son droit de rétractation ne peuvent faire l&apos;objet d&apos;une rétractation.</p>
+        <p>Au moment du paiement, une case à cocher est présentée à l&apos;utilisateur pour qu&apos;il donne son accord exprès au démarrage immédiat du service et reconnaisse perdre son droit de rétractation une fois l&apos;analyse lancée. Cette validation est obligatoire pour finaliser l&apos;achat.</p>
 
-⚠️ Les analyses fournies par Verimo sont données à titre purement informatif. Elles ne constituent en aucun cas :
-• Un conseil juridique ou une consultation juridique
-• Un conseil financier ou une expertise comptable
-• Un diagnostic technique certifié
-• Une garantie sur l'état du bien immobilier analysé
+        <SubTitle>En pratique</SubTitle>
+        <Table
+          headers={['Situation', 'Remboursement']}
+          rows={[
+            ['Crédit non utilisé — aucune analyse lancée', <><strong>Oui</strong>, dans les 14 jours suivant l&apos;achat, sur simple demande à <a href="mailto:hello@verimo.fr">hello@verimo.fr</a></>],
+            ['Crédit utilisé — analyse lancée, rapport généré', <><strong>Non</strong> — le service est considéré comme exécuté</>],
+          ]} />
+        <Callout type="info" title="Anomalie de facturation">
+          Vous disposez de <strong>30 jours</strong> pour nous signaler une anomalie, à <a href="mailto:hello@verimo.fr">hello@verimo.fr</a>.
+        </Callout>
+      </Section>
 
-Verimo n'est pas un cabinet d'expertise, de notaires, d'avocats ou de conseillers financiers. L'utilisateur est seul responsable des décisions qu'il prend sur la base des rapports fournis par le service.
+      <Section id="propriete" icon={Copyright} title="7. Propriété intellectuelle">
+        <p>L&apos;ensemble des éléments constituant le service Verimo (interface, logo, textes, rapports générés, algorithmes) est protégé par les dispositions du Code de la propriété intellectuelle.</p>
+        <p>Toute reproduction, représentation, modification ou exploitation non autorisée de ces éléments est interdite et constitue une contrefaçon sanctionnée par la loi.</p>
+        <p>Les rapports générés par Verimo à partir des documents de l&apos;utilisateur sont mis à sa disposition pour un usage personnel et non commercial. Ils ne peuvent être revendus ou utilisés à des fins commerciales sans autorisation préalable.</p>
+      </Section>
 
-Verimo recommande à l'utilisateur de consulter un professionnel qualifié (notaire, avocat, expert immobilier) avant toute décision d'achat immobilier.`
-          },
-          {
-            title: '5. Obligations de l\'utilisateur',
-            content: `L'utilisateur s'engage à :
+      <Section id="responsabilite" icon={ShieldAlert} title="8. Responsabilité">
+        <p>Verimo s&apos;engage à mettre en œuvre tous les moyens raisonnables pour assurer la disponibilité et la qualité du service. Toutefois, Verimo ne peut garantir :</p>
+        <Liste items={[
+          "L'exactitude, l'exhaustivité ou la pertinence des analyses générées",
+          'La disponibilité continue et ininterrompue du service',
+          "L'absence d'erreurs dans les rapports produits par intelligence artificielle",
+        ]} />
+        <SubTitle>Cas d&apos;exclusion</SubTitle>
+        <p>La responsabilité de Verimo ne saurait être engagée en cas de :</p>
+        <Liste items={[
+          "Décision prise par l'utilisateur sur la base d'un rapport Verimo",
+          "Erreur ou omission dans l'analyse d'un document",
+          'Interruption temporaire du service pour maintenance',
+          'Force majeure au sens de l\u2019article 1218 du Code civil',
+        ]} />
+        <Callout type="warning" title="Plafond de responsabilité">
+          En tout état de cause, la responsabilité de Verimo est limitée au montant des sommes effectivement payées par l&apos;utilisateur au cours des <strong>12 derniers mois</strong>.
+        </Callout>
+      </Section>
 
-• Utiliser le service conformément à sa destination et aux présentes CGU
-• Ne soumettre que des documents dont il est légalement en possession
-• Ne pas tenter de contourner les mécanismes de sécurité du service
-• Ne pas utiliser le service à des fins illicites, frauduleuses ou contraires à l'ordre public
-• Ne pas reproduire, revendre ou exploiter commercialement les rapports générés sans autorisation écrite préalable de Verimo
-• Respecter les droits de propriété intellectuelle de Verimo
+      <Section id="disponibilite" icon={Activity} title="9. Disponibilité et maintenance">
+        <p>Verimo s&apos;efforce d&apos;assurer la disponibilité du service 24 h/24 et 7 j/7. Des interruptions pour maintenance peuvent survenir et seront, dans la mesure du possible, communiquées à l&apos;avance.</p>
+        <p>Verimo se réserve le droit de faire évoluer, modifier ou interrompre tout ou partie du service à tout moment, sans obligation d&apos;en informer préalablement les utilisateurs.</p>
+      </Section>
 
-L'utilisateur garantit qu'il dispose des droits nécessaires sur les documents qu'il soumet à l'analyse.`
-          },
-          {
-            title: '6. Tarifs et paiement',
-            content: `Les tarifs du service sont indiqués en euros toutes taxes comprises (TTC) sur la page https://verimo.fr/tarifs.
+      <Section id="donnees" icon={Lock} title="10. Données personnelles">
+        <p>Le traitement des données personnelles des utilisateurs est régi par notre <a href="/confidentialite">politique de confidentialité</a>.</p>
+        <p>Conformément au Règlement (UE) 2016/679 (RGPD) et à la loi n°78-17 du 6 janvier 1978 modifiée, l&apos;utilisateur dispose de droits d&apos;accès, de rectification, d&apos;effacement et de portabilité sur ses données, exerçables à l&apos;adresse <a href="mailto:hello@verimo.fr">hello@verimo.fr</a>.</p>
+      </Section>
 
-Le paiement est effectué en ligne via Stripe, prestataire de paiement sécurisé. Verimo ne stocke aucune donnée bancaire.
+      <Section id="modif" icon={RefreshCw} title="11. Modification des CGU">
+        <p>Verimo se réserve le droit de modifier les présentes CGU à tout moment. Les modifications prennent effet dès leur publication sur le site.</p>
+        <p>L&apos;utilisateur sera informé des modifications substantielles par e-mail ou par notification dans l&apos;application. La poursuite de l&apos;utilisation du service après notification vaut acceptation des nouvelles CGU.</p>
+      </Section>
 
-Droit de rétractation — Conformément à l'article L221-28, 13° du Code de la consommation, les contenus numériques fournis sur support immatériel dont l'exécution commence avec l'accord exprès du consommateur et après son renoncement exprès à son droit de rétractation ne peuvent faire l'objet d'une rétractation.
+      <Section id="resiliation" icon={X} title="12. Résiliation">
+        <p>L&apos;utilisateur peut supprimer son compte à tout moment depuis les paramètres de son espace personnel.</p>
+        <Callout type="warning" title="La suppression est définitive">
+          Supprimer votre compte entraîne la <strong>perte définitive</strong> des analyses et rapports stockés.
+        </Callout>
+        <p>Verimo peut suspendre ou résilier un compte en cas de violation des présentes CGU, de comportement frauduleux ou d&apos;utilisation abusive du service, sans préavis ni remboursement des crédits non utilisés en cas de faute grave.</p>
+      </Section>
 
-Au moment du paiement, une case à cocher est présentée à l'utilisateur pour qu'il donne son accord exprès au démarrage immédiat du service et reconnaisse perdre son droit de rétractation une fois l'analyse lancée. Cette validation est obligatoire pour finaliser l'achat.
+      <Section id="droit" icon={Scale} title="13. Droit applicable et juridiction">
+        <p>Les présentes CGU sont soumises au droit français.</p>
+        <p>En cas de litige relatif à l&apos;interprétation ou à l&apos;exécution des présentes CGU, les parties s&apos;engagent à rechercher une solution amiable avant tout recours judiciaire.</p>
+        <p>Conformément aux articles L.612-1 et suivants du Code de la consommation, l&apos;utilisateur consommateur peut recourir <strong>gratuitement</strong> à un médiateur de la consommation — coordonnées dans nos <a href="/mentions-legales#droit">mentions légales</a>.</p>
+        <p>À défaut de résolution amiable, tout litige sera soumis à la compétence exclusive des tribunaux français compétents.</p>
+      </Section>
 
-En pratique :
-• Les crédits non utilisés (aucune analyse lancée) peuvent faire l'objet d'un remboursement dans les 14 jours suivant l'achat, sur simple demande à hello@verimo.fr.
-• Les crédits déjà utilisés (analyse lancée, rapport généré) ne sont pas remboursables — le service est alors considéré comme exécuté.
+      <Section id="contact" icon={Mail} title="14. Contact">
+        <Liste items={[
+          <>E-mail : <a href="mailto:hello@verimo.fr">hello@verimo.fr</a></>,
+          <>Site : <a href="https://verimo.fr">https://verimo.fr</a></>,
+        ]} />
+        <BlocContact titre="Une question sur nos conditions ?" texte="Écrivez-nous à" />
+      </Section>
 
-En cas d'anomalie de facturation, l'utilisateur peut contacter hello@verimo.fr dans un délai de 30 jours.`
-          },
-          {
-            title: '7. Propriété intellectuelle',
-            content: `L'ensemble des éléments constituant le service Verimo (interface, logo, textes, rapports générés, algorithmes) est protégé par les dispositions du Code de la propriété intellectuelle.
-
-Toute reproduction, représentation, modification ou exploitation non autorisée de ces éléments est interdite et constitue une contrefaçon sanctionnée par la loi.
-
-Les rapports générés par Verimo à partir des documents de l'utilisateur sont mis à la disposition de l'utilisateur pour un usage personnel et non commercial. Ils ne peuvent être revendus ou utilisés à des fins commerciales sans autorisation préalable.`
-          },
-          {
-            title: '8. Responsabilité',
-            content: `Verimo s'engage à mettre en œuvre tous les moyens raisonnables pour assurer la disponibilité et la qualité du service. Toutefois, Verimo ne peut garantir :
-
-• L'exactitude, l'exhaustivité ou la pertinence des analyses générées
-• La disponibilité continue et ininterrompue du service
-• L'absence d'erreurs dans les rapports produits par intelligence artificielle
-
-La responsabilité de Verimo ne saurait être engagée en cas de :
-• Décision prise par l'utilisateur sur la base d'un rapport Verimo
-• Erreur ou omission dans l'analyse d'un document
-• Interruption temporaire du service pour maintenance
-• Force majeure au sens de l'article 1218 du Code civil
-
-En tout état de cause, la responsabilité de Verimo est limitée au montant des sommes effectivement payées par l'utilisateur au cours des 12 derniers mois.`
-          },
-          {
-            title: '9. Disponibilité et maintenance',
-            content: `Verimo s'efforce d'assurer la disponibilité du service 24h/24 et 7j/7. Des interruptions pour maintenance peuvent survenir et seront, dans la mesure du possible, communiquées à l'avance.
-
-Verimo se réserve le droit de faire évoluer, modifier ou interrompre tout ou partie du service à tout moment, sans obligation d'en informer préalablement les utilisateurs.`
-          },
-          {
-            title: '10. Données personnelles',
-            content: `Le traitement des données personnelles des utilisateurs est régi par la Politique de Confidentialité de Verimo, disponible à l'adresse https://verimo.fr/confidentialite.
-
-Conformément au Règlement (UE) 2016/679 (RGPD) et à la loi n°78-17 du 6 janvier 1978 modifiée, l'utilisateur dispose de droits d'accès, de rectification, d'effacement et de portabilité sur ses données, exercisables à l'adresse hello@verimo.fr.`
-          },
-          {
-            title: '11. Modification des CGU',
-            content: `Verimo se réserve le droit de modifier les présentes CGU à tout moment. Les modifications prennent effet dès leur publication sur le site.
-
-L'utilisateur sera informé des modifications substantielles par e-mail ou par notification dans l'application. La poursuite de l'utilisation du service après notification vaut acceptation des nouvelles CGU.`
-          },
-          {
-            title: '12. Résiliation',
-            content: `L'utilisateur peut supprimer son compte à tout moment depuis les paramètres de son espace personnel. La suppression entraîne la perte définitive des analyses et rapports stockés.
-
-Verimo peut suspendre ou résilier un compte en cas de violation des présentes CGU, de comportement frauduleux ou d'utilisation abusive du service, sans préavis ni remboursement des crédits non utilisés en cas de faute grave.`
-          },
-          {
-            title: '13. Droit applicable et juridiction',
-            content: `Les présentes CGU sont soumises au droit français.
-
-En cas de litige relatif à l'interprétation ou à l'exécution des présentes CGU, les parties s'engagent à rechercher une solution amiable avant tout recours judiciaire.
-
-Conformément aux articles L.612-1 et suivants du Code de la consommation, l'utilisateur consommateur peut recourir gratuitement à un médiateur de la consommation.
-
-À défaut de résolution amiable, tout litige sera soumis à la compétence exclusive des tribunaux français compétents.`
-          },
-          {
-            title: '14. Contact',
-            content: `Pour toute question relative aux présentes CGU :
-
-E-mail : hello@verimo.fr
-Site : https://verimo.fr`
-          },
-        ].map((section, i) => {
-          // Ancre simplifiée pour section 6 (Tarifs et paiement) → /cgu#retractation
-          const anchor = i === 5 ? 'retractation' : undefined;
-          return (
-            <div key={i} id={anchor} style={{ marginBottom: 40, scrollMarginTop: 100 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', marginBottom: 12 }}>{section.title}</h2>
-              <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{section.content}</p>
-            </div>
-          );
-        })}
-
-        <div style={{ marginTop: 48, padding: 24, background: '#f0f7fb', borderRadius: 16, border: '1px solid rgba(42,125,156,0.15)' }}>
-          <p style={{ fontSize: 14, color: '#2a7d9c', fontWeight: 600, marginBottom: 4 }}>Une question sur nos conditions ?</p>
-          <p style={{ fontSize: 14, color: '#64748b' }}>Contactez-nous à <a href="mailto:hello@verimo.fr" style={{ color: '#2a7d9c', fontWeight: 600 }}>hello@verimo.fr</a> — nous répondons sous 48h.</p>
-        </div>
-
-      </section>
-    </main>
+    </LegalLayout>
   );
 }
