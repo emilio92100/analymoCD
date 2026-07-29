@@ -1,117 +1,132 @@
-import { Link } from 'react-router-dom';
+/**
+ * MENTIONS LÉGALES — refonte visuelle du 29 juillet 2026
+ * Le texte juridique est repris à l'identique de la version précédente.
+ * Seule la présentation change (voir src/components/LegalPage.tsx).
+ *
+ * ⚠️ LACUNE SIGNALÉE, NON COMBLÉE : la section « Éditeur » ne mentionne ni
+ * forme juridique, ni SIREN, ni RCS, ni adresse postale, ni numéro de TVA —
+ * alors que l'article 6-III de la LCEN les exige d'un site marchand. La fiche
+ * ci-dessous est prête à les recevoir : il manque seulement la réponse à
+ * « quelle entité exploite Verimo ». À ne pas inventer.
+ */
 import { useSEO } from '../hooks/useSEO';
+import { LegalLayout, Section, SubTitle, Liste, Table, Callout, Fiche, EnClair, BlocContact } from '../components/LegalPage';
+import type { SectionRef } from '../components/LegalPage';
+import { Building2, Server, Copyright, ShieldAlert, Lock, Cookie, Scale, Mail } from 'lucide-react';
+
+const SECTIONS: SectionRef[] = [
+  { id: 'editeur',        label: '1. Éditeur du site' },
+  { id: 'hebergement',    label: '2. Hébergement' },
+  { id: 'propriete',      label: '3. Propriété intellectuelle' },
+  { id: 'responsabilite', label: '4. Responsabilité' },
+  { id: 'donnees',        label: '5. Données personnelles' },
+  { id: 'cookies',        label: '6. Cookies' },
+  { id: 'droit',          label: '7. Droit applicable' },
+  { id: 'contact',        label: '8. Contact' },
+];
 
 export default function MentionsLegalesPage() {
   useSEO({
     title: 'Mentions légales — Verimo',
-    description: "Mentions légales du site Verimo : éditeur, hébergeur, coordonnées et informations réglementaires.",
+    description: "Mentions légales du site verimo.fr : éditeur, hébergement, propriété intellectuelle, responsabilité et médiation de la consommation.",
     canonical: '/mentions-legales',
   });
 
   return (
-    <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
-      <section style={{ maxWidth: 960, margin: '0 auto', padding: '52px 24px 88px' }}>
+    <LegalLayout
+      titre="Mentions légales"
+      chapeau="Qui édite verimo.fr, où le site est hébergé, à qui appartiennent les contenus, et vers qui vous tourner en cas de litige."
+      maj="mai 2026"
+      sections={SECTIONS}>
 
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#2a7d9c', textDecoration: 'none', fontWeight: 600, marginBottom: 32 }}>
-          ← Retour à l'accueil
-        </Link>
+      <EnClair points={[
+        { texte: "Verimo est édité par Alexandre ROGELET, joignable à hello@verimo.fr.", ancre: 'editeur', ancreLabel: "Voir l'éditeur" },
+        { texte: "Nos rapports sont une aide à la décision. Ils ne remplacent pas l'avis d'un notaire, d'un avocat ou d'un expert.", ancre: 'responsabilite', ancreLabel: 'Voir la responsabilité' },
+        { texte: "Aucun cookie publicitaire, aucun outil de mesure d'audience. C'est pourquoi vous ne voyez aucune bannière.", ancre: 'cookies', ancreLabel: 'Voir les cookies' },
+        { texte: "En cas de litige non résolu, un médiateur de la consommation est désigné et gratuit.", ancre: 'droit', ancreLabel: 'Voir la médiation' },
+      ]} />
 
-        <h1 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 8, letterSpacing: '-0.025em' }}>
-          Mentions légales
-        </h1>
-        <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 48 }}>Dernière mise à jour : mai 2026</p>
+      <Section id="editeur" icon={Building2} title="1. Éditeur du site">
+        <p>Le site verimo.fr est édité par :</p>
+        <Fiche lignes={[
+          { cle: 'Service', valeur: 'Verimo' },
+          { cle: 'Fondateur et responsable éditorial', valeur: 'Alexandre ROGELET' },
+          { cle: 'Directeur de la publication', valeur: 'Alexandre ROGELET' },
+          { cle: 'Adresse e-mail', valeur: <a href="mailto:hello@verimo.fr">hello@verimo.fr</a> },
+          { cle: 'Site web', valeur: <a href="https://verimo.fr">https://verimo.fr</a> },
+        ]} />
+      </Section>
 
-        {[
-          {
-            title: '1. Éditeur du site',
-            content: `Le site verimo.fr est édité par :
+      <Section id="hebergement" icon={Server} title="2. Hébergement">
+        <p>Le site est hébergé et les données sont stockées par les prestataires suivants :</p>
+        <Table
+          headers={['Prestataire', 'Rôle', 'Adresse']}
+          rows={[
+            ['Vercel Inc.', 'Hébergement du site', '340 Pine Street, Suite 701 — San Francisco, CA 94104, États-Unis'],
+            ['Supabase Inc.', 'Stockage des données', '970 Toa Payoh North, #07-04 — Singapore 318992'],
+          ]} />
+        <p style={{ fontSize: 13.5, color: '#64748b' }}>
+          Le détail des traitements et des garanties associées figure dans notre{' '}
+          <a href="/confidentialite">politique de confidentialité</a>.
+        </p>
+      </Section>
 
-Verimo
-Fondateur et responsable éditorial : Alexandre ROGELET
-Adresse e-mail : hello@verimo.fr
-Site web : https://verimo.fr
+      <Section id="propriete" icon={Copyright} title="3. Propriété intellectuelle">
+        <p>L&apos;ensemble du contenu du site verimo.fr (textes, graphismes, logotypes, icônes, images, rapports générés) est la propriété exclusive de Verimo ou de ses partenaires, et est protégé par les lois françaises et internationales relatives à la propriété intellectuelle.</p>
+        <p>Toute reproduction, représentation, modification, publication ou adaptation de tout ou partie des éléments du site, quel que soit le moyen ou le procédé utilisé, est interdite sauf autorisation écrite préalable de Verimo.</p>
+        <Callout type="info" title="Vos rapports vous appartiennent — pour un usage personnel">
+          Les rapports générés par Verimo à partir des documents fournis par l&apos;utilisateur sont destinés à un usage personnel et ne peuvent être revendus ou diffusés commercialement sans autorisation.
+        </Callout>
+      </Section>
 
-Directeur de la publication : Alexandre ROGELET`
-          },
-          {
-            title: '2. Hébergement',
-            content: `Le site est hébergé par :
+      <Section id="responsabilite" icon={ShieldAlert} title="4. Responsabilité">
+        <p>Les informations contenues sur ce site sont aussi précises que possible. Verimo s&apos;efforce de tenir son site à jour, mais ne peut être tenu responsable des erreurs, omissions ou résultats qui pourraient être obtenus par un mauvais usage des informations diffusées.</p>
+        <Callout type="warning" title="Nos rapports ne remplacent pas un professionnel">
+          Les rapports d&apos;analyse sont établis uniquement à partir des documents fournis par l&apos;utilisateur. Ils constituent une aide à la décision et ne remplacent pas l&apos;avis d&apos;un professionnel de l&apos;immobilier, d&apos;un notaire, d&apos;un avocat ou d&apos;un expert. Verimo ne saurait être tenu responsable des décisions prises sur la base de ses analyses.
+        </Callout>
+        <p>Verimo ne pourra être tenu responsable des dommages directs ou indirects causés au matériel de l&apos;utilisateur lors de l&apos;accès au site verimo.fr.</p>
+      </Section>
 
-Vercel Inc.
-340 Pine Street, Suite 701
-San Francisco, CA 94104, États-Unis
-https://vercel.com
+      <Section id="donnees" icon={Lock} title="5. Données personnelles">
+        <p>Le traitement de vos données personnelles est régi par notre <a href="/confidentialite">politique de confidentialité</a>.</p>
+        <p>Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d&apos;un droit d&apos;accès, de rectification, d&apos;effacement et de portabilité de vos données. Pour exercer ces droits, écrivez à <a href="mailto:hello@verimo.fr">hello@verimo.fr</a>.</p>
+      </Section>
 
-Les données sont stockées via :
+      <Section id="cookies" icon={Cookie} title="6. Cookies">
+        <p>Le site verimo.fr utilise uniquement des cookies techniques, strictement nécessaires au bon fonctionnement du service.</p>
+        <Callout type="success" title="Pourquoi aucune bannière de consentement">
+          Conformément aux recommandations de la CNIL et à la directive européenne ePrivacy (transposée à l&apos;article 82 de la loi Informatique et Libertés), les cookies strictement nécessaires au fonctionnement d&apos;un service numérique sont dispensés de l&apos;obligation de recueil du consentement préalable. Verimo ne vous présente donc pas de bannière : nous appliquons simplement la loi.
+        </Callout>
+        <SubTitle>Cookies utilisés</SubTitle>
+        <Table
+          headers={['Cookie', 'Rôle', 'Statut']}
+          rows={[
+            ['Session (authentification Supabase)', 'Maintient votre connexion sécurisée entre les pages', 'Strictement nécessaire'],
+            ["Token d'accès", 'Vous identifie sans ressaisir vos identifiants', 'Strictement nécessaire'],
+          ]} />
+        <p>Verimo n&apos;utilise aucun cookie publicitaire, aucun cookie de tracking comportemental, et aucun outil d&apos;analyse de trafic tiers (pas de Google Analytics, pas de pixel publicitaire).</p>
+        <p>Vous pouvez configurer votre navigateur pour bloquer les cookies, mais le service Verimo ne pourra plus fonctionner correctement (connexion impossible).</p>
+      </Section>
 
-Supabase Inc.
-970 Toa Payoh North, #07-04
-Singapore 318992
-https://supabase.com`
-          },
-          {
-            title: '3. Propriété intellectuelle',
-            content: `L'ensemble du contenu du site verimo.fr (textes, graphismes, logotypes, icônes, images, rapports générés) est la propriété exclusive de Verimo ou de ses partenaires, et est protégé par les lois françaises et internationales relatives à la propriété intellectuelle.
+      <Section id="droit" icon={Scale} title="7. Droit applicable et juridiction">
+        <p>Les présentes mentions légales sont régies par le droit français. En cas de litige, et après tentative de résolution amiable, les tribunaux français seront seuls compétents.</p>
+        <SubTitle>Médiation de la consommation</SubTitle>
+        <p>Pour tout litige de consommation non résolu, vous pouvez recourir gratuitement à la médiation. Le médiateur désigné est :</p>
+        <Fiche lignes={[
+          { cle: 'Médiateur', valeur: 'CM2C — Centre de Médiation de la Consommation de Conciliateurs de Justice' },
+          { cle: 'En ligne', valeur: <a href="https://www.cm2c.net" target="_blank" rel="noopener noreferrer">https://www.cm2c.net</a> },
+          { cle: 'Par courrier', valeur: '14 rue Saint-Jean — 75017 Paris' },
+        ]} />
+      </Section>
 
-Toute reproduction, représentation, modification, publication ou adaptation de tout ou partie des éléments du site, quel que soit le moyen ou le procédé utilisé, est interdite sauf autorisation écrite préalable de Verimo.
+      <Section id="contact" icon={Mail} title="8. Contact">
+        <Liste items={[
+          <>E-mail : <a href="mailto:hello@verimo.fr">hello@verimo.fr</a></>,
+          <>Formulaire : <a href="/contact">verimo.fr/contact</a></>,
+        ]} />
+        <BlocContact titre="Une question sur ces mentions ?" texte="Écrivez-nous à" />
+      </Section>
 
-Les rapports générés par Verimo à partir des documents fournis par l'utilisateur sont destinés à un usage personnel et ne peuvent être revendus ou diffusés commercialement sans autorisation.`
-          },
-          {
-            title: '4. Responsabilité',
-            content: `Les informations contenues sur ce site sont aussi précises que possible. Verimo s'efforce de tenir son site à jour, mais ne peut être tenu responsable des erreurs, omissions ou résultats qui pourraient être obtenus par un mauvais usage des informations diffusées.
-
-Les rapports d'analyse générés par Verimo sont établis uniquement à partir des documents fournis par l'utilisateur. Ils constituent une aide à la décision et ne remplacent pas l'avis d'un professionnel de l'immobilier, d'un notaire, d'un avocat ou d'un expert. Verimo ne saurait être tenu responsable des décisions prises sur la base de ses analyses.
-
-Verimo ne pourra être tenu responsable des dommages directs ou indirects causés au matériel de l'utilisateur lors de l'accès au site verimo.fr.`
-          },
-          {
-            title: '5. Données personnelles',
-            content: `Le traitement de vos données personnelles est régi par notre Politique de confidentialité, accessible à l'adresse https://verimo.fr/confidentialite.
-
-Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données. Pour exercer ces droits, contactez-nous à : hello@verimo.fr.`
-          },
-          {
-            title: '6. Cookies',
-            content: `Le site verimo.fr utilise uniquement des cookies techniques, strictement nécessaires au bon fonctionnement du service.
-
-Conformément aux recommandations de la CNIL et à la directive européenne ePrivacy (transposée à l'article 82 de la loi Informatique et Libertés), les cookies strictement nécessaires au fonctionnement d'un service numérique sont dispensés de l'obligation de recueil du consentement préalable de l'utilisateur.
-
-À ce titre, Verimo ne vous présente pas de bannière de consentement aux cookies : nous appliquons simplement la loi.
-
-Cookies utilisés par Verimo :
-— Cookie de session (authentification Supabase) : maintient votre connexion sécurisée entre les pages. Strictement nécessaire.
-— Cookie de token d'accès : permet de vous identifier de façon sécurisée sans ressaisir vos identifiants. Strictement nécessaire.
-
-Verimo n'utilise aucun cookie publicitaire, aucun cookie de tracking comportemental, et aucun outil d'analyse de trafic tiers (pas de Google Analytics, pas de pixel publicitaire).
-
-Vous pouvez configurer votre navigateur pour bloquer les cookies, mais le service Verimo ne pourra plus fonctionner correctement (connexion impossible). Pour en savoir plus, consultez notre Politique de confidentialité.`
-          },
-          {
-            title: '7. Droit applicable et juridiction',
-            content: `Les présentes mentions légales sont régies par le droit français. En cas de litige, et après tentative de résolution amiable, les tribunaux français seront seuls compétents.
-
-Pour tout litige de consommation non résolu, vous pouvez recourir à la médiation de la consommation. Le médiateur désigné est : CM2C (Centre de Médiation de la Consommation de Conciliateurs de Justice), accessible sur https://www.cm2c.net ou par courrier au 14 rue Saint-Jean 75017 Paris.`
-          },
-          {
-            title: '8. Contact',
-            content: `Pour toute question relative aux présentes mentions légales, vous pouvez nous contacter à :
-
-E-mail : hello@verimo.fr
-Site : https://verimo.fr/contact`
-          },
-        ].map((section, i) => (
-          <div key={i} style={{ marginBottom: 40 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', marginBottom: 14, paddingBottom: 10, borderBottom: '1.5px solid #e2e8f0' }}>
-              {section.title}
-            </h2>
-            <div style={{ fontSize: 15, color: '#374151', lineHeight: 1.8, whiteSpace: 'pre-line' }}>
-              {section.content}
-            </div>
-          </div>
-        ))}
-
-      </section>
-    </main>
+    </LegalLayout>
   );
 }
