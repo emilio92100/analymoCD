@@ -127,11 +127,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
         <p style={base} className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</p>
         <h2 style={{ ...base, transitionDelay: '0.05s' }} className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
           {title}{' '}
-          <span className="relative inline-block max-w-fit">
-            <span className="text-[#2a7d9c]">{accent}</span>
-            <span style={{ ...base, transitionDelay: '0.15s', position: 'absolute', bottom: -1, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 9999, transformOrigin: 'left', transform: visible ? 'scaleX(1)' : 'scaleX(0)' }}
-              className="block" />
-          </span>
+          <span className="text-[#2a7d9c]">{accent}</span>
         </h2>
         {sub && <p style={{ ...base, transitionDelay: '0.1s' }} className="text-base md:text-lg text-slate-500 max-w-sm md:max-w-3xl mx-auto leading-relaxed">{sub}</p>}
       </div>
@@ -146,11 +142,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
         className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
         {title}{' '}
-        <span className="relative inline-block max-w-fit">
-          <span className="text-[#2a7d9c]">{accent}</span>
-          <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1] }}
-            className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
-        </span>
+        <span className="text-[#2a7d9c]">{accent}</span>
       </motion.h2>
       {sub && (
         <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
@@ -274,12 +266,6 @@ function HeroSection() {
         {/* DESKTOP */}
         <div className="hidden lg:grid grid-cols-2 gap-6 items-center">
           <div className="flex flex-col items-start text-left">
-            <motion.div variants={up} initial="hidden" animate="show" custom={0}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
-              Analyse immobilière intelligente
-            </motion.div>
-
             <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
               className="text-[clamp(28px,3.2vw,44px)] font-black leading-[1.1] tracking-[-0.03em] text-[#0f172a] mb-5">
               Analysez vos documents{' '}<br />immobiliers{' '}
