@@ -103,7 +103,7 @@ function Confetti({ items }: { items: ConfettiItem[] }) {
   );
 }
 
-function SectionTitle({ label, title, accent, sub }: { label: string; title: string; accent: string; sub?: string }) {
+function SectionTitle({ label, title, accent, sub, saut }: { label: string; title: string; accent: string; sub?: string; saut?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
 
   if (_lowPerf) {
@@ -126,8 +126,8 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       <div ref={ref} className="text-center mb-8 md:mb-12 px-2">
         <p style={base} className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</p>
         <h2 style={{ ...base, transitionDelay: '0.05s' }} className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
-          {title}
-          <span className="block md:whitespace-nowrap text-[#2a7d9c]">{accent}</span>
+          {title}{' '}
+          <span className={saut ? "block text-[#2a7d9c]" : "text-[#2a7d9c]"}>{accent}</span>
         </h2>
         {sub && <p style={{ ...base, transitionDelay: '0.1s' }} className="text-base md:text-lg text-slate-500 max-w-sm md:max-w-3xl mx-auto leading-relaxed">{sub}</p>}
       </div>
@@ -141,8 +141,8 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
         className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</motion.p>
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
         className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
-        {title}
-        <span className="block md:whitespace-nowrap text-[#2a7d9c]">{accent}</span>
+        {title}{' '}
+        <span className={saut ? "block text-[#2a7d9c]" : "text-[#2a7d9c]"}>{accent}</span>
       </motion.h2>
       {sub && (
         <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
@@ -843,6 +843,7 @@ function ProblemSolutionSection() {
             label="Pourquoi Verimo"
             title="Vous avez visité. Vous avez aimé."
             accent="Mais avez-vous vraiment lu ?"
+            saut
             sub="Un achat immobilier, c'est des centaines de pages à parcourir. Verimo vous donne une vision complète et claire — pour décider sans stress."
           />
         </div>
@@ -957,6 +958,7 @@ function WhatWeAnalyzeSection() {
           label="Ce que Verimo analyse"
           title="Toutes les dimensions du bien,"
           accent="en un seul rapport."
+          saut
           sub="Verimo passe au crible chaque catégorie clé d'un dossier immobilier pour vous livrer une vision complète et structurée."
         />
 
