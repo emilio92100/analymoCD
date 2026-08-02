@@ -7,6 +7,7 @@ import DocumentRenderer from './DocumentRenderer';
 import { createAnalyse, markAnalyseFailed, type TypeBien } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useCredits, type Credits } from '../../hooks/useCredits';
+import { PDFDocument } from 'pdf-lib';
 
 // ─── Constantes ───────────────────────────────────────────────
 const MAX_FILE_SIZE_MB = 20;
@@ -40,13 +41,47 @@ function validateFile(file: File): string | null {
   return null;
 }
 
+// ─── Seuils de pages ──────────────────────────────────────────
+// Analyse simple : un seul document attendu. Au-delà de 80 pages on avertit
+// (un RCP volumineux est légitime), au-delà de 150 on refuse : c'est un
+// dossier fusionné, pas un document.
+const SIMPLE_AVERTISSEMENT_PAGES = 80;
+const SIMPLE_BLOCAGE_PAGES = 150;
+// Analyse complète : refus sec au-delà de 200 pages par document. Pas
+// d'avertissement — le client a déjà l'offre supérieure, il n'a nulle part
+// où monter. On lui propose de scinder son fichier.
+const COMPLETE_BLOCAGE_PAGES = 200;
+
+// Clé stable pour associer un nombre de pages à un File
+const cleFichier = (f: File) => `${f.name}_${f.size}`;
+
+// ─── Comptage de pages (local, aucun envoi réseau) ────────────
+// pdf-lib ouvre le PDF dans le navigateur. ignoreEncryption permet de compter
+// même un PDF chiffré. Renvoie 0 si illisible — dans ce cas on laisse passer
+// plutôt que de bloquer à tort sur un PDF exotique mais valide.
+async function compterPages(file: File): Promise<number> {
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await PDFDocument.load(buf, { ignoreEncryption: true, updateMetadata: false });
+    const n = pdf.getPageCount();
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
 // ─── Détection PDF protégé (heuristique rapide) ───────────────
+// Le dictionnaire /Encrypt est référencé depuis le trailer, situé en FIN de
+// fichier. Ne lire que l'en-tête laissait passer la majorité des PDF protégés.
+// On regarde donc les deux extrémités.
 async function isPdfPasswordProtected(file: File): Promise<boolean> {
   try {
     const buf = await file.arrayBuffer();
-    const bytes = new Uint8Array(buf).slice(0, 2048);
-    const str = new TextDecoder('latin1').decode(bytes);
-    return str.includes('/Encrypt');
+    const bytes = new Uint8Array(buf);
+    const dec = new TextDecoder('latin1');
+    const tete = dec.decode(bytes.slice(0, 2048));
+    const queue = dec.decode(bytes.slice(-4096));
+    return tete.includes('/Encrypt') || queue.includes('/Encrypt');
   } catch {
     return false;
   }
@@ -95,6 +130,10 @@ export default function NouvelleAnalyse() {
   const [type, setType] = useState<'document' | 'complete' | null>(null);
   const [typeBienDeclare, setTypeBienDeclare] = useState<TypeBien | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  // Pages comptées au dépôt, indexées par nom+taille (les File n'ont pas d'id stable)
+  const [pagesParFichier, setPagesParFichier] = useState<Record<string, number>>({});
+  // Fichier en attente de confirmation (analyse simple, 81-150 pages)
+  const [avertissementPages, setAvertissementPages] = useState<{ file: File; pages: number } | null>(null);
 
   const [progress, setProgress] = useState(0);
 
@@ -217,7 +256,7 @@ export default function NouvelleAnalyse() {
   };
   const plan = type ? plans[type] : null;
 
-  const resetUpload = () => { setFiles([]); setError(''); setFileWarnings([]); };
+  const resetUpload = () => { setFiles([]); setError(''); setFileWarnings([]); setPagesParFichier({}); setAvertissementPages(null); };
 
   // ─── Ajout de fichiers avec validation ────────────────────
   const handleFiles = async (incoming: File[]) => {
@@ -236,17 +275,55 @@ export default function NouvelleAnalyse() {
 
     const blocked: FileError[] = [];
     const valid: File[] = [];
+    const pagesDetectees: Record<string, number> = {};
+    // Fichier à soumettre à confirmation (analyse simple, zone 81-150 pages)
+    let aConfirmer: { file: File; pages: number } | null = null;
 
     for (const file of incoming) {
       const err = validateFile(file);
       if (err) { blocked.push({ name: file.name, reason: err }); continue; }
       const protected_ = await isPdfPasswordProtected(file);
       if (protected_) { blocked.push({ name: file.name, reason: 'Ce PDF est protégé par un mot de passe. Retirez la protection depuis Adobe Reader ou votre logiciel PDF, puis réessayez.' }); continue; }
+
+      // Comptage local — 0 signifie "illisible", on laisse alors passer.
+      const pages = await compterPages(file);
+      if (pages > 0) {
+        pagesDetectees[cleFichier(file)] = pages;
+
+        if (isSimple && pages > SIMPLE_BLOCAGE_PAGES) {
+          blocked.push({
+            name: file.name,
+            reason: `Document trop volumineux pour une analyse simple — ${pages} pages. Au-delà de ${SIMPLE_BLOCAGE_PAGES} pages, il s'agit généralement d'un dossier regroupant plusieurs documents. L'analyse complète les traite tous séparément et produit un rapport global noté sur 20.`,
+          });
+          continue;
+        }
+
+        if (!isSimple && pages > COMPLETE_BLOCAGE_PAGES) {
+          blocked.push({
+            name: file.name,
+            reason: `Ce document fait ${pages} pages. La limite est de ${COMPLETE_BLOCAGE_PAGES} pages par document. Vous pouvez le scinder en deux fichiers et les charger séparément.`,
+          });
+          continue;
+        }
+
+        if (isSimple && pages > SIMPLE_AVERTISSEMENT_PAGES) {
+          aConfirmer = { file, pages };
+          continue;
+        }
+      }
+
       valid.push(file);
+    }
+
+    if (Object.keys(pagesDetectees).length > 0) {
+      setPagesParFichier(prev => ({ ...prev, ...pagesDetectees }));
     }
 
     if (blocked.length > 0) {
       setError(blocked.map(b => `"${b.name}" : ${b.reason}`).join('\n\n'));
+    }
+    if (aConfirmer) {
+      setAvertissementPages(aConfirmer);
     }
     if (valid.length > 0) {
       const limit = plan?.max || 1;
@@ -258,6 +335,25 @@ export default function NouvelleAnalyse() {
         setError(prev => prev ? `${prev}\n\n${msgLimite}` : msgLimite);
       }
     }
+  };
+
+  // Bascule vers l'analyse complète depuis la modale d'avertissement.
+  // On repart à l'étape type_bien (parcours normal de l'analyse complète)
+  // en conservant le fichier déjà déposé.
+  const basculerVersComplete = () => {
+    const enAttente = avertissementPages;
+    setAvertissementPages(null);
+    setError('');
+    setType('complete');
+    if (enAttente) setFiles([enAttente.file]);
+    setStep('type_bien');
+  };
+
+  // Le client confirme qu'il s'agit bien d'un document unique
+  const confirmerAnalyseSimple = () => {
+    const enAttente = avertissementPages;
+    setAvertissementPages(null);
+    if (enAttente) setFiles([enAttente.file]);
   };
 
   // ─── Extraction texte avec warning si vide ────────────────
@@ -857,6 +953,47 @@ export default function NouvelleAnalyse() {
         </div>
       </label>
 
+      {/* ⭐ MODALE — Document volumineux en analyse simple (81 à 150 pages) */}
+      <AnimatePresence>
+        {avertissementPages && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setAvertissementPages(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <motion.div initial={{ scale: 0.94, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.94, y: 12 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 18, padding: '26px 24px', maxWidth: 470, width: '100%', boxShadow: '0 24px 60px rgba(15,45,61,0.3)' }}>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: '#fff7ed', border: '1px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <AlertTriangle size={20} style={{ color: '#c2410c' }} />
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d' }}>
+                  Ce document fait {avertissementPages.pages} pages
+                </div>
+              </div>
+
+              <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.6, marginBottom: 10 }}>
+                L&apos;analyse simple traite <strong style={{ color: '#0f172a' }}>un seul document</strong>. Si votre fichier regroupe plusieurs documents (PV d&apos;AG, règlement, diagnostics…), seul le premier sera analysé.
+              </p>
+              <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.6, marginBottom: 22 }}>
+                S&apos;il s&apos;agit bien d&apos;un document unique — un règlement de copropriété par exemple — vous pouvez continuer.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 9 }}>
+                <button onClick={basculerVersComplete}
+                  style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <ShieldCheck size={16} /> Passer à l&apos;analyse complète — 19,90 €
+                </button>
+                <button onClick={confirmerAnalyseSimple}
+                  style={{ width: '100%', padding: '13px', borderRadius: 12, border: '1.5px solid #e2e8f0', background: '#fff', color: '#0f172a', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  Continuer en analyse simple
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ⭐ BOUTON PRINCIPAL — Lancer l'analyse */}
       <button onClick={() => { lancer(); }} disabled={files.length === 0 || isAnalysing}
         style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0', color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 800, cursor: files.length > 0 ? 'pointer' : 'default', boxShadow: files.length > 0 ? '0 4px 18px rgba(15,45,61,0.2)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s', marginBottom: 20 }}>
@@ -903,6 +1040,22 @@ export default function NouvelleAnalyse() {
             </div>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileText size={13} style={{ color: '#2563eb' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>
+                {type === 'document' ? `${SIMPLE_BLOCAGE_PAGES} pages maximum` : `${COMPLETE_BLOCAGE_PAGES} pages maximum par document`}
+              </span>
+              <span style={{ fontSize: 13.5, color: '#64748b' }}>
+                {type === 'document'
+                  ? " — au-delà, utilisez l'analyse complète"
+                  : ' — au-delà, scindez le fichier en deux et chargez-les séparément'}
+              </span>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -929,8 +1082,14 @@ export default function NouvelleAnalyse() {
                   <FileText size={20} color="#2a7d9c" />
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4, paddingRight: 20 }}>{f.name}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(1)} Mo</span>
+                  {pagesParFichier[cleFichier(f)] > 0 && (
+                    <>
+                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#d1d5db' }} />
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{pagesParFichier[cleFichier(f)]} pages</span>
+                    </>
+                  )}
                   <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#d1d5db' }} />
                   <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '1px 6px', borderRadius: 4, border: '1px solid #bbf7d0' }}>PDF ✓</span>
                 </div>
