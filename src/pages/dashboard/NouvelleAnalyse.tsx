@@ -931,6 +931,104 @@ export default function NouvelleAnalyse() {
         </div>
       )}
 
+      {/* ── DOCUMENTS DÉPOSÉS — placés AVANT la zone de dépôt ────────
+          Le fichier qu'on vient de choisir est l'information la plus
+          importante de l'écran : il doit être vu sans scroller. Poids et
+          nombre de pages sont donnés en clair, pas en légende grise. */}
+      {files.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+
+          {/* ── ANALYSE SIMPLE — un seul document, carte large centrée ── */}
+          {files.length === 1 && plan.max === 1 ? (
+            <div style={{ position: 'relative', padding: '30px 24px', borderRadius: 18, background: '#fff', border: '2px solid #2a7d9c', boxShadow: '0 6px 24px rgba(42,125,156,0.14)', textAlign: 'center' }}>
+              <button onClick={() => { setFiles([]); setPagesParFichier({}); }}
+                aria-label="Retirer le document"
+                style={{ position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: 9, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 16, fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
+
+              <div style={{ width: 62, height: 62, borderRadius: 17, background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <FileText size={30} color="#2a7d9c" />
+              </div>
+
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#16a34a', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 7 }}>
+                Document prêt à analyser
+              </div>
+
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 18, wordBreak: 'break-word' as const, padding: '0 26px' }}>
+                {files[0].name}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                {pagesParFichier[cleFichier(files[0])] > 0 && (
+                  <div style={{ padding: '9px 18px', borderRadius: 11, background: '#f0f7fb', border: '1px solid #d0e8f0' }}>
+                    <div style={{ fontSize: 19, fontWeight: 800, color: '#0f2d3d', lineHeight: 1.1 }}>{pagesParFichier[cleFichier(files[0])]}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.3px' }}>pages</div>
+                  </div>
+                )}
+                <div style={{ padding: '9px 18px', borderRadius: 11, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: 19, fontWeight: 800, color: '#0f2d3d', lineHeight: 1.1 }}>{(files[0].size / 1024 / 1024).toFixed(1)}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.3px' }}>Mo</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ── ANALYSE COMPLÈTE — grille de cartes ── */
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap' as const, gap: 8 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <div style={{ width: 25, height: 25, borderRadius: 8, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800 }}>{files.length}</div>
+                  Document{files.length > 1 ? 's' : ''} prêt{files.length > 1 ? 's' : ''}
+                  {(() => {
+                    const totalPages = files.reduce((s, f) => s + (pagesParFichier[cleFichier(f)] || 0), 0);
+                    const totalMo = files.reduce((s, f) => s + f.size, 0) / 1024 / 1024;
+                    return (
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b' }}>
+                        {totalPages > 0 ? `· ${totalPages} pages ` : ''}· {totalMo.toFixed(1)} Mo
+                      </span>
+                    );
+                  })()}
+                </div>
+                {files.length > 1 && (
+                  <button onClick={() => { setFiles([]); setPagesParFichier({}); }} style={{ fontSize: 11.5, fontWeight: 700, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>Tout retirer</button>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(228px, 1fr))', gap: 11 }}>
+                {files.map((f, i) => {
+                  const pages = pagesParFichier[cleFichier(f)] || 0;
+                  return (
+                    <div key={`${f.name}_${f.size}_${i}`} style={{ position: 'relative', padding: '16px', borderRadius: 15, background: '#fff', border: '1.5px solid #d0e8f0', boxShadow: '0 2px 10px rgba(42,125,156,0.07)', transition: 'all 0.15s' }}
+                      onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(42,125,156,0.14)'; }}
+                      onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = '#d0e8f0'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 10px rgba(42,125,156,0.07)'; }}>
+
+                      <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                        aria-label={`Retirer ${f.name}`}
+                        style={{ position: 'absolute', top: 9, right: 9, width: 25, height: 25, borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 14, fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
+
+                      <div style={{ width: 40, height: 40, borderRadius: 11, background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 11 }}>
+                        <FileText size={19} color="#2a7d9c" />
+                      </div>
+
+                      <div title={f.name} style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 10, paddingRight: 20 }}>{f.name}</div>
+
+                      <div style={{ display: 'flex', gap: 7 }}>
+                        {pages > 0 && (
+                          <div style={{ padding: '5px 10px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #d0e8f0', fontSize: 12.5, fontWeight: 800, color: '#0f2d3d' }}>
+                            {pages} <span style={{ fontWeight: 600, color: '#2a7d9c' }}>pages</span>
+                          </div>
+                        )}
+                        <div style={{ padding: '5px 10px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 12.5, fontWeight: 800, color: '#0f2d3d' }}>
+                          {(f.size / 1024 / 1024).toFixed(1)} <span style={{ fontWeight: 600, color: '#64748b' }}>Mo</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Zone de dépôt — label natif pour compatibilité mobile Safari */}
       <label htmlFor="file-input-mobile"
         style={{ display: 'block', padding: '36px 24px', borderRadius: 18, border: '2px dashed #dde6ec', background: '#fafcfe', textAlign: 'center', cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s' }}
@@ -1059,45 +1157,6 @@ export default function NouvelleAnalyse() {
         </div>
       </div>
 
-      {/* Fichiers sélectionnés — blocs en bas */}
-      {files.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 22, height: 22, borderRadius: 7, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 800 }}>{files.length}</div>
-              Document{files.length > 1 ? 's' : ''} prêt{files.length > 1 ? 's' : ''}
-            </div>
-            {files.length > 1 && (
-              <button onClick={() => setFiles([])} style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>Tout retirer</button>
-            )}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: files.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-            {files.map((f, i) => (
-              <div key={i} style={{ position: 'relative', padding: '16px', borderRadius: 14, background: '#fff', border: '1.5px solid #e0f2fe', boxShadow: '0 2px 10px rgba(42,125,156,0.06)', transition: 'all 0.15s', overflow: 'hidden' }}
-                onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#7dd3fc'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(42,125,156,0.12)'; }}
-                onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e0f2fe'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 10px rgba(42,125,156,0.06)'; }}>
-                <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
-                  style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 13, fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
-                <div style={{ width: 42, height: 42, borderRadius: 11, background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                  <FileText size={20} color="#2a7d9c" />
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4, paddingRight: 20 }}>{f.name}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
-                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(1)} Mo</span>
-                  {pagesParFichier[cleFichier(f)] > 0 && (
-                    <>
-                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#d1d5db' }} />
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{pagesParFichier[cleFichier(f)]} pages</span>
-                    </>
-                  )}
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#d1d5db' }} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '1px 6px', borderRadius: 4, border: '1px solid #bbf7d0' }}>PDF ✓</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </motion.div>
   );
 
