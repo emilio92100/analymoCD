@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 29 juillet 2026 (mis à jour après la session découpage des gros documents)
+# VERIMO — Contexte projet — 3 août 2026 (mis à jour après la session identité visuelle + garde-fous pages)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -26,7 +26,127 @@
 
 ---
 
-## 🆕 DERNIÈRE SESSION — 29 juillet 2026 ⭐⭐⭐
+## 🆕 DERNIÈRE SESSION — 3 août 2026 ⭐⭐⭐
+
+> Point de départ : Alex trouve que le site « fait un peu trop intelligence artificielle », et soupçonne la typographie. La session a dérivé sur trois chantiers — identité visuelle, garde-fous de pages à l'upload, refonte de l'affichage des fichiers déposés — plus un audit des limites d'analyse et **une découverte de coût API majeure non corrigée**.
+>
+> 🧭 **Leçon de méthode n°1 — répondre à la question posée, pas à celle qu'on préfère.** Alex a demandé un avis sur la typo ; j'ai livré un redesign complet du hero (nouveau visuel, palette repondérée, copy réécrite). Il n'a même pas pu juger la typo, tout avait bougé en même temps. **Isoler une variable à la fois quand on soumet un choix esthétique.**
+>
+> 🧭 **Leçon de méthode n°2 — le périmètre montré est le périmètre à modifier.** Alex envoie 2 captures de sections mal coupées ; j'ai modifié le composant partagé `SectionTitle`, donc les 8 sections. Correction : une prop optionnelle `saut`, activée sur les 2 sections concernées uniquement. **Un composant partagé se modifie par option, pas par changement global.**
+>
+> 🧭 **Leçon de méthode n°3 — trois refus d'affilée = l'hypothèse est fausse, pas le goût du client.** 3 polices proposées → refus. 8 polices → refus. C'est en montrant les polices **sur du vrai contenu Verimo** (score /20, catégories, montants) et en sortant de Google Fonts que 3 candidates ont accroché. **Une police se juge sur ce qu'elle porte, pas sur un titre isolé.**
+>
+> 🧭 **Leçon de méthode n°4 — Alex a rattrapé DEUX fois la même erreur de conception.** J'ai proposé de détecter les PDF fusionnés en comptant les **types** de documents → il signale que 2 PV d'AG donnent 1 seul type. J'ai corrigé en comptant les **exemplaires (type + date)** → il signale qu'un DDT contient des diagnostics de **dates et diagnostiqueurs différents**. **Conclusion établie : il n'existe aucun critère automatique séparant un document composite légitime d'un dossier fusionné. La distinction est une convention métier, elle doit être écrite cas par cas.** Chantier abandonné au profit d'un simple plafond de pages.
+
+### ✅ Chantiers livrés
+
+**1. 🎨 IDENTITÉ TYPOGRAPHIQUE — Gabarito sur les titres des pages publiques**
+
+- **Diagnostic** : le site n'utilisait que **DM Sans**, display et body confondus. La hiérarchie ne reposait que sur taille + graisse (`font-black tracking-[-0.03em]`, 27 occurrences). DM Sans est dans le top 5 des Google Fonts des templates SaaS → d'où l'impression « généré ».
+- **Choix retenu par Alex** : **Gabarito** (Google Fonts, graisses 700/800/900), en **`font-extrabold` (800)** — le 900 est trop lourd sur des formes rondes. Écartées : Space Grotesk (police de prédilection des startups IA/crypto — ramènerait exactement au problème de départ) et Instrument Serif (pas de graisse grasse, display uniquement).
+- **Portée : `h1` et `h2` des pages publiques UNIQUEMENT.** Ni le texte courant, ni les `h3`, ni le dashboard, ni les rapports, ni l'admin. **C'est le contraste avec DM Sans qui fait exister la police de titre** — l'appliquer partout la rendrait invisible.
+- **Deux mécanismes différents, pour une raison précise** :
+  - **HomePage** utilise les classes Tailwind → `fontFamily.display` déclaré dans `tailwind.config.js` (**qui était vide, `theme: { extend: {} }` — c'est la première entrée du fichier**), puis `font-display font-extrabold` sur les 4 titres (h1 hero mobile + desktop, `SectionTitle` mobile + desktop).
+  - **Les 15 autres pages publiques** ont leurs titres en **style inline** (`fontWeight: 900`, aucun `className`) → ~20 modifications éparpillées dans 8 fichiers auraient été nécessaires. À la place : une règle CSS ancrée sur `PublicLayout`.
+- **Pourquoi la règle CSS fonctionne malgré les styles inline** : ces titres imposent `fontSize`, `fontWeight`, `color`… mais **aucun ne définit `fontFamily`**. Sans conflit, la règle s'applique. ⚠️ Si un titre reçoit un jour `fontFamily` en dur, la règle sera ignorée pour lui.
+- ⚠️ **Deux points de réglage à connaître** pour changer de police plus tard : `fontFamily.display` dans `tailwind.config.js` (homepage) **et** la règle `.verimo-public h1, h2` dans `index.css` (le reste). Le `<link>` de `index.html` est commun.
+- ⚠️ **À vérifier sur petit écran** : le h1 mobile porte `whitespace-nowrap` sur « avant de signer. » à `clamp(26px, 6.5vw, 34px)`. Gabarito est plus large que DM Sans. Si ça déborde sur iPhone SE → descendre le clamp à 24px.
+
+**2. 🧹 HOMEPAGE — dégraissage du motif répété**
+
+- **Badge « Analyse immobilière intelligente » supprimé** du hero desktop (il n'existait pas sur mobile, bloc `hidden lg:grid`). Motif : le mot « intelligente » contourne l'interdiction du mot « IA » sans rien dire au client.
+- **Animation du trait retirée des 8 `SectionTitle`**, conservée dans le hero. Le **trait statique est gardé partout** (mêmes valeurs : `-bottom-1`, `h-[4px]`, `bg-[#2a7d9c]/25`). Raison : un trait fixe répété 8 fois est une règle graphique ; une animation répétée 8 fois est du bruit. Bonus : 7 animations au scroll en moins sur mobile.
+- **Prop `saut` ajoutée à `SectionTitle`** : insère un `<br />` avant l'accent bleu. Activée sur 2 sections seulement (« Mais avez-vous vraiment lu ? » et « en un seul rapport. »). L'accent reste en `inline-block` — nécessaire pour que le trait se cale sur la largeur du mot et non du conteneur. Pour un futur titre trop long : ajouter `saut` sous son `accent=`, sans toucher au composant.
+
+**3. 🔒 GARDE-FOUS DE PAGES À L'UPLOAD — `NouvelleAnalyse.tsx`**
+
+- **Diagnostic** : **aucune limite de pages n'existait**, ni en simple, ni en complète, ni par document, ni au total. Seules limites : 20 Mo/fichier, 1 fichier en simple, 15 en complète.
+- **Le comptage de pages arrivait trop tard** : il se faisait dans la boucle d'upload de `lancerAnalyseEdge` (`analyse-client.ts` l.~107), donc **après** la consommation du crédit (`NouvelleAnalyse` l.~464). Impossible d'avertir avant lancement. → **Comptage déplacé au dépôt du fichier**, dans `handleFiles`, où le PDF est déjà lu en mémoire pour le test de mot de passe (aucune lecture supplémentaire). Le comptage de `analyse-client.ts` reste en place, il alimente `filePages` pour le découpage serveur.
+- **Seuils retenus** (calibrés sur les chiffres terrain d'Alex : RCP courants 60-70 p, gros RCP 150-200 p, PV d'AG 20-30 p, DDT 60-70 p) :
+
+| Mode | Seuil | Comportement |
+|---|---|---|
+| Simple | 81 → 150 p | **Modale de confirmation** : « Continuer en analyse simple » / « Passer à l'analyse complète — 19,90 € » |
+| Simple | > 150 p | **Refus**, message orientant vers l'analyse complète |
+| Complète | > 200 p / doc | **Refus sec**, proposition de scinder le fichier en deux (15 fichiers autorisés, ça ne coûte rien au client) |
+
+- **Bascule fonctionnelle** : le bouton de la modale fait `setType('complete')`, **conserve le fichier déjà déposé** et renvoie à l'étape `type_bien` → le client ne re-uploade pas.
+- ⚠️ **Pas d'avertissement en analyse complète, volontairement** : le client a déjà l'offre supérieure, il n'a nulle part où monter. Le refus sec suffit.
+- **Repli sûr** : `compterPages` renvoie 0 si `pdf-lib` échoue → le fichier passe sans contrôle. Mieux vaut laisser passer un PDF exotique valide que bloquer un client à tort.
+- **Consigne ajoutée au bloc « Avant de déposer vos documents »**, adaptée au mode : « 150 pages maximum » / « 200 pages maximum par document ».
+
+**4. 🔐 DÉTECTION DES PDF PROTÉGÉS — corrigée**
+
+- `isPdfPasswordProtected` ne lisait que les **2048 premiers octets** à la recherche de `/Encrypt`. Or **le dictionnaire de chiffrement est référencé depuis le trailer, en FIN de fichier** → la majorité des PDF protégés passaient à travers.
+- Conséquence : upload, crédit consommé, appel API, échec, remboursement automatique. Le client perdait plusieurs minutes pour une erreur incompréhensible ; Verimo payait l'appel.
+- **Corrigé** : lecture de la tête (2048 o) **et** de la queue (4096 o). Aucune dépendance ajoutée.
+- ⚠️ **Toujours aucun contrôle serveur** sur les PDF protégés (ni dans `analyser`, ni dans `analyser-run`). `compterPagesPdf` utilise `ignoreEncryption: true` et ne sert donc pas de filet.
+
+**5. 📄 AFFICHAGE DES FICHIERS DÉPOSÉS — remonté et refondu**
+
+- Les fichiers s'affichaient **tout en bas de la page**, après le bouton et le bloc de conditions → invisibles sans scroller. **Déplacés juste après le bandeau d'erreur, avant la zone de dépôt.**
+- **Analyse simple** : carte large centrée, bordure teal 2px, icône 62px, nom en 17px, et **deux blocs chiffrés en 19px** (pages / Mo) au lieu du gris 11px.
+- **Analyse complète** : ligne de récapitulatif avec totaux (« 4 documents prêts · 187 pages · 12,3 Mo ») + grille de cartes avec badges lisibles 12,5px.
+- Badge « PDF ✓ » retiré (tous les fichiers sont des PDF, il ne disait rien). Clé React `key={i}` remplacée par `nom_taille_index` — avec un index seul, supprimer un fichier au milieu décalait l'affichage des suivants.
+
+### ⚠️ Découvertes NON corrigées — par ordre de valeur
+
+**A. 🔴 AUCUN PROMPT CACHING + le découpage renvoie le PDF ENTIER à chaque tranche — probablement le premier poste de coût API**
+- Vérifié : **zéro `cache_control`** dans tout `analyser-run`.
+- Dans `extraireParTranches`, les N tranches envoient **chacune le même `file.id` complet** — seule la consigne de plage de pages change (`Extrais les faits des pages X à Y`).
+- **Conséquence : les tokens d'entrée d'un document sont facturés autant de fois qu'il a de tranches.** Un document de 160 pages = 8 tranches = **8 × son coût d'entrée**. Sur un dossier de 15 gros documents, la facture API peut dépasser les 19,90 € encaissés.
+- Ça n'arrive pas sur des cas malveillants : **c'est le fonctionnement normal sur tout dossier volumineux**.
+- **Correctif** : activer le prompt caching sur les appels de découpage (le document n'est facturé plein tarif qu'une fois, les tranches suivantes le relisent à tarif réduit). Modification dans `callAI`, **sans effet sur les résultats**.
+
+**B. 🟠 Le mode `document` ne passe PAS par le découpage**
+- Routage vérifié : `complement` → `runComplementMap` · `complete` **et** ≥ 6 docs → `runPhaseMap` · **sinon → `runAnalyseWithData` (appel unique)**.
+- Donc en analyse simple, un PDF de 300 pages part **en une seule requête**, sans découpage. Au-delà de ~350 pages on approche la limite de contexte et le timeout de 385 s → échec franc.
+- Le plafond à 150 pages livré aujourd'hui **couvre le cas en pratique**, mais la cause reste.
+
+**C. 🟠 Aucun contrôle serveur du nombre de fichiers hors mode `complement`**
+- `analyser/index.ts` l.~584 : le contrôle `storagePaths.length > 5` est **à l'intérieur du bloc `if (mode === 'complement')`**. Pour `mode: 'document'`, le serveur n'en fait aucun.
+- Le `mode` vient du body de la requête et **n'est jamais recoupé avec le crédit consommé**. Un appel `fetch` direct avec `mode: 'document'` et 15 `storagePaths` passe.
+- Même famille que la faille `consume_pro_credit` (backlog sécurité n°2) : **la logique métier vit dans le front**.
+- ✅ **Ce qui EST bien vérifié côté serveur** (à ne pas re-signaler comme trou) : identité de l'appelant, propriété de l'analyse (403 sinon), et conformité des `storagePaths` au préfixe de l'analyse + absence de `..` (400 sinon). **La sécurité des données est bonne** ; c'est la logique commerciale qui manque.
+
+**D. 🟡 Découpage : au-delà de 160 pages, les tranches s'épaississent silencieusement**
+- `nbTranches = min(8, ceil(pages/20))` puis `taille = ceil(pages/nbTranches)`. Jusqu'à 160 p → 20 p/tranche. À 300 p → **38 p/tranche**. À 500 p → **63 p/tranche**.
+- **Aucune page n'est ignorée**, tout est lu. Mais chaque tranche doit résumer 63 pages dans 32 000 tokens → **troncature silencieuse** de la sortie sur un document dense.
+- C'est un problème de **qualité**, pas d'échec visible. Le plafond à 200 p/doc livré aujourd'hui limite l'exposition.
+
+**E. 🟢 Détection des dossiers fusionnés — chantier ABANDONNÉ, ne pas le relancer tel quel**
+- Objectif : repérer un client qui fusionne 8 documents en un seul PDF et paie l'analyse simple (4,90 €).
+- **Trois pistes successives, toutes invalidées par Alex** : (1) compter les pages → un RCP de 90 p est légitime ; (2) compter les **types** de documents → 2 PV d'AG donnent 1 seul type ; (3) compter les **exemplaires par type + date** → un DDT contient des diagnostics de dates et de diagnostiqueurs différents et serait découpé en 8.
+- **Conclusion établie** : structurellement, « un DDT » et « deux PV d'AG collés » sont identiques. Ce qui les sépare est une **convention du métier immobilier**, pas une propriété du fichier. Toute règle générale produira des faux positifs sur le DDT — **le cas le plus fréquent en analyse simple**.
+- Si le chantier est repris un jour, il faudra **nommer explicitement les regroupements légitimes** (DDT entier quoi qu'il arrive, PV d'AG avec ses annexes, RCP avec ses modificatifs — liste à établir par Alex), et **commencer par une phase d'observation pure** : un champ `documents_ignores` rempli par le moteur **sans changer le comportement d'analyse**, observé 2 semaines en production avant d'activer quoi que ce soit.
+- Alternative légère jamais testée : une phrase dans `buildDocumentPrompt` demandant au moteur de **signaler dans `avis_verimo`** que le fichier contient plusieurs documents et de préciser sur lequel porte l'analyse. Aucun champ nouveau, aucun blocage, retour arrière immédiat.
+
+### 📁 Fichiers livrés (6)
+
+| Fichier | Contenu | Déploiement |
+|---|---|---|
+| `index.html` | Gabarito ajoutée au `<link>` Google Fonts | GitHub → Vercel — **AVANT** `HomePage.tsx` |
+| `tailwind.config.js` | `fontFamily.display` (première entrée du fichier) | GitHub → Vercel — **AVANT** `HomePage.tsx` |
+| `src/index.css` | règle `.verimo-public h1, h2` | GitHub → Vercel |
+| `src/App.tsx` | conteneur `.verimo-public` dans `PublicLayout` | GitHub → Vercel |
+| `src/pages/HomePage.tsx` | badge retiré · trait statique · prop `saut` · `font-display` ×4 | GitHub → Vercel |
+| `src/pages/dashboard/NouvelleAnalyse.tsx` | seuils de pages · modale · fix PDF protégé · affichage refondu | GitHub → Vercel |
+
+> **Aucun SQL. Aucun redéploiement Supabase.** Tout est frontend.
+> ⚠️ **Ordre imposé** : `index.html` + `tailwind.config.js` **avant** `HomePage.tsx` (sinon les titres restent en DM Sans le temps que la config arrive).
+> Typecheck `tsc --noEmit -p tsconfig.app.json` et `vite build` OK sur chaque fichier. Vérifié dans le CSS compilé : `.font-display{font-family:Gabarito,...}` et `.verimo-public h1,.verimo-public h2{font-family:Gabarito,...}` sont bien générés.
+
+### 🧾 Points annexes établis
+
+- **`pdf-lib` est déjà une dépendance** (`^1.17.1`, ajoutée le 29/07) — réutilisée pour le comptage au dépôt, aucun ajout.
+- **Modèle en production : `claude-sonnet-4-6`** (constante `AI_MODEL` dans `analyser-run`).
+- **Tarif Haiku 4.5 vérifié le 03/08** (page officielle Anthropic) : **1 $ / M tokens en entrée, 5 $ / M en sortie**. Utile si un pré-scan est envisagé un jour : en envoyant **du texte extrait côté client** (200 premiers caractères de chaque page via pdf-lib) plutôt que le PDF, un scan de 50 pages revient à ~0,3 centime. Envoyer le PDF entier coûterait plusieurs centimes.
+- **`PublicLayout` (`App.tsx` l.~169) enveloppe 16 pages** : Home, Tarifs, Contact, ContactPro, Exemple, Méthode, Confidentialité, CGU, CGV Pro, Mentions légales, Pro, Mandataires, Guides, GuideArticle, Rejoindre, NotFound. C'est le point d'ancrage propre pour toute règle CSS visant « les pages publiques ».
+- ⚠️ **Le `#2a7d9c` est écrit en dur 876 fois dans `src/`.** Maintenant que `tailwind.config.js` est ouvert, déclarer les couleurs de marque y devient possible — un changement de teal passerait de 876 modifications à une seule.
+
+---
+
+## 📌 SESSION — 29 juillet 2026 ⭐⭐⭐
 
 > Point de départ : un ticket support d'Alain CADIER (PRO) — « Compléter mon dossier » a rejeté un **PV d'AG de 58 pages**. A dérivé sur la refonte de la lecture des gros documents, plus deux correctifs et quatre découvertes non traitées.
 > 🧭 **Leçon de méthode n°1 — j'ai conclu trois fois trop vite, et trois fois à tort.** (a) J'ai affirmé qu'un document en échec entrait dans `documents_analyses` en lisant `for (const e of extraits)` **sans remonter 99 lignes plus haut**, où `extraits` est déjà filtré sur `statut === 'ok'`. (b) J'ai décrit l'ordre du schéma MAP en citant celui de `buildDocumentPrompt` (analyse simple) — deux schémas différents. (c) J'ai annoncé que la composition de la copropriété était faussée en confondant `lots_enumeres` (liste énumérée) et `nb_lots_detail` (répartition affichée). **Règle : tracer une variable jusqu'à sa construction avant d'affirmer quoi que ce soit. Un `grep` sur une ligne n'est pas une lecture.**
@@ -443,173 +563,13 @@ where exists (select 1 from jsonb_array_elements(result->'travaux'->'evoques') e
 - Rapport avec procédures : infobulle « des risques ont été identifiés » et non « aucun document ».
 
 ---
-## 📌 SESSION — 25 juillet 2026 ⭐⭐⭐
+## 📌 SESSIONS 2-3, 24 et 25 juillet 2026 — condensé
 
-> Grosse session fiabilisation : 6 chantiers livrés (2 signalés par Alex en test réel), tous buildés au pipeline Vercel complet. ⚠️ Les fichiers du jour sont **CUMULATIFS** : `analyser-run` livré en fin de session = v4 du jour (cumule les 4 chantiers serveur), `RapportPage.tsx` et `RapportComparaisonPage.tsx` cumulent aussi — toujours déployer la DERNIÈRE version livrée de chaque fichier.
+> Le détail complet de ces trois sessions a été retiré le 03/08 pour alléger le fichier. Les acquis techniques qui restent vrais sont déjà décrits dans les sections thématiques ci-dessous (architecture analyse, notation, crédits, Stripe) et dans « 📜 Historique condensé des sessions ».
 
-### ✅ Chantiers livrés
-
-**1. Composition de la copropriété — 7 catégories + auto-contrôle (cas réel : RCP 49 lots, 24-26 rue Chauveau Neuilly)**
-- Bug : le rapport affichait 13 appartements + 13 parkings + 13 caves = 39/49 — **10 lots invisibles** (7 chambres de service + 3 lots « une pièce »). Causes : schéma `nb_lots_detail` limité à 4 clés + règle prompt « logements = appartements + maisons uniquement ».
-- Fix `analyser-run` : schéma étendu à **7 clés** `{logements (=apparts+studios), maisons, chambres_service, parkings, caves, commerces, autres}` + **AUTO-CONTRÔLE** : quand un doc liste tous les lots (RCP, état descriptif), la somme des catégories DOIT = `nb_lots_total` (exemple Chauveau dans le prompt).
-- Fix `RapportPage` : 7 lignes affichées (🏡 Maisons, 🛏️ Chambres de service, 🧩 Autres lots), label 110→140px, **filet rétrocompatible** : le résidu (total − somme) bascule automatiquement dans « Autres lots » → les anciens rapports redeviennent cohérents sans régénération.
-
-**2. « Compléter mon dossier » — BLINDAGE COMPLET (audit + 5 chemins d'échec corrigés) 🔴**
-- Audit du circuit complet. Déjà sain : rapport existant lu **en base** (pas falsifiable), deadline 7 j vérifiée serveur, cap 5 docs, gratuit, **toujours single-call** (l'aiguillage MAP-REDUCE exclut le mode complement).
-- **5 anomalies trouvées et corrigées** :
-  - (A1) Échec de complément → `status='failed'` masquait le rapport d'origine (le front testait failed AVANT result).
-  - (A2) Échec → remboursement d'un crédit **jamais consommé** (le complément est gratuit) → +1 crédit offert, l'analyse d'origine devenait gratuite.
-  - (A3) 🎯 **Le watchdog tuait ~25 % des compléments SAINS** : il se base sur `created_at` (ancien pour un complément) → matché « processing > 1h » au tick suivant du cron 15 min → tué en plein vol.
-  - (A4) One-shot vérifié uniquement côté front (rejouable en API directe).
-  - (A5) `analyser-retry` avait un **5ᵉ chemin d'échec oublié** : vieux `refundCredit` direct (refund_pro_credit + UPDATE profiles) **contournant le verrou idempotent** de juillet, + fallback `mode || 'normal'` qui aurait raté l'aiguillage MAP-REDUCE d'un dossier requeued.
-- **Fix racine (miroir 4 fichiers)** : tout échec en `mode='complement'` → **AUCUN remboursement** + **restauration `status='completed'`** (rapport d'origine intact) + `progress_message = COMPLEMENT_FAILED_MSG` (constante MIROIR EXACT dans `analyser`, `analyser-run`, `watchdog-stuck-analyses`, `analyser-retry` ; préfixe détecté par `analyse-client.ts` et `RapportPage.tsx`). Appliqué dans `handleAnalyseFailure` (×2), `cleanupAnalyse` (watchdog) et `abandonAnalysis` (retry).
-- **Anti-watchdog** : `analyser` tamponne `last_retry_at = now()` au passage en processing ; la requête « stuck » du watchdog exige désormais created_at **ET** last_retry_at (si présent) au-delà du seuil, sur les 3 branches. Protège compléments ET analyses requeued.
-- **Garde one-shot serveur** (400 `already_complemented`) + refund d'`analyser-retry` aligné sur `refund_analyse_credit` + fallback `'complete'`.
-- **UX** : le popup détecte l'échec via le marqueur (fini le faux « Rapport prêt ! ») et propose Réessayer ; sur le rapport, bandeau bleu « Mise à jour en cours » + polling 8 s auto-refresh, bandeau ambre échec avec bouton **Réessayer** (le one-shot ne bloque pas : `complement_date` n'est posé qu'en succès) ; filet front : failed+result → le rapport s'affiche quand même ; mapping des erreurs 400 (deadline/one-shot/5 docs max).
-- Changement d'onglet pendant un complément : OK dès ~40 % (tout serveur, cloche+email) ; seule phase sensible = l'upload initial. Micro-cas résiduel en backlog : coupure réseau pile entre fin d'upload et appel serveur → faux « Rapport prêt ! » (rien lancé, bouton actif, refaire suffit).
-
-**3. Comparaison — tableau « Résumé financier » : 4 sources ratées + double comptage (signalé par Alex en test)**
-- Taxe foncière jamais affichée (lisait `fin.taxe_fonciere` au lieu du canonique `finances.taxe_fonciere_annuelle`) ; cotisation fonds travaux ratait `cotisation_fonds_travaux_lot_annuelle` (appel de charges) ; fonds à rembourser ratait `fonds_travaux_ancien` + `fonds_rattaches_lot` ; fonds de roulement ratait `avance_tresorerie` ; **double comptage** : la cotisation est déjà incluse dans `charges_annuelles_lot` mais était re-additionnée au total.
-- Fix `RapportComparaisonPage` (`getResultData`) : bons chemins + fallbacks complets, annotation « (déjà incluse dans les charges) » non recomptée, les DEUX fonds pré-état daté additionnés, taxe dans le total et `has_data`, label « Cotisation annuelle ». Tableau calculé **côté client** → simple refresh suffit après push, pas de relance de comparaison.
-
-**4. Comparaison — barre compacte sticky (UX desktop demandée par Alex)**
-- Au scroll > 280 px (desktop ≥ 900 px uniquement), barre fixe sous le header : par bien « BIEN N ⭐ · pastille score colorée · adresse ellipsis », **même grille** que les cartes → mapping colonnes ↔ biens permanent en lisant le détail. `createPortal(document.body)` + framer-motion (leçon overflow du 24/07 réappliquée). Mobile désactivé.
-
-**5. Compteur « Document X sur Y » — l'anomalie du 24/07 enfin corrigée**
-- `analyser-run` : suppression du `+1` fantôme (`progress_total = files.length` en MAP ; REDUCE et final = nbDocs/nbDocs).
-- `NouvelleAnalyse` : titre « Document {current+1} sur {total} » **borné à la lecture** (fix off-by-one inclus) ; ensuite « Synthèse du rapport en cours… » (≥ 6 docs) ou « Analyse approfondie en cours… » (< 6). 9 docs n'affichent plus jamais « sur 10 ».
-
-**6. Fonds de travaux — MILLÉSIME-AWARE + « la résolution adoptée fait foi » (cas réel : PV AG 2023, 31 Bd d'Auteuil Boulogne) 🔴**
-- Bug : recalcul déterministe (serveur ET front) divisait la cotisation **2023** (4 500 €) par le budget **2024** (95 000 €) → 4,7 % → faux « insuffisant » + pénalité −0,5 finances, alors que la 18ᵉ résolution fixe « 5 % du budget prévisionnel de l'exercice **2023** » = 4 500/90 000 = **5,0 % pile conforme**. Piège vérifié au PDF intégral : l'ODJ annonçait 100 720 € (projet syndic), les résolutions adoptées arrêtent 90 000 € (2023) et 95 000 € (2024) — le moteur avait raison, Alex s'était fait avoir 2× en relisant. 😄
-- **Règle validée par Alex** : la résolution ADOPTÉE fait foi (5 % voté = conforme PAR DÉFINITION, jamais pénalisé) ; montant € absent → **reconstituer** = % voté × budget voté du MÊME exercice ; **jamais croiser deux exercices** (millésimes différents sans budget correspondant → on n'écrase plus le statut IA).
-- `analyser-run` : 4 nouveaux champs (`fonds_travaux_pct_vote`, `fonds_travaux_resolution_adoptee`, `fonds_travaux_total_constitue`, `fonds_travaux_total_constitue_date`) + 2 RÈGLES prompt (RESOLUTION FONDS TRAVAUX avec l'exemple réel Auteuil ; FONDS TRAVAUX CONSTITUE = **3ᵉ notion distincte** cotisation copro / capital total copro / part rattachée au lot) + `recalculerCategories` réécrit (priorité % voté → ratio même exercice via `budgets_historique` → sinon pas d'écrasement) + filet de reconstitution du montant.
-- `RapportPage` : miroir front (même cascade), carte renommée « **Cotisation fonds travaux votée** » + tooltip 3-notions + ligne « **Fonds constitué à ce jour : X €** (au date) » (le PV mentionnait 13 201,12 € — capté par les nouvelles analyses), barre avec exercice + « X € requis » sur le bon budget, KPI mis à jour.
-
-### 📦 Déploiement du jour (versions FINALES cumulatives)
-- **GitHub (Vercel auto)** : `RapportPage.tsx` · `RapportComparaisonPage.tsx` · `NouvelleAnalyse.tsx` · `src/lib/analyse-client.ts`
-- **Supabase Studio — redéploiement MANUEL ×4** : `analyser-run` (v4 du jour : compo lots + complément + compteur + fonds travaux) · `analyser` · `watchdog-stuck-analyses` · `analyser-retry`
-- **Aucun SQL** (`last_retry_at` existe depuis la queue v9).
-- ⚠️ Piège vécu : Alex cherchait `analyse-client.ts` dans les edge functions — c'est un fichier **front** (`src/lib/`). Rappel : edge function = dossier `supabase/functions/<nom>/index.ts`.
-
-### 🧪 Tests à faire par Alex (post-déploiement)
-- Complément happy path sur une analyse **> 1h** : solde crédits inchangé, bandeau bleu si retour sur le rapport, cloche, complement_date posé, bouton grisé.
-- Nouvelle analyse 9 docs : « Document 1 sur 9 » → « Synthèse du rapport en cours… ».
-- Comparaison (refresh) : taxe foncière 1 124 € visible Bien 2, total ~6 220 €, barre sticky au scroll.
-- Nouvelle analyse du dossier Auteuil : 5,0 % conforme + « Fonds constitué : 13 201 € » (l'ancien rapport de test affiche déjà 5,0 % via le lookup front, mais statut/score stockés et fonds constitué nécessitent une régénération).
-
----
-
-## 📌 SESSION — 24 juillet 2026 ⭐⭐⭐
-
-> Session UX/affichage + fiabilisation comparaison. Beaucoup de frontend, un prompt, une migration SQL. Tout compile, plusieurs points confirmés en live par Alex.
-
-### ✅ Chantiers livrés
-
-**1. Temps estimé d'analyse — FIGÉ (NouvelleAnalyse.tsx)**
-- Avant : le « temps restant » affiché en haut dépendait du `pct` de progression → il s'effondrait (ex : « ~10-15 min » → « ~1 min » en quelques secondes) parce que l'upload et le MAP parallèle font bondir le pourcentage, puis restait figé pendant la synthèse (phase la plus longue). UX trompeuse.
-- Fix : `tempsRestant` calculé **une seule fois** sur le nombre de docs (≤3 → 2 min, ≤8 → 4 min, ≤12 → 7 min, sinon 10 à 15 min), ne bouge plus. Affiché « Environ X ». Le vrai chrono « Temps écoulé » (déjà présent) reste la valeur qui évolue en direct, désormais visible dès **30 s** (au lieu de 60 s).
-- ⚠️ Limites connues NON traitées (à voir plus tard) : estimation basée sur le **nombre de docs** seulement (un PDF de 200 p compte comme un de 3 p) ; table plafonnée à 13 docs (un dossier de 25 est estimé comme 13).
-
-**2. Compteur « Document X sur Y » en MAP-REDUCE — anomalie identifiée (NON corrigée)**
-- En mode MAP-REDUCE (seuil réel = **`SEUIL_MAP_REDUCE = 6`** dans analyser-run, pas 8/9), `progress_total = files.length + 1` (le +1 = étape de synthèse). Donc « Document 12 sur 16 » pour 15 docs. Incohérence : le message serveur dit « (12/15) » mais `progress_total` vaut 16. Affichage OK sur < 6 docs (total = files.length exact). ~~Signalé à Alex, pas corrigé cette session~~ → ✅ **CORRIGÉ le 25/07** (le +1 retiré côté serveur + libellé « Synthèse » côté front — voir dernière session).
-
-**3. Carnet d'entretien — refonte affichage (RapportPage.tsx, onglet Copro)**
-- Contrats d'entretien : chaque card a maintenant une **icône dédiée par équipement** (helper `contratIcon` : 🛗 ascenseur, 🧯 extincteurs, 🐀 dératisation, 🪳 désinsectisation, 🚪 porte garage, 🌳 jardin, 🔥 chaudière, 💧 compteurs…). Avant : 🏢 générique identique partout → tout se ressemblait.
-- Diagnostics parties communes : **statut (Positif/Négatif/Non effectué) en bandeau centré en bas** de chaque card (avant : collé à droite), carte teintée selon résultat (rouge/vert/gris), icône propre par diagnostic (helpers `diagStatut` + `diagEmoji`). Mapping basé sur le **texte du libellé** → marche pour tout carnet, sans champ structuré dédié.
-
-**4. Points forts / vigilance — harmonisation analyse SIMPLE = COMPLÈTE (DocumentRenderer.tsx)**
-- Avant : l'analyse simple (`PointsFortsVigilances` dans DocumentRenderer) affichait les points sur une seule ligne, sans titre gras. L'analyse complète (RapportPage) découpait « Titre — détail ». Incohérence.
-- Fix : `PointsFortsVigilances` reprend **exactement** le rendu de la complète (bandeaux foncés vert #2f6b3f / brun #9a4a2c + compteur + `splitPoint` titre gras/détail léger). Une seule modif de la définition → les ~18 usages en profitent. Grille responsive (1 col mobile déjà géré).
-
-**5. Format « Titre — détail » des points PAR DOCUMENT — PROMPT (analyser-run/index.ts) ⚠️ REDÉPLOIEMENT MANUEL**
-- Cause racine du point 4 : la règle « Titre court (2-5 mots) — détail » existait déjà mais UNIQUEMENT pour la synthèse finale (racine du JSON). Les `points_forts`/`points_vigilance` **internes à chaque document** (PV_AG, DDT…) n'avaient aucune consigne de format → phrases sans séparateur exploitable → pas de titre gras côté affichage simple.
-- Fix : règle de format ajoutée dans `buildDocumentPrompt` (s'applique à TOUS les documents, titre < 60 caractères pour matcher la limite du `splitPoint` frontend). N'affecte que les **nouvelles** analyses. Le `splitPoint` reste le filet (pas de séparateur → détail simple, jamais cassé).
-
-**6. Popup « Besoin d'aide » — refonte UX (DashboardPage.tsx + DashboardProPage.tsx)**
-- ⚠️ Popup **DUPLIQUÉ dans 2 fichiers** (particulier + pro) — toujours modifier les deux.
-- Motifs : chaque bouton a une **icône colorée en pastille** (analyse=bleu FileText, abonnement=violet CreditCard, bug=rouge Wrench, crédits=vert, autre=gris HelpCircle ; +ambre Users « Volume important » côté pro). Sélection nette (bordure 2px + fond teinté + ombre). Import lucide : ajout `Wrench, HelpCircle` (pro aussi).
-- Popup **élargi 520 → 600 px** + padding 32/34 (plus aéré, libellés sur une ligne).
-
-**7. Comparaison de biens — FIABILISATION COMPLÈTE (le gros chantier) ⭐**
-- ⚠️ Composant `Compare` **partagé** entre dashboard particulier (DashboardPage L529) ET pro (DashboardProPage L7952) — une seule correction couvre les deux.
-- **a) Ordre des biens figé (RapportComparaisonPage.tsx)** : avant, le bien recommandé était déplacé en 1ʳᵉ position (gauche) → « Bien 2 » pouvait apparaître à gauche, déroutant. Fix : `displayOrder` = ordre d'origine (**Bien 1 toujours à gauche, Bien 2 à droite**). Le badge « ⭐ RECOMMANDÉ » suit le bon bien via `bestIdx`, quelle que soit sa position.
-- **b) Suivi « en cours » via BASE (comme une analyse classique)** — 3 pièces coordonnées :
-  - **SQL** : `ALTER TABLE comparaisons ADD COLUMN status` (processing/completed/failed) + `updated_at` + index `(user_id, status)`. Migration = `01-migration-comparaisons-status.sql`. Table `comparaisons` avait 5 colonnes (id, user_id, analyse_ids, verdict **text**, created_at) — pas de status avant.
-  - **Edge Function `comparer`** ⚠️ REDÉPLOIEMENT MANUEL : crée la ligne `status='processing'` (verdict null) **dès le début**, passe à `completed` à la fin (upsert onConflict `user_id,analyse_ids`), `failed` sur erreur API ou parse. Cache inchangé (lit `verdict`, donc ne matche jamais une ligne processing).
-  - **Frontend `Compare.tsx`** : lit les comparaisons `status='processing'` en base, affiche un **spinner « Comparaison en cours… » tout en haut de la page**, polling 4 s jusqu'à résolution. Historique filtré `.not('verdict','is',null)` (les processing ne polluent pas). Robuste multi-appareils/refresh (source de vérité = base). ⚠️ Une 1ʳᵉ version localStorage a été écrite puis **remplacée** par cette version base — ne garder que la version base.
-- **c) Barre flottante « Lancer la comparaison »** : apparaît dès 2-3 biens sélectionnés, **suit le scroll en permanence**. ⚠️ Piège vécu : `position:fixed` NE MARCHE PAS car le `<main>` du dashboard a `overflowX:hidden` (piège classique qui neutralise `fixed`). **Solution = `createPortal` sur `document.body`** → la barre échappe à tous les overflow/transform parents. **CONFIRMÉ LIVE par Alex après le portail.**
-- **d) Bouton « Annuler » retiré** (écran d'attente) : il ne faisait que `setLaunched(false)` côté client, l'Edge Function tournait quand même → trompeur. Retiré (bouton + prop `onCancel` + fonction `handleCancel`).
-
-### 📦 Déployé ✅ (récap de la session, pour mémoire)
-1. **SQL Editor D'ABORD** : `01-migration-comparaisons-status.sql` (sinon le frontend cherche `status` inexistant + l'Edge Function plante)
-2. **GitHub** (Vercel auto) : `NouvelleAnalyse.tsx`, `RapportPage.tsx`, `DocumentRenderer.tsx`, `DashboardPage.tsx`, `DashboardProPage.tsx`, `Compare.tsx`, `RapportComparaisonPage.tsx`
-3. **Supabase Studio — redéploiement MANUEL** : `analyser-run` (format points par doc) ET `comparer` (statut processing)
-- ⚠️ Faire SQL + Edge Functions AVANT le frontend idéalement (sinon erreur silencieuse le temps du décalage, pas de casse).
-
-### 🔎 SEO / indexation — POINT D'ÉTAPE (24 juillet)
-- **Constat** : un client a trouvé Verimo **via Claude** (recherche web) et a payé. Preuve que le SEO alimente déjà l'acquisition via assistants IA. Aucun système de pub — seule la recherche web fait remonter Verimo.
-- **Indexation réelle mesurée (Search Console + repo)** : **24 guides indexés sur 47**. 34 pages indexées au total (24 guides + 10 pages site). Les 47 fichiers existent bien dans `src/guides/` et dans le sitemap (aucun écart).
-- ⚠️ **Les mauvais 23 manquent** : sur les 5 articles piliers, **4 ne sont PAS indexés** (`analyser-pv-ag-avant-achat`, `dpe-comment-lire-avant-achat`, `charges-copropriete-trop-elevees`, `10-documents-avant-offre-achat` ; seul `compromis-vente-clauses-lire` est indexé). Explique pourquoi une recherche « PV d'AG » ne remonte pas Verimo.
-- **Cause** : soumission jamais reprise (quota sauté en mai). Action = **soumettre les 23 manquants** dans Search Console (~10/jour). Alex a commencé cette session.
-- **Autres anomalies vues** : désindexation mi-juin (~40 → 34 pages, jamais remontée) ; `/dashboard/nouvelle-analyse` indexée à tort (robots.txt `Disallow` bloque l'exploration mais PAS l'indexation → il faut un `noindex`, pas un Disallow) ; `/cgu` et `/contact-pro` dans le sitemap jamais indexées ; `lastmod` du sitemap figés au 6 mai.
-- **Prerendering (SSG)** : discuté, **NON prioritaire**. Le site est une SPA React/Vite → les robots sans JS (IA, réseaux sociaux) ne lisent que la coquille `index.html` (meta générique). Google exécute le JS donc indexe. Impact réel = les IA/LinkedIn ne lisent pas le corps des articles, seulement les citent via résultats de recherche. Chantier à risque (peut casser le build), à faire plus tard sur branche de test si besoin de visibilité IA/sociale. Options notées : `vite-react-ssg` (propre, refonte routes), `react-snap` (léger). Items backlog liés : images OG absentes, FAQ dans les articles (format que Google/IA aiment extraire).
-
----
-
-## 📌 SESSION — 2-3 juillet 2026 ⭐⭐⭐
-
-### ✅ Chantiers livrés (à déployer — voir « À DÉPLOYER » plus bas)
-
-**1. Charge des travaux votés (acheteur/vendeur) — CORRECTION LÉGALE**
-- L'app disait à tort « travaux votés = à la charge du vendeur ». Faux : par défaut (art. 6-2 décret 67-223), les appels de fonds exigibles APRÈS la vente sont à la charge de l'**ACHETEUR** ; l'usage notarial les remet au vendeur via une **clause du compromis**.
-- Wording corrigé partout (RapportPage, DocumentRenderer, RapportPrintPage, MethodePage, Aide) : « en principe loi = acheteur, mais en pratique repris par le vendeur via clause — vérifiez la clause ». Bannière rouge → bleue. Bonus scoring +2/+3 gardé (défendable sous « usage »). Prompt : règle « QUI PAIE LES TRAVAUX VOTES » ajoutée dans analyser-run.
-
-**2. Double-comptage tantièmes — CORRECTION PROMPT**
-- Le modèle sommait le tantième du lot + celui de la cave alors que la base « charges communes générales » les incluait déjà → double compte. Règle anti-doublon (lire le tantième PROPRE de chaque ligne, jamais la base « charges communes ») + auto-contrôle (total = base). Front (somme déterministe) inchangé.
-
-**3. Finances du lot : cotisation ALUR + fonds rattachés**
-- Affiche « dont ~X €/an cotisation fonds travaux (ALUR) » sous la charge annuelle + bloc « Fonds rattachés à votre lot » (avance trésorerie + fonds ALUR, à rembourser au vendeur, indicatif). Affiché seulement si présent ET pas de pré-état daté. Complète (RapportPage) + simple (DocumentRenderer fiche appel de charges). Champs ajoutés au prompt.
-
-**4. Badges règles d'usage RCP — CORRECTION FRONT**
-- Ancien : détection naïve (« interdit » seulement) → « Pas d'antenne » passait en vert « ✓ Autorisé » à tort. Nouveau : 4 états (Interdit / Sous conditions / Autorisé / À noter) via négations (« pas de / ne peut pas / aucun »). Plus de faux vert. Front-only.
-
-**5. Redesign points positifs/vigilance — STYLE 1 (validé par Alex)**
-- Design « bandeaux pleins » (vert #2f6b3f / brun #9a4a2c) + **titre gras + détail léger**. Format « **Titre — détail** » : le moteur écrit ce format (règle prompt), le front `RapportPage` le découpe (splitPoint, sépare sur le 1er « — » si titre court, sinon « : », sinon ligne simple). Repli propre anciens rapports. Diagnostics manquants injectés serveur reformatés au même format (« DPE manquant — … »). Backward-compatible.
-
-**6. Timeout analyse 350 → 385 s (PANSEMENT, pas le fix)**
-- `analyser-run` timeoutMs 350000 → 385000. Gain ~1 doc. ⚠️ Marge tombée à ~15 s avant le kill plateforme (~400 s) → sur latence, échec « sale » possible (watchdog au lieu de remboursement propre).
-
-**7. 🔴 Fix crédits : double remboursement + affichage live — VALIDÉ EN LIVE**
-- **Bug A (affichage nav)** : le compteur ne baissait pas au lancement (chaque `useCredits()` = état séparé, nav ≠ page d'analyse). ✅ Fixé via **bus d'événement `verimo:credits-changed`** → nav particulier (`useCredits`) ET pro (`DashboardProPage`) se rafraîchissent en direct. **CONFIRMÉ LIVE : le chiffre baisse au lancement.**
-- **Bug B (double remboursement)** : **3 rembourseurs** (client `NouvelleAnalyse` + `analyser-run` + `watchdog-stuck-analyses`) remboursaient tous → **net +1 crédit gagné à chaque échec**. Particulier ET pro. ✅ Fixé via **verrou idempotent** : SQL `refund_analyse_credit(p_analyse_id)` + colonne `analyses.credit_refunded` (FOR UPDATE + flag → rembourse UNE fois, jamais sur une analyse `completed`). Les 3 rembourseurs appellent cette fonction. Client garde un remboursement direct UNIQUEMENT en pré-lancement (createAnalyse null, aucune analyse créée). **CONFIRMÉ LIVE : +1 exactement, plus de double.**
-
-### 📦 Déployé ✅ (récap de la session, pour mémoire)
-1. **SQL Editor D'ABORD** : `refund_idempotent.sql` (colonne `credit_refunded` + fonction `refund_analyse_credit` + grants authenticated/service_role)
-2. **GitHub** (Vercel auto) : `RapportPage.tsx`, `useCredits.ts`, `NouvelleAnalyse.tsx`, `DashboardProPage.tsx`
-3. **Supabase Studio — redéploiement MANUEL** : `analyser-run` (contient chantiers 1-6 + fix crédit) ET `watchdog-stuck-analyses` (fix crédit)
-
-### 🔬 Diagnostic timeout gros dossiers — CONFIRMÉ (exemple réel : **Dossier Benoist Lucy**)
-- Test **11 docs** (Dossier Benoist Lucy) → timeout à **386 s** (avec 385 s) et **351 s** (avec 350 s). Confirmé aux deux valeurs, à la seconde.
-- Logs shutdown : `reason: EarlyDrop`, **mémoire ~13 Mo**, **CPU ~44** → NI mémoire NI CPU. 100 % du temps = **génération IA en single-call**.
-- **Plafond single-call ≈ 10 docs** (~35 s/doc). 11+ docs = mur, quoi qu'on fasse sur le timeout (collé à la limite plateforme ~400 s).
-- **Mort brutale** (11 docs) : invocation tuée sans passer par `handleAnalyseFailure` → analyse coincée en `processing`, PAS de remboursement propre → seul le **watchdog (1h)** rattrape. Une analyse fantôme (`078a6ff0`) débloquée à la main (SQL `failed` + crédit +1). ⚠️ Piège vécu : mes modifs n'avaient RIEN cassé — un test 2-3 docs marchait ; seuls les gros dossiers meurent. Attention aussi au **fuseau UTC** dans les logs (heure BDD = UTC = heure FR −2).
-
-### 🎯 PROCHAINES SESSIONS (par priorité)
-
-**A. 🔴 Gros dossiers = MAP-REDUCE v2 — ✅ FAIT (en prod, hybride seuil 6 — voir section « ⚙️ Architecture analyse »).** Cadrage d'époque conservé ci-dessous pour mémoire :
-- **Archi = HYBRIDE À SEUIL** : dossiers **≤ ~8 docs** → single-call (rapide, précision max, inchangé) ; **≥ 9 docs** → découpage. Seuil affinable au **nb de pages** plus tard (ex : > 60-70 p).
-- **Le découpage = ressusciter le MAP-REDUCE**, en corrigeant SON SEUL défaut : les fiches MAP étaient trop grosses (« compte rendu exhaustif » jusqu'à 64K tokens → aussi lent que single-call).
-- **Préférence Alex (tranchée)** : fiche par doc = **RÉSUMÉ LIBRE CONCIS** (PAS de grille JSON rigide) — cadré « garde tout ce qui compte pour un acheteur (montants, dates, votes, risques, procédures) mais va à l'essentiel, max ~1 page ». Alex refuse la grille structurée (trop rigide, peur de rater un cas hors-case). ⚠️ Tension assumée : résumé libre court = risque de rater un détail fin ; l'hybride protège (single-call garde la précision max sur les dossiers normaux).
-- **Orchestration** : **self-invoke** pour enchaîner vite (Alex préfère la vitesse à la queue 5 min) + **queue `analyser-retry` en filet** si un maillon casse. ⚠️ POINT CRITIQUE : **sauvegarder la fiche de chaque doc EN BASE avant de supprimer le PDF** (RGPD) — sinon l'invocation suivante cherche un doc déjà supprimé.
-- **Précision** : MAP-REDUCE bien fait ≈ single-call sur l'essentiel, petit risque résiduel sur les recoupements fins entre docs (prix du découpage, acceptable car réservé aux gros dossiers → mieux qu'un timeout à 0 %).
-
-**B. 🟠 Watchdog — PARTIELLEMENT TRAITÉ le 25/07** (tampon `last_retry_at` : ne tue plus les compléments/relances saines). Reste : réduire les seuils —
-- Actuel : `processing > 1h`, `files_ready > 30 min`, `queued > 1h30`. Trop long (fantôme « en cours » jusqu'à 1h → mauvaise UX, vécu cette session).
-- **Plan** : `processing` 1h → **~10-15 min** (sûr : avec timeout 385 s, aucune analyse vivante ne dépasse ~7 min) + cron watchdog plus fréquent + filet front (« échec » si « en cours » > ~8 min sans réponse).
-
-**C. 🔴 Régénérer la clé service_role** (compromise 11 mai) — TOUJOURS EN ATTENTE, dernier verrou avant onboarding vraies agences.
-
----
+- **25 juillet** : composition des lots (double comptage corrigé), blindage du complément, comparaison financière, sticky bar, compteur, fonds travaux au millésime. Leçon conservée : une vérification esbuild seule ne remplace pas `tsc -b` — un TS2367 était passé jusqu'au build Vercel.
+- **24 juillet** : temps estimé figé au démarrage, carnet d'entretien, points forts harmonisés, popup d'aide, ordre des biens figé + statut `processing` en base + barre flottante via `createPortal`. Point SEO : 24/47 guides indexés.
+- **2-3 juillet** : socle MAP-REDUCE et calibration (`MAP_MAX_TOKENS`, `MAP_TIMEOUT_MS`), correction du bug de score (`recalculerCategories` mettait à jour les catégories sans sommer dans `rapport.score`).
 
 ## 📦 Le produit
 
@@ -1064,7 +1024,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ---
 
-## 🔴 BACKLOG PRIORISÉ (revu le **29 juillet 2026**)
+## 🔴 BACKLOG PRIORISÉ (revu le **3 août 2026**)
 
 ### Sécurité — par ordre
 1. **🔴 Rotation de la clé service_role** (exposée en mai, jamais tournée). Devenue **plus** critique : le verrou d'`analyser-run` s'appuie dessus.
@@ -1084,7 +1044,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### Produit
 - **Récupération des documents** (idée retenue) : le mandataire envoie un lien au vendeur, checklist ✅/❌, relances auto, analyse lancée quand complet. Se place **avant** l'analyse dans la chaîne → attrape le client plus tôt. Validation terrain proposée : appeler 5 mandataires, une seule question — *« le plus pénible, obtenir les documents ou les comprendre ? »*
-- **🆕 Dossier fusionné en un seul PDF (soulevé par Alex 27/07 soir)** : rien ne bloque, mais 3 limites — les 20 Mo sautent vite sur un dossier scanné · le seuil MAP-REDUCE ne se déclenche pas (1 fichier < 6) donc tout part en un seul appel · **en complément, un seul `type_detecte` par fichier** → un PDF contenant PV + DPE + pré-état daté n'active **qu'une seule section**. Proposition faite, non tranchée : une 4ᵉ ligne dans le bloc de conditions au dépôt (« Un document par fichier — un dossier fusionné sera moins bien exploité »), **prévention par le message plutôt que blocage** (beaucoup de clients reçoivent leur dossier fusionné par leur notaire).
+- **✅/⚠️ Dossier fusionné en un seul PDF — PARTIELLEMENT TRAITÉ le 03/08.** Livré : plafond de **150 pages en analyse simple** (avertissement dès 81 p avec bascule vers la complète) et **200 pages par document en analyse complète**. Non résolu : un client qui fusionne 3 documents courts (40 p au total) passe toujours, et le rapport sera bancal. La détection automatique du contenu fusionné a été **étudiée puis abandonnée** — voir « Découverte E » de la session du 03/08 : aucun critère automatique ne sépare un DDT légitime de documents collés. Reste vrai : en complément, **un seul `type_detecte` par fichier** → un PDF contenant PV + DPE + pré-état daté n'active qu'une seule section.
 - Concurrence identifiée : **Naveen** (analyse IA du dossier acheteur, même positionnement, gros SEO) et **Keyzia** (côté syndic). « Analyser des documents » ne différenciera plus dans 12 mois.
 
 ---
@@ -1351,23 +1311,35 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 🎯 Prochaine session — Actions prioritaires
 
-### 🔴 D'abord : les 3 découvertes non corrigées du 29/07
+### 💸 D'abord : le coût API (découvert le 03/08, jamais chiffré)
+1. **🔴 Activer le prompt caching sur le découpage.** Aucun `cache_control` dans `analyser-run`, et les N tranches de `extraireParTranches` renvoient **chacune le PDF entier** (même `file.id`) — les tokens d'entrée sont donc facturés une fois par tranche. Un document de 160 pages coûte 8× son entrée. **Premier poste de dépense probable, sur des dossiers parfaitement normaux.** Modification dans `callAI`, sans effet sur les résultats. *Mesurer avant/après sur un dossier réel pour chiffrer le gain.*
+
+### 🔴 Ensuite : les 3 découvertes du 29/07 toujours ouvertes
 Toutes dans `analyser-run/index.ts` sauf la n°3 — **un seul redéploiement Supabase** pour 1 et 2.
 1. **`parseJson` robuste + retry sur `json_invalide`** — la section `identite_bien` n'a jamais fonctionné en prod, et le risque vaut pour les 16 sections. Monter aussi `raw.slice(0, 100)` à ~600.
 2. **Garde `annee_construction`** : « année présente sans `precision` » doit valoir au moins `borne_superieure`, sinon n'importe quelle source écrase le RCP sur les rapports d'avant le 28/07.
 3. **`complement_attempts`** (`analyser/index.ts` l.~569) : ne pas décompter une tentative sur un échec technique.
 
+### 🎨 Suites possibles de la session du 03/08
+- **Vérifier le h1 mobile sur petit écran** (iPhone SE) : `whitespace-nowrap` sur « avant de signer. » en Gabarito, plus large que DM Sans. Si ça déborde → clamp de 26px à 24px.
+- **Regarder les pages Tarifs et Méthode** après déploiement : la règle CSS s'applique à **tous** les `h1`/`h2` publics. Si un titre ne devait pas être concerné, l'exclure.
+- **Chiffres en police mono** (`IBM Plex Mono`) sur le score /20, les notes de catégories et les montants — proposé et montré, **non tranché par Alex**. C'est la piste la plus différenciante restante : Verimo est un produit de chiffres extraits, et personne en proptech française ne les traite comme des données.
+- **Déclarer les couleurs de marque dans `tailwind.config.js`**, maintenant que le fichier est ouvert. `#2a7d9c` est en dur **876 fois** dans `src/`.
+- **Contrôle serveur du `mode`** (`analyser/index.ts`) : si `mode === 'document'` et `storagePaths.length > 1` → 400. Même chantier que la faille `consume_pro_credit`.
+
 ### 🧪 À surveiller sur les prochains gros dossiers
 - Durée de la tranche la plus lente : **210 s constatées** sur 350. Si ça se tend → `DECOUPAGE_PAGES_PAR_TRANCHE` à 15.
-- Durée du REDUCE : il reçoit désormais **beaucoup plus de matière** (471 éléments pour un seul RCP). 385 s, jamais atteint à ce jour.
-- Volume d'appels parallèles : 11 docs × jusqu'à 8 tranches. Aucun rate limit constaté, à surveiller.
+- Durée du REDUCE : il reçoit beaucoup plus de matière (471 éléments pour un seul RCP). 385 s, jamais atteint à ce jour.
+- **Effet des nouveaux plafonds** : plus aucun document > 200 pages ne devrait entrer. Les tranches épaissies (38-63 p) ne devraient donc plus se produire.
 - Répondre à Alain CADIER : lui redemander son PV par mail, le tester sur compte démo, **puis** relancer son complément.
 
 ### 🔒 Sécurité (état au 23 juin, inchangé)
 **Solide** : RLS 34 tables · webhooks signés · admin verrouillé · aucun secret front · prix cohérents · tarifs pro non publics. **🔴 Reste LE must-do : régénérer la clé `service_role`** (dernier verrou avant vraies agences ; démarchage/démos = OK). Puis durcir auth analyser/analyser-run + restreindre CORS.
 
 ### 📋 Rappels transverses
-- ⚠️ **Mapper `RapportPage.tsx` = liste blanche** : `checklist` et les champs `annee_construction_*` y manquent → le chantier checklist du 28/07 est invisible en prod. Tout nouveau champ serveur doit y recevoir sa ligne.
+- ⚠️ **Mapper `RapportPage.tsx` = liste blanche** (l.~5678) : `checklist` et les champs `annee_construction_*` y manquent → le chantier checklist du 28/07 est invisible en prod. **Tout nouveau champ serveur destiné au rapport doit y recevoir sa ligne, sinon il est silencieusement jeté.**
+- ⚠️ **Deux points de réglage pour la typo** : `fontFamily.display` dans `tailwind.config.js` (homepage) **et** `.verimo-public h1, h2` dans `index.css` (les 15 autres pages publiques).
+- Aucun contrôle serveur des PDF protégés par mot de passe (détection front uniquement, corrigée le 03/08).
 - `extraireLotsRCP` absent du chemin MAP-REDUCE (impact faible, tout en bas de liste).
 - `DTG_PPT` absent de la liste `type_detecte` du prompt MAP — 1 ligne à ajouter.
 - `elements_illisibles` extrait par le prompt MAP mais **jamais exploité** côté front.
@@ -1383,4 +1355,6 @@ Toutes dans `analyser-run/index.ts` sauf la n°3 — **un seul redéploiement Su
 3. Une étape à la fois, fichiers COMPLETS livrés via `present_files` depuis `/mnt/user-data/outputs/`
 4. Builds Vercel complets (`npm install` puis `tsc -b && vite build`) avant toute livraison front ; esbuild sur les edge functions
 5. **Tracer une variable jusqu'à sa construction avant d'affirmer un bug** (leçon du 29/07)
-6. Tester sur compte pro démo / agence test après chaque étape
+6. **Répondre à la question posée, pas à une plus large** — et sur un choix esthétique, **ne faire varier qu'une chose à la fois** (leçon du 03/08)
+7. **Le périmètre montré est le périmètre à modifier** : un composant partagé se modifie par option, pas par changement global (leçon du 03/08)
+8. Tester sur compte pro démo / agence test après chaque étape
