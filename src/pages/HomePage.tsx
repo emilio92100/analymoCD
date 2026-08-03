@@ -125,7 +125,7 @@ function SectionTitle({ label, title, accent, sub, saut }: { label: string; titl
     return (
       <div ref={ref} className="text-center mb-8 md:mb-12 px-2">
         <p style={base} className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</p>
-        <h2 style={{ ...base, transitionDelay: '0.05s' }} className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
+        <h2 style={{ ...base, transitionDelay: '0.05s' }} className="text-[clamp(26px,4vw,52px)] font-display font-extrabold tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
           {title}{' '}
           {saut && <br />}
           <span className="relative inline-block max-w-fit">
@@ -144,7 +144,7 @@ function SectionTitle({ label, title, accent, sub, saut }: { label: string; titl
       <motion.p initial={{ opacity: 0, y: 10 }} animate={inView ? { opacity: 1, y: 0 } : {}}
         className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</motion.p>
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
-        className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
+        className="text-[clamp(26px,4vw,52px)] font-display font-extrabold tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
         {title}{' '}
         {saut && <br />}
         <span className="relative inline-block max-w-fit">
@@ -216,7 +216,7 @@ function HeroSection() {
         {/* MOBILE */}
         <div className="flex flex-col items-center lg:hidden pt-14 pb-4">
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
-            className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
+            className="font-display font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
             style={{ fontSize: "clamp(26px, 6.5vw, 34px)" }}>
             Analysez vos documents<br />immobiliers<br />
             <span className="relative inline-block whitespace-nowrap">
@@ -275,7 +275,7 @@ function HeroSection() {
         <div className="hidden lg:grid grid-cols-2 gap-6 items-center">
           <div className="flex flex-col items-start text-left">
             <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-              className="text-[clamp(28px,3.2vw,44px)] font-black leading-[1.1] tracking-[-0.03em] text-[#0f172a] mb-5">
+              className="text-[clamp(28px,3.2vw,44px)] font-display font-extrabold leading-[1.1] tracking-[-0.03em] text-[#0f172a] mb-5">
               Analysez vos documents{' '}<br />immobiliers{' '}
               <span className="relative inline-block">
                 <span className="text-[#2a7d9c]">avant de signer.</span>
