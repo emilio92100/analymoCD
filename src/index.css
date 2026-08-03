@@ -19,6 +19,19 @@
 html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
 body { background-color: var(--bg-primary); color: var(--text-primary); font-family: 'DM Sans', system-ui, sans-serif; }
 
+/* ── Typographie de titre ────────────────────────────────────────
+   Gabarito sur les titres des pages publiques uniquement (h1 et h2).
+   Le conteneur .verimo-public est posé par PublicLayout dans App.tsx :
+   le dashboard, les rapports et l'admin ne sont donc jamais touchés.
+   Les h3 et le texte courant restent en DM Sans — c'est le contraste
+   entre les deux qui fait exister la police de titre.
+   Pour changer de police plus tard : cette ligne, plus fontFamily.display
+   dans tailwind.config.js, et le <link> dans index.html. */
+.verimo-public h1,
+.verimo-public h2 {
+  font-family: 'Gabarito', 'DM Sans', system-ui, sans-serif;
+}
+
 @media (max-width: 768px) {
   /* Désactiver toutes les animations infinite sur mobile */
   .animate-float, .animate-scan, .animate-pulse {
