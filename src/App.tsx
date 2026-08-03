@@ -167,7 +167,9 @@ function ScrollToTop() {
 }
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
-  return (<><Navbar />{children}<Footer /></>);
+  // .verimo-public : conteneur neutre (aucun style propre) qui sert
+  // uniquement de point d'ancrage pour la typographie de titre — voir index.css.
+  return (<><Navbar /><div className="verimo-public">{children}</div><Footer /></>);
 }
 
 // ─── 404 intelligente — détecte si l'user est connecté et adapte le CTA ──
