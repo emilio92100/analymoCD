@@ -277,6 +277,11 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
   const slotsAvailable = agence.nb_users_max - slotsUsed;
   const pendingCount = invitations.filter(i => i.status === 'pending').length;
   const canInviteMore = slotsAvailable - pendingCount > 0;
+  // 🏛 Une agence créée depuis l'admin démarre à nb_users_max = 1 (le responsable seul).
+  // Le webhook Stripe la passe à 3 (ou plus) au PREMIER paiement et ne la redescend
+  // JAMAIS ensuite — même après résiliation, l'équipe reste gérable.
+  // Donc nb_users_max <= 1 = abonnement jamais souscrit.
+  const abonnementJamaisActive = agence.nb_users_max <= 1;
 
   return (
     <div style={{ paddingBottom: 60, maxWidth: 1100, margin: '0 auto' }}>
@@ -370,12 +375,31 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         </div>
 
         {!canInviteMore && isManager && (
-          <div style={{ background: '#fef9c3', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={15} color="#92400e" />
-            <p style={{ fontSize: 12.5, color: '#92400e', margin: 0, flex: 1 }}>
-              Toutes vos places sont occupées. Pour en ajouter, contactez le support depuis l'onglet "Support".
-            </p>
-          </div>
+          abonnementJamaisActive ? (
+            /* Cas 1 : l'offre Agence n'a jamais été activée (aucun paiement) */
+            <div style={{ background: 'linear-gradient(135deg, #eff6ff, #f0f9ff)', border: '1px solid #bfdbfe', borderRadius: 10, padding: '13px 16px', marginBottom: 12, display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+              <Shield size={16} color="#1d4ed8" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e3a8a', margin: '0 0 3px' }}>
+                  Votre offre Agence n'est pas encore active
+                </p>
+                <p style={{ fontSize: 12.5, color: '#1e40af', margin: 0, lineHeight: 1.55 }}>
+                  Dès votre premier paiement, vous pourrez inviter jusqu'à 3 collaborateurs et gérer votre équipe
+                  librement — y compris par la suite. Le pool de crédits partagés sera également alimenté chaque mois.
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Cas 2 : abonnement actif, toutes les places sont réellement prises */
+            <div style={{ background: '#fef9c3', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertTriangle size={15} color="#92400e" />
+              <p style={{ fontSize: 12.5, color: '#92400e', margin: 0, flex: 1 }}>
+                Toutes vos places sont occupées ({slotsUsed}/{agence.nb_users_max}
+                {pendingCount > 0 ? ` · ${pendingCount} invitation${pendingCount > 1 ? 's' : ''} en attente` : ''}).
+                Pour une offre sur-mesure au-delà de {agence.nb_users_max} utilisateurs, contactez-nous depuis l'onglet "Support".
+              </p>
+            </div>
+          )
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
