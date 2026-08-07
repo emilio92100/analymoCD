@@ -1254,6 +1254,114 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, nb_users_max: newMax }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    /* ── 🗑 SUPPRIMER UNE AGENCE (suppression totale en cascade) ──────
+       Quand une agence quitte Verimo, tout part : l'entité, ses membres,
+       leurs comptes utilisateurs et leurs analyses. Un ex-agent qui veut
+       revenir repasse par la demande pro classique depuis le site.
+
+       ⚠️ CE QUI EST CONSERVÉ (vérifié sur les contraintes de la base) :
+       `payments.user_id` et `pro_unit_purchases.user_id` sont en SET NULL →
+       les lignes de CA survivent, rattachées à customer_email / customer_name.
+       L'historique comptable reste donc intact (obligation de conservation).
+
+       CE QUI PART :
+       - via suppression du user : analyses, documents, comparaisons,
+         pro_folders, pro_subscriptions, credit_grants, report_shares,
+         pro_invitations, emails_log, banners ciblées (tous en CASCADE)
+       - via suppression de l'agence : agence_members, agence_invitations,
+         agence_credit_grants, dossier_notes (tous en CASCADE)
+
+       ORDRE : on supprime les users AVANT l'agence. Si une suppression
+       échoue à mi-parcours, l'agence existe encore et l'état reste lisible
+       depuis l'admin (l'inverse laisserait des comptes orphelins).
+    ───────────────────────────────────────────────────────────── */
+    if (action === 'delete_agence') {
+      const { agence_id, confirm_nom } = body
+
+      if (!agence_id) {
+        return new Response(JSON.stringify({ error: 'agence_id requis' }), { status: 400, headers: corsHeaders })
+      }
+
+      // 1. Charger l'agence et vérifier la confirmation par saisie du nom
+      const { data: agence, error: agErr } = await adminClient
+        .from('agences')
+        .select('id, raison_sociale')
+        .eq('id', agence_id)
+        .maybeSingle()
+
+      if (agErr || !agence) {
+        return new Response(JSON.stringify({ error: 'Agence introuvable' }), { status: 404, headers: corsHeaders })
+      }
+      if ((confirm_nom || '').trim() !== (agence.raison_sociale || '').trim()) {
+        return new Response(JSON.stringify({
+          error: "Le nom saisi ne correspond pas à la raison sociale de l'agence."
+        }), { status: 400, headers: corsHeaders })
+      }
+
+      // 2. Lister les membres (y compris retirés : leurs comptes existent toujours)
+      const { data: membres } = await adminClient
+        .from('agence_members')
+        .select('user_id')
+        .eq('agence_id', agence_id)
+
+      const userIds = [...new Set((membres || []).map((m: { user_id: string }) => m.user_id))]
+
+      // Garde-fou : ne jamais supprimer un compte admin par ce chemin
+      const { data: profilsMembres } = userIds.length > 0
+        ? await adminClient.from('profiles').select('id, email, full_name, role').in('id', userIds)
+        : { data: [] as Array<{ id: string; email: string; full_name: string; role: string }> }
+
+      const aSupprimer = (profilsMembres || []).filter(p => p.role !== 'admin')
+      const adminsIgnores = (profilsMembres || []).filter(p => p.role === 'admin')
+
+      // 3. Supprimer les comptes utilisateurs un par un
+      const supprimes: string[] = []
+      const echecs: Array<{ email: string; erreur: string }> = []
+
+      for (const p of aSupprimer) {
+        try {
+          // Couper les sessions actives : sans ça le JWT reste valide ~1h
+          try { await adminClient.auth.admin.signOut(p.id, 'global') } catch (_e) { /* non bloquant */ }
+          const { error: delErr } = await adminClient.auth.admin.deleteUser(p.id)
+          if (delErr) {
+            echecs.push({ email: p.email, erreur: delErr.message })
+          } else {
+            supprimes.push(p.email)
+          }
+        } catch (e) {
+          echecs.push({ email: p.email, erreur: String(e) })
+        }
+      }
+
+      // Si AUCUN compte n'a pu être supprimé alors qu'il y en avait,
+      // on n'efface pas l'agence : mieux vaut un état cohérent qu'un demi-ménage.
+      if (aSupprimer.length > 0 && supprimes.length === 0) {
+        return new Response(JSON.stringify({
+          error: "Aucun compte n'a pu être supprimé, l'agence a été conservée. Détail : "
+            + echecs.map(e => `${e.email} (${e.erreur})`).join(' · ')
+        }), { status: 500, headers: corsHeaders })
+      }
+
+      // 4. Supprimer l'entité agence (cascade : membres, invitations, grants, notes)
+      const { error: delAgErr } = await adminClient.from('agences').delete().eq('id', agence_id)
+      if (delAgErr) {
+        return new Response(JSON.stringify({
+          error: `Comptes supprimés (${supprimes.length}) mais l'agence n'a pas pu être effacée : ${delAgErr.message}`
+        }), { status: 500, headers: corsHeaders })
+      }
+
+      console.log(`[delete_agence] Agence "${agence.raison_sociale}" supprimée par ${user.email} — ${supprimes.length} compte(s)`)
+
+      return new Response(JSON.stringify({
+        success: true,
+        raison_sociale: agence.raison_sociale,
+        comptes_supprimes: supprimes.length,
+        emails_supprimes: supprimes,
+        echecs,
+        admins_ignores: adminsIgnores.map(a => a.email),
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     /* ── Inviter par email (existant) ──────────────────── */
     if (action === 'invite') {
       const { email } = body
