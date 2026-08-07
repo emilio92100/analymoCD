@@ -2553,7 +2553,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
     caProMonthPrev: 0,
     newClientsMonth: 0,
     newClientsCrees: 0,
-    demoStats: { total: 0, activees: 0, dormantes: 0 },
+    demoStats: { moisEnvoyees: 0, moisActivees: 0, total: 0, dormantes: 0 },
     newProMonth: 0,
     activeProCount: 0,
     analysesThisMonth: 0,
@@ -2609,7 +2609,9 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
         // 🆕 Connexions réelles (schema auth), exposées aux admins par la fonction SQL
         supabase.rpc('get_users_last_sign_in'),
-        // 🆕 Démos en cours, tous mois confondus (une démo vit plusieurs semaines)
+        // 🆕 Démos : on charge toutes celles en cours, puis on sépare en JS
+        // « envoyées ce mois-ci » (cohérent avec le titre du tableau de bord) et
+        // « en cours au total » (les relances ne doivent jamais sortir du radar).
         supabase.from('profiles').select('id, pro_demo_started_at').eq('pro_status', 'demo'),
       ]);
 
@@ -2700,12 +2702,19 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       const newClientsActives = (profilesMonth || []).filter((p: { id: string }) => signInSet.has(p.id)).length;
       const newClientsCrees = (profilesMonth || []).length;
 
-      // 🆕 Suivi des démos : envoyées / activées / en sommeil (> 30 jours sans conversion)
+      // 🆕 Suivi des démos. Le tableau de bord affiche LE MOIS EN COURS, donc les
+      // compteurs principaux sont bornés à août. Le total et les relances restent
+      // affichés à part : une démo de juin qui dort est justement celle à rappeler.
       const demos = (demosEnCours || []) as Array<{ id: string; pro_demo_started_at: string | null }>;
+      const debutMois = new Date(startOfMonth).getTime();
+      const demosDuMois = demos.filter(d => d.pro_demo_started_at && new Date(d.pro_demo_started_at).getTime() >= debutMois);
       const il30j = new Date(Date.now() - 30 * 24 * 3600 * 1000);
       const demoStats = {
+        // Ce mois-ci
+        moisEnvoyees: demosDuMois.length,
+        moisActivees: demosDuMois.filter(d => signInSet.has(d.id)).length,
+        // Hors période, pour l'action commerciale
         total: demos.length,
-        activees: demos.filter(d => signInSet.has(d.id)).length,
         dormantes: demos.filter(d => d.pro_demo_started_at && new Date(d.pro_demo_started_at) < il30j).length,
       };
 
@@ -2800,7 +2809,9 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         <div style={{ background: '#0f2d3d', borderRadius: 12, padding: '16px 18px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Nb de pro abonnés</div>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{data.activeProCount}</div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Abonnements en cours</div>
+          {/* Ce chiffre est un ÉTAT (abonnements actifs aujourd'hui), pas un flux du
+              mois : on le dit explicitement pour ne pas le lire comme « ce mois-ci ». */}
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>En cours aujourd'hui</div>
         </div>
         <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #edf2f7', padding: '16px 18px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Analyses lancées</div>
@@ -2820,8 +2831,11 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         </div>
       </div>
 
-      {/* 🎁 SUIVI DES DÉMOS — ligne discrète, visible seulement s'il y a des démos en cours */}
-      {data.demoStats.total > 0 && (
+      {/* 🎁 SUIVI DES DÉMOS — le tableau de bord affiche le MOIS EN COURS, donc
+           les deux premiers chiffres sont bornés à août. Le total et les relances
+           sont visuellement séparés : ce sont des actions à mener, pas des stats
+           du mois, et les perdre de vue serait plus coûteux que l'incohérence. */}
+      {(data.demoStats.total > 0 || data.demoStats.moisEnvoyees > 0) && (
         <div
           onClick={() => onNavigate('clients')}
           style={{
@@ -2832,22 +2846,30 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
           title="Ouvrir la liste des clients pro"
         >
           <span style={{ fontSize: 18 }}>🎁</span>
+
+          {/* Ce mois-ci */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontSize: 19, fontWeight: 900, color: '#78350f' }}>{data.demoStats.total}</span>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>démo{data.demoStats.total > 1 ? 's' : ''} en cours</span>
-            <span style={{ fontSize: 11, color: '#b45309', fontWeight: 600 }}>(toutes périodes)</span>
+            <span style={{ fontSize: 19, fontWeight: 900, color: '#78350f' }}>{data.demoStats.moisEnvoyees}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>démo{data.demoStats.moisEnvoyees > 1 ? 's' : ''} envoyée{data.demoStats.moisEnvoyees > 1 ? 's' : ''} ce mois</span>
           </div>
           <span style={{ color: '#fcd34d' }}>·</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontSize: 19, fontWeight: 900, color: '#16a34a' }}>{data.demoStats.activees}</span>
+            <span style={{ fontSize: 19, fontWeight: 900, color: '#16a34a' }}>{data.demoStats.moisActivees}</span>
             <span style={{ fontSize: 12.5, fontWeight: 600, color: '#92400e' }}>
-              activée{data.demoStats.activees > 1 ? 's' : ''}
-              {` (${Math.round((data.demoStats.activees / data.demoStats.total) * 100)}%)`}
+              activée{data.demoStats.moisActivees > 1 ? 's' : ''}
+              {data.demoStats.moisEnvoyees > 0 && ` (${Math.round((data.demoStats.moisActivees / data.demoStats.moisEnvoyees) * 100)}%)`}
             </span>
           </div>
+
+          {/* Séparation nette avec ce qui dépasse du mois */}
+          <div style={{ width: 1, height: 24, background: '#fcd34d', margin: '0 2px' }} />
+
+          <span style={{ fontSize: 11.5, color: '#b45309', fontWeight: 600 }}>
+            {data.demoStats.total} en cours au total
+          </span>
           {data.demoStats.dormantes > 0 && (
             <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b91c1c', background: '#fee2e2', border: '1px solid #fecaca', padding: '3px 10px', borderRadius: 100 }}>
-              ⏰ {data.demoStats.dormantes} à relancer (plus de 30 j)
+              ⏰ {data.demoStats.dormantes} à relancer
             </span>
           )}
           <ArrowRight size={14} style={{ color: '#b45309', marginLeft: 'auto' }} />
