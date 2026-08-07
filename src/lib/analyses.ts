@@ -130,6 +130,63 @@ export async function fetchAnalyses(): Promise<AnalyseDB[]> {
   return data || [];
 }
 
+/* ─── Agence active de l'utilisateur (source de vérité = agence_members) ──
+   Renvoie null pour un particulier ou un pro solo. */
+export async function fetchMonAgenceId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('agence_members')
+    .select('agence_id')
+    .eq('user_id', user.id)
+    .is('removed_at', null)
+    .limit(1)
+    .maybeSingle();
+  return data?.agence_id || null;
+}
+
+/* ─── Analyses disponibles pour la COMPARAISON ───────────────────────────
+   Volontairement distinct de fetchAnalyses() : un membre d'agence doit
+   pouvoir comparer les biens analysés par ses collègues (les dossiers sont
+   déjà partagés, la comparaison ne l'était pas). On renvoie aussi le nom du
+   créateur pour l'afficher sur les cartes.
+   Particulier / pro solo : comportement strictement identique à avant. */
+export async function fetchAnalysesPourComparaison(): Promise<
+  (AnalyseDB & { _createur?: string; _estCollegue?: boolean })[]
+> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const agenceId = await fetchMonAgenceId();
+
+  let query = supabase.from('analyses').select('*');
+  query = agenceId
+    ? query.or(`user_id.eq.${user.id},agence_id.eq.${agenceId}`)
+    : query.eq('user_id', user.id);
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) {
+    console.error('Erreur fetchAnalysesPourComparaison:', error.message);
+    return [];
+  }
+  const analyses = (data || []) as AnalyseDB[];
+  if (!agenceId || analyses.length === 0) return analyses;
+
+  // Nom des créateurs, pour distinguer « mes biens » de ceux des collègues
+  const autresIds = [...new Set(
+    analyses.map(a => a.user_id).filter((id): id is string => !!id && id !== user.id)
+  )];
+  if (autresIds.length === 0) return analyses;
+
+  const { data: profils } = await supabase
+    .from('profiles').select('id, full_name').in('id', autresIds);
+  const noms = new Map((profils || []).map((p: { id: string; full_name: string }) => [p.id, p.full_name]));
+
+  return analyses.map(a => a.user_id === user.id
+    ? a
+    : { ...a, _createur: noms.get(a.user_id) || 'Un collègue', _estCollegue: true });
+}
+
 /* ─── Lire une analyse par id ──────────────────── */
 export async function fetchAnalyseById(id: string): Promise<AnalyseDB | null> {
   const { data, error } = await supabase
