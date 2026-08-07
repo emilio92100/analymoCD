@@ -1420,6 +1420,7 @@ Deno.serve(async (req) => {
         pro_postal_code,       // 🆕 Code postal
         pro_ville,             // 🆕 Ville
         pro_notes_admin,       // 🆕 Notes internes admin
+        pro_recommended_plan,  // 🆕 Plan affiché au prospect à la fin de sa démo
         custom_message,        // Texte personnalisé pour le mail (optionnel)
         attachment,            // PDF en base64 (optionnel) : { filename, contentType, base64Content }
       } = body
@@ -1456,6 +1457,7 @@ Deno.serve(async (req) => {
         pro_postal_code: pro_postal_code || null,
         pro_ville: pro_ville || null,
         pro_notes_admin: pro_notes_admin || null,
+        pro_recommended_plan: pro_recommended_plan || null,
         pro_status: 'demo',
         pro_demo_started_at: nowIso,
         pro_created_at: nowIso,
