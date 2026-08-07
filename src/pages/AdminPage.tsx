@@ -5813,6 +5813,60 @@ type AgenceDetail = {
 };
 
 type AgenceAnalysisItem = { id: string; label: string; memberName: string; status: string; created_at: string; score?: number };
+
+// 🏛 Ligne d'agence telle qu'affichée dans l'onglet « Agences » (source = table agences)
+type AgenceRow = {
+  id: string; raison_sociale: string; status?: string | null; plan?: string | null;
+  nb_users_max?: number | null;
+  credits_complete?: number | null; credits_document?: number | null;
+  credits_complete_bonus?: number | null; credits_document_bonus?: number | null;
+  current_period_end?: string | null; created_at?: string | null;
+};
+
+// 🏛 Rappel affiché dès que le type de profil « Agence » est sélectionné dans un
+// formulaire de création. Objectif : rappeler ce que ce choix déclenche réellement,
+// car l'entité agence est créée automatiquement et n'est plus modifiable ensuite
+// depuis ce formulaire.
+function AgenceRecapCallout({ raisonSociale, mode }: { raisonSociale: string; mode: 'create' | 'demo' }) {
+  const nomAgence = raisonSociale.trim();
+  return (
+    <div style={{
+      marginBottom: 14, padding: '14px 16px', borderRadius: 12,
+      background: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
+      border: '1.5px solid #fcd34d',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
+        <span style={{ fontSize: 17 }}>🏛</span>
+        <span style={{ fontSize: 13.5, fontWeight: 800, color: '#78350f' }}>
+          Vous allez créer une AGENCE, pas un compte pro classique
+        </span>
+      </div>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: '#92400e', lineHeight: 1.75 }}>
+        <li>Cette personne devient le <strong>Responsable</strong> (propriétaire du contrat et payeur).</li>
+        <li>
+          Le champ <strong>Raison sociale</strong> deviendra le <strong>nom de l'agence</strong>
+          {nomAgence
+            ? <> — ici : « <strong>{nomAgence}</strong> ».</>
+            : <> — <strong style={{ color: '#b91c1c' }}>il est vide, remplissez-le</strong> ou l'agence portera le nom de la personne.</>}
+        </li>
+        <li>C'est <strong>lui</strong> qui invitera son équipe depuis son dashboard, onglet « Mon équipe ». Vous n'avez rien à ajouter ici.</li>
+        <li>
+          L'agence démarre à <strong>1 place</strong>. Le <strong>premier paiement</strong> du plan Agence (149,90 € HT/mois)
+          débloque les 3 places — et elles ne redescendent jamais ensuite.
+        </li>
+        {mode === 'demo' && (
+          <li>
+            <strong>En démo</strong> : les 2 crédits offerts sont <strong>personnels au responsable</strong>, le pool partagé reste à 0.
+            Pour démontrer le multi-utilisateurs, utilisez « Mode démo agence » sur la fiche agence après création.
+          </li>
+        )}
+        {mode === 'create' && (
+          <li>La souscription Stripe est débloquée automatiquement et le mail de proposition part à la création.</li>
+        )}
+      </ul>
+    </div>
+  );
+}
 // Ligne de facture telle que renvoyée par pro-checkout-create (mode list_invoices)
 type ProInvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number };
 
@@ -5829,8 +5883,15 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proActivated, setProActivated] = useState<Set<string>>(new Set());
   // 🏛 Multi-utilisateurs agence : info d'appartenance par user
   const [agenceInfoByUser, setAgenceInfoByUser] = useState<Map<string, { agence_id: string; agence_name: string; role: 'responsable' | 'co_responsable' | 'agent' }>>(new Map());
-  // 🏛 Agences dépliées (set d'IDs d'agences ouvertes — par défaut toutes dépliées)
-  const [collapsedAgences, setCollapsedAgences] = useState<Set<string>>(new Set());
+  // 🏛 Agences dépliées. Sémantique inversée : le set contient les agences OUVERTES,
+  // donc tout est REPLIÉ par défaut (vue d'ensemble courte, on déplie à la demande).
+  const [expandedAgences, setExpandedAgences] = useState<Set<string>>(new Set());
+  // 🗂 Portée de la liste : individuels / agences / tous.
+  // Une agence = 1 contrat, pas N clients : mélanger les deux fausse la lecture.
+  const [proScope, setProScope] = useState<'individuels' | 'agences' | 'tous'>('individuels');
+  // 🏛 Liste des agences en tant qu'ENTITÉS (et non déduites des profils), pour que
+  // même une agence sans membre actif reste visible dans l'admin.
+  const [agencesList, setAgencesList] = useState<AgenceRow[]>([]);
   const [proFilter, setProFilter] = useState<'all' | 'demo' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [filterByType, setFilterByType] = useState<string>('all'); // 🆕 Filtre par type de profil (agent/investisseur/notaire/autre)
   const [proSearch, setProSearch] = useState(''); // 🔎 Recherche par nom, email, entreprise ou nom d'agence
@@ -5846,6 +5907,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   // 🆕 Nombre max d'utilisateurs de l'agence (offre sur-mesure > 3)
   const [usersMaxInput, setUsersMaxInput] = useState('');
   const [savingUsersMax, setSavingUsersMax] = useState(false);
+  // 🏛 Renommage de l'agence (la raison sociale était figée à la création)
+  const [editingAgenceName, setEditingAgenceName] = useState(false);
+  const [agenceNameInput, setAgenceNameInput] = useState('');
+  const [savingAgenceName, setSavingAgenceName] = useState(false);
+  // 🎬 Mode démo agence : 3 places + crédits au pool en un clic
+  const [demoAgenceLoading, setDemoAgenceLoading] = useState(false);
   // 📋 Analyses de l'agence — pagination "Voir plus" (10 par page)
   const [agenceAnalyses, setAgenceAnalyses] = useState<AgenceAnalysisItem[]>([]);
   const [agenceAnalysesHasMore, setAgenceAnalysesHasMore] = useState(false);
@@ -5929,8 +5996,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       supabase.rpc('get_users_last_sign_in'),
       // 🏛 Membres d'agence
       supabase.from('agence_members').select('user_id, role, agence_id').is('removed_at', null),
-      // 🏛 Agences (pour récupérer le nom)
-      supabase.from('agences').select('id, raison_sociale'),
+      // 🏛 Agences (entités complètes : nom, statut, places, pool de crédits)
+      supabase.from('agences').select('id, raison_sociale, status, plan, nb_users_max, credits_complete, credits_document, credits_complete_bonus, credits_document_bonus, current_period_end, created_at'),
     ]);
     setClients((data || []) as ProClient[]);
     const subMap = new Map<string, string>();
@@ -5964,6 +6031,11 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     (connexions as Array<{ id: string; last_sign_in_at: string | null }> | null || [])
       .forEach(u => { if (u.last_sign_in_at) activatedSet.add(u.id); });
     setProActivated(activatedSet);
+
+    // 🏛 Liste des agences en tant qu'entités (triée par nom)
+    setAgencesList(((agences || []) as AgenceRow[]).slice().sort((a, b) =>
+      (a.raison_sociale || '').localeCompare(b.raison_sociale || '')
+    ));
 
     // 🏛 Map des infos agence par user_id
     const agencesMap = new Map<string, string>(
@@ -6231,6 +6303,67 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       loadAgenceDetail(selectedAgence.id, selectedAgence.name);
     } catch (e) { showToast('Erreur : ' + String(e)); }
     setSavingUsersMax(false);
+  };
+
+  // 🏛 Renommer l'agence. La raison sociale était figée à la création (reprise de
+  // pro_company_name, ou à défaut du nom de la personne) et n'était modifiable
+  // nulle part dans l'admin — il fallait passer par Supabase Studio.
+  // Nécessite la policy RLS UPDATE admin sur `agences` (SQL fourni avec cette session).
+  const handleRenameAgence = async () => {
+    if (!selectedAgence) return;
+    const nouveauNom = agenceNameInput.trim();
+    if (!nouveauNom) { showToast('Le nom de l\'agence ne peut pas être vide.'); return; }
+    if (nouveauNom === selectedAgence.name) { setEditingAgenceName(false); return; }
+    setSavingAgenceName(true);
+    const ancienNom = selectedAgence.name;
+    const { error } = await supabase.from('agences').update({ raison_sociale: nouveauNom }).eq('id', selectedAgence.id);
+    if (error) { showToast('Erreur : ' + error.message); setSavingAgenceName(false); return; }
+    await logAction('Agence renommée', `"${ancienNom}" → "${nouveauNom}"`);
+    showToast(`Agence renommée : ${nouveauNom} ✅`);
+    setSelectedAgence({ id: selectedAgence.id, name: nouveauNom });
+    setEditingAgenceName(false);
+    setSavingAgenceName(false);
+    await loadClients();               // rafraîchit les libellés dans la liste
+    loadAgenceDetail(selectedAgence.id, nouveauNom);
+  };
+
+  // 🎬 Mode démo agence : débloque 3 places ET alimente le pool partagé en un clic.
+  // Sans ça, une agence en démo reste à 1 place avec un pool vide : le prospect ne
+  // peut pas tester le multi-utilisateurs, qui est pourtant ce qu'il achète.
+  const handleActiverDemoAgence = async () => {
+    if (!selectedAgence) return;
+    setDemoAgenceLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY };
+      const url = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management';
+
+      // 1. Ouvrir les 3 places
+      const resPlaces = await fetch(url, {
+        method: 'POST', headers,
+        body: JSON.stringify({ action: 'set_agence_users_max', agence_id: selectedAgence.id, nb_users_max: 3 }),
+      });
+      const dataPlaces = await resPlaces.json();
+      if (dataPlaces.error) { showToast('Erreur places : ' + dataPlaces.error); setDemoAgenceLoading(false); return; }
+
+      // 2. Alimenter le pool partagé (crédits bonus, durables, hors quota mensuel)
+      const resCredits = await fetch(url, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          action: 'grant_agence_credits', agence_id: selectedAgence.id,
+          credits_complete_add: 2, credits_document_add: 5,
+          reason: 'Mode démo agence — pool de test',
+        }),
+      });
+      const dataCredits = await resCredits.json();
+      if (dataCredits.error) { showToast('Places OK, erreur crédits : ' + dataCredits.error); setDemoAgenceLoading(false); return; }
+
+      await logAction('Mode démo agence activé', `${selectedAgence.name} — 3 places + 2 complètes / 5 simples au pool`);
+      showToast(`${selectedAgence.name} : mode démo agence activé ✅`);
+      setUsersMaxInput('3');
+      loadAgenceDetail(selectedAgence.id, selectedAgence.name);
+    } catch (e) { showToast('Erreur : ' + String(e)); }
+    setDemoAgenceLoading(false);
   };
 
   // Auto-open client from external navigation (e.g. from Users tab)
@@ -6514,7 +6647,19 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Clients Pro</h1>
-          <p style={{ fontSize: 13, color: '#94a3b8' }}>{clients.length} client{clients.length > 1 ? 's' : ''} pro</p>
+          {(() => {
+            // Une agence = 1 contrat. Ses membres sont des SIÈGES, pas des clients :
+            // les compter comme tels gonfle artificiellement le nombre de clients.
+            const nbSieges = clients.filter(c => agenceInfoByUser.has(c.id)).length;
+            const nbIndividuels = clients.length - nbSieges;
+            const nbAgences = agencesList.length;
+            return (
+              <p style={{ fontSize: 13, color: '#94a3b8' }}>
+                {nbIndividuels} compte{nbIndividuels > 1 ? 's' : ''} individuel{nbIndividuels > 1 ? 's' : ''}
+                {nbAgences > 0 && <> · {nbAgences} agence{nbAgences > 1 ? 's' : ''} ({nbSieges} siège{nbSieges > 1 ? 's' : ''})</>}
+              </p>
+            );
+          })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
           <button onClick={() => {
@@ -6558,8 +6703,39 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     <div style={{ width: 52, height: 52, borderRadius: 14, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>🏛</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
-                        <h2 style={{ fontSize: 21, fontWeight: 800, color: '#78350f', margin: 0 }}>{ag.raison_sociale}</h2>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: statusBadge.color, background: statusBadge.bg, padding: '3px 10px', borderRadius: 7 }}>{statusBadge.label}</span>
+                        {editingAgenceName ? (
+                          <>
+                            <input
+                              value={agenceNameInput}
+                              onChange={e => setAgenceNameInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleRenameAgence(); if (e.key === 'Escape') setEditingAgenceName(false); }}
+                              autoFocus
+                              placeholder="Nom de l'agence"
+                              style={{ fontSize: 19, fontWeight: 800, color: '#78350f', padding: '5px 10px', borderRadius: 9, border: '1.5px solid #d97706', background: '#fff', outline: 'none', fontFamily: 'inherit', minWidth: 260 }}
+                            />
+                            <button onClick={handleRenameAgence} disabled={savingAgenceName || !agenceNameInput.trim()}
+                              style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: (savingAgenceName || !agenceNameInput.trim()) ? '#cbd5e1' : '#d97706', color: '#fff', fontSize: 12, fontWeight: 700, cursor: (savingAgenceName || !agenceNameInput.trim()) ? 'not-allowed' : 'pointer' }}>
+                              {savingAgenceName ? 'Enregistrement…' : '✅ Enregistrer'}
+                            </button>
+                            <button onClick={() => setEditingAgenceName(false)} disabled={savingAgenceName}
+                              style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #fcd34d', background: '#fff', color: '#92400e', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                              Annuler
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <h2 style={{ fontSize: 21, fontWeight: 800, color: '#78350f', margin: 0 }}>{ag.raison_sociale}</h2>
+                            <button
+                              onClick={() => { setAgenceNameInput(ag.raison_sociale || ''); setEditingAgenceName(true); }}
+                              title="Renommer l'agence"
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, border: '1px solid #fcd34d', background: 'rgba(255,255,255,0.7)', color: '#92400e', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}
+                              onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.7)'; }}>
+                              ✏️ Renommer
+                            </button>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: statusBadge.color, background: statusBadge.bg, padding: '3px 10px', borderRadius: 7 }}>{statusBadge.label}</span>
+                          </>
+                        )}
                       </div>
                       <div style={{ fontSize: 12.5, color: '#92400e', marginTop: 4 }}>
                         {ag.nb_users_max ? `Plan Agence · ${ag.nb_users_max} utilisateurs max` : 'Plan Agence'}
@@ -6574,6 +6750,31 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     </div>
                   </div>
                 </div>
+
+                {/* 🎬 Mode démo agence — visible tant que l'agence n'a jamais été
+                    débloquée (1 place = aucun paiement). Sans ce raccourci, une démo
+                    agence ne permet pas de tester le multi-utilisateurs. */}
+                {(ag.nb_users_max ?? 1) <= 1 && (
+                  <div style={{ background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', borderRadius: 16, border: '1.5px solid #ddd6fe', padding: 18, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 240 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#5b21b6' }}>🎬 Mode démo agence</div>
+                      <div style={{ fontSize: 12, color: '#6d28d9', marginTop: 3, lineHeight: 1.55 }}>
+                        Cette agence est à <strong>1 place</strong> avec un <strong>pool vide</strong> : le prospect ne peut pas
+                        tester le travail en équipe. Un clic ouvre 3 places et crédite le pool partagé (2 complètes + 5 simples).
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleActiverDemoAgence}
+                      disabled={demoAgenceLoading}
+                      style={{
+                        padding: '11px 20px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 700, color: '#fff',
+                        background: demoAgenceLoading ? '#c4b5fd' : 'linear-gradient(135deg, #7c3aed, #5b21b6)',
+                        cursor: demoAgenceLoading ? 'wait' : 'pointer', flexShrink: 0,
+                      }}>
+                      {demoAgenceLoading ? 'Activation…' : '🎬 Activer le mode démo'}
+                    </button>
+                  </div>
+                )}
 
                 {/* 🆕 Nombre max d'utilisateurs (offre sur-mesure) */}
                 <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 18, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 }}>
@@ -6991,6 +7192,15 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                           onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}>
                           Voir l'agence <ChevronRight size={12} />
                         </button>
+                      </div>
+                      {/* ⚠️ Piège crédits : offrir des crédits depuis une fiche membre
+                          alimente son compte PERSO. Seule la fiche agence crédite le pool. */}
+                      <div style={{ marginTop: 8, padding: '9px 11px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ fontSize: 13, lineHeight: 1.3, flexShrink: 0 }}>⚠️</span>
+                        <div style={{ fontSize: 11.5, color: '#92400e', lineHeight: 1.55 }}>
+                          Des crédits offerts <strong>sur cette fiche</strong> seront <strong>personnels</strong> : les autres membres
+                          n'y auront pas accès. Pour créditer toute l'agence, utilisez « Ajouter des crédits au pool » sur la fiche agence.
+                        </div>
                       </div>
                       {otherMembers.length > 0 && (
                         <div style={{ borderTop: '1px solid #bae6fd', paddingTop: 7 }}>
@@ -8005,8 +8215,44 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       ) : (
         /* ── Liste ── */
         <div>
-          {/* ─── Bloc filtres : Statut (ligne 1) + Type de profil (ligne 2) ─── */}
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+          {/* ─── 🗂 Portée : comptes individuels / agences / tous ─── */}
+          {(() => {
+            const nbSieges = clients.filter(c => agenceInfoByUser.has(c.id)).length;
+            const nbIndividuels = clients.length - nbSieges;
+            const scopes = [
+              { id: 'individuels' as const, label: '👤 Comptes individuels', count: `${nbIndividuels}` },
+              { id: 'agences' as const, label: '🏛 Agences', count: `${agencesList.length}` },
+              { id: 'tous' as const, label: 'Tous', count: `${clients.length}` },
+            ];
+            return (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: 6 }}>
+                {scopes.map(s => {
+                  const isActive = proScope === s.id;
+                  return (
+                    <button key={s.id} onClick={() => setProScope(s.id)}
+                      style={{
+                        flex: 1, padding: '11px 14px', borderRadius: 10, border: 'none',
+                        background: isActive ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : 'transparent',
+                        color: isActive ? '#fff' : '#64748b',
+                        fontSize: 13, fontWeight: isActive ? 800 : 600, cursor: 'pointer',
+                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                        boxShadow: isActive ? '0 4px 12px rgba(15,45,61,0.18)' : 'none',
+                        fontFamily: 'inherit',
+                      }}
+                      onMouseOver={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
+                      onMouseOut={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                      {s.label} ({s.count})
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* ─── Bloc filtres : Statut (ligne 1) + Type de profil (ligne 2) ───
+               Masqué en mode « Agences » : ces filtres sont personne-centrés et
+               fausseraient les compteurs de membres affichés sur chaque agence. */}
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '12px 14px', marginBottom: 14, display: proScope === 'agences' ? 'none' : 'flex', flexDirection: 'column' as const, gap: 10 }}>
             {/* Ligne 1 : Statut */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -8117,7 +8363,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             <input
               value={proSearch}
               onChange={e => setProSearch(e.target.value)}
-              placeholder="Rechercher par nom, email, entreprise ou nom d'agence…"
+              placeholder={proScope === 'agences' ? "Rechercher une agence par nom, ou un de ses membres…" : "Rechercher par nom, email, entreprise ou nom d'agence…"}
               style={{ width: '100%', padding: '11px 38px 11px 40px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit' }}
               onFocus={e => (e.currentTarget.style.borderColor = '#7c3aed')}
               onBlur={e => (e.currentTarget.style.borderColor = '#edf2f7')}
@@ -8134,6 +8380,150 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           </div>
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
             {loading ? <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
+              : proScope === 'agences' ? (() => {
+                /* ═══ 🏛 LISTE DES AGENCES (source = table agences, pas les profils) ═══
+                   Une ligne = une entreprise. Les compteurs de membres sont calculés
+                   sur la liste COMPLÈTE des clients, donc jamais faussés par un filtre. */
+                const q = proSearch.trim().toLowerCase();
+                const membresParAgence = new Map<string, ProClient[]>();
+                clients.forEach(c => {
+                  const ai = agenceInfoByUser.get(c.id);
+                  if (!ai) return;
+                  const arr = membresParAgence.get(ai.agence_id) || [];
+                  arr.push(c);
+                  membresParAgence.set(ai.agence_id, arr);
+                });
+                const roleOrder: Record<string, number> = { responsable: 0, co_responsable: 1, agent: 2 };
+                membresParAgence.forEach(arr => arr.sort((a, b) =>
+                  (roleOrder[agenceInfoByUser.get(a.id)?.role || 'agent'] ?? 99) -
+                  (roleOrder[agenceInfoByUser.get(b.id)?.role || 'agent'] ?? 99)
+                ));
+
+                const agencesFiltrees = !q ? agencesList : agencesList.filter(a => {
+                  if ((a.raison_sociale || '').toLowerCase().includes(q)) return true;
+                  return (membresParAgence.get(a.id) || []).some(m =>
+                    (m.full_name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q));
+                });
+
+                if (agencesList.length === 0) {
+                  return (
+                    <div style={{ padding: '52px 32px', textAlign: 'center' as const }}>
+                      <Building2 size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#94a3b8' }}>Aucune agence</div>
+                      <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 6, lineHeight: 1.6 }}>
+                        Une agence se crée en choisissant <strong>Type de profil = 🏛 Agence</strong><br />
+                        dans « Créer un client pro » ou « Inviter en démo ».
+                      </p>
+                    </div>
+                  );
+                }
+                if (agencesFiltrees.length === 0) {
+                  return <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune agence pour « {proSearch.trim()} ».</div>;
+                }
+
+                return agencesFiltrees.map((a, idx) => {
+                  const membres = membresParAgence.get(a.id) || [];
+                  const responsable = membres.find(m => agenceInfoByUser.get(m.id)?.role === 'responsable');
+                  const placesMax = a.nb_users_max ?? 1;
+                  const isExpanded = expandedAgences.has(a.id);
+                  const aUnAbonnement = membres.some(m => proSubscriptions.has(m.id));
+                  const poolComplete = (a.credits_complete ?? 0) + (a.credits_complete_bonus ?? 0);
+                  const poolSimple = (a.credits_document ?? 0) + (a.credits_document_bonus ?? 0);
+                  // Le champ `status` vaut 'active' dès la création (même en démo) :
+                  // on se base donc sur l'abonnement réel et sur les places débloquées.
+                  const badge = aUnAbonnement
+                    ? { label: '🟢 Abonnée', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
+                    : placesMax <= 1
+                    ? { label: '🎁 Démo — jamais activée', color: '#b45309', bg: '#fffbeb', border: '#fde68a' }
+                    : { label: '⚪️ Sans abonnement actif', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' };
+
+                  return (
+                    <div key={a.id} style={{ borderBottom: idx < agencesFiltrees.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                      <div
+                        onClick={() => loadAgenceDetail(a.id, a.raison_sociale)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 14, padding: '15px 18px',
+                          background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                          borderLeft: '4px solid #d97706', cursor: 'pointer', transition: 'background 0.15s',
+                        }}
+                        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #fef3c7, #fcd34d)'}
+                        onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #fef3c7, #fde68a)'}
+                        title="Ouvrir la fiche agence"
+                      >
+                        <span
+                          onClick={e => {
+                            e.stopPropagation();
+                            setExpandedAgences(prev => {
+                              const next = new Set(prev);
+                              if (next.has(a.id)) next.delete(a.id); else next.add(a.id);
+                              return next;
+                            });
+                          }}
+                          title={isExpanded ? 'Replier les membres' : 'Déplier les membres'}
+                          style={{ display: 'flex', padding: 2, borderRadius: 6, cursor: 'pointer', flexShrink: 0 }}
+                          onMouseOver={e => { e.stopPropagation(); (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.5)'; }}
+                          onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                        >
+                          <ChevronDown size={16} style={{ color: '#92400e', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                        </span>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🏛</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                            <span style={{ fontSize: 15, fontWeight: 800, color: '#78350f' }}>{a.raison_sociale}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, padding: '2px 8px', borderRadius: 100 }}>{badge.label}</span>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#92400e', marginTop: 2 }}>
+                            {responsable ? `👑 ${responsable.full_name}` : <span style={{ color: '#b91c1c', fontWeight: 700 }}>⚠️ Aucun responsable</span>}
+                            {a.current_period_end ? ` · Renouvellement ${fmtDate(a.current_period_end)}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <span title="Sièges occupés / places disponibles"
+                            style={{ fontSize: 11, fontWeight: 700, color: membres.length >= placesMax ? '#b45309' : '#78350f', background: 'rgba(255,255,255,0.75)', padding: '4px 10px', borderRadius: 7 }}>
+                            👥 {membres.length}/{placesMax}
+                          </span>
+                          <span title="Pool partagé : analyses complètes restantes"
+                            style={{ fontSize: 11, fontWeight: 700, color: '#5b21b6', background: 'rgba(255,255,255,0.75)', padding: '4px 10px', borderRadius: 7 }}>
+                            {poolComplete} compl.
+                          </span>
+                          <span title="Pool partagé : analyses simples restantes"
+                            style={{ fontSize: 11, fontWeight: 700, color: '#0c4a6e', background: 'rgba(255,255,255,0.75)', padding: '4px 10px', borderRadius: 7 }}>
+                            {poolSimple} simpl.
+                          </span>
+                        </div>
+                        <ChevronRight size={16} style={{ color: '#b45309', flexShrink: 0 }} />
+                      </div>
+                      {isExpanded && (
+                        membres.length === 0 ? (
+                          <div style={{ padding: '13px 18px 13px 46px', fontSize: 12.5, color: '#94a3b8', background: '#fdfdfe' }}>
+                            Aucun membre actif rattaché à cette agence.
+                          </div>
+                        ) : membres.map(m => {
+                          const info = agenceInfoByUser.get(m.id);
+                          const icon = info?.role === 'responsable' ? '👑' : info?.role === 'co_responsable' ? '🤝' : '👤';
+                          const roleLabel = info?.role === 'responsable' ? 'Responsable' : info?.role === 'co_responsable' ? 'Co-resp.' : 'Agent';
+                          return (
+                            <div key={m.id} onClick={() => loadClientDetail(m)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px 11px 46px', background: '#fdfdfe', borderTop: '1px solid #f8fafc', cursor: 'pointer' }}
+                              onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f4f8fb'}
+                              onMouseOut={e => (e.currentTarget as HTMLElement).style.background = '#fdfdfe'}>
+                              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                                {(m.full_name?.charAt(0) || 'P').toUpperCase()}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{icon} {m.full_name} <span style={{ fontSize: 10.5, fontWeight: 600, color: '#64748b' }}>({roleLabel})</span></div>
+                                <div style={{ fontSize: 11.5, color: '#94a3b8' }}>{m.email}</div>
+                              </div>
+                              {proActivated.has(m.id) && <span style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '3px 9px', borderRadius: 100, border: '1px solid #bfdbfe', flexShrink: 0 }}>Compte activé</span>}
+                              <ChevronRight size={13} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                });
+              })()
               : clients.length === 0 ? (
                 <div style={{ padding: '52px 32px', textAlign: 'center' as const }}>
                   <Building2 size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
@@ -8141,13 +8531,18 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 6 }}>Créez votre premier client pro avec le bouton ci-dessus.</p>
                 </div>
               ) : (() => {
-                const baseFiltered = proFilter === 'active' ? clients.filter(c => proSubscriptions.has(c.id))
-                  : proFilter === 'demo' ? clients.filter(c => c.pro_status === 'demo')
-                  : proFilter === 'cancel_scheduled' ? clients.filter(c => proCancelScheduled.has(c.id))
-                  : proFilter === 'activated' ? clients.filter(c => proActivated.has(c.id))
-                  : proFilter === 'inactive' ? clients.filter(c => !proActivated.has(c.id))
-                  : proFilter === 'canceled' ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id))
+                // 🗂 Portée : en mode « Comptes individuels », les membres d'agence
+                // sont exclus (ce sont des sièges d'un contrat, pas des clients).
+                const clientsInScope = proScope === 'individuels'
+                  ? clients.filter(c => !agenceInfoByUser.has(c.id))
                   : clients;
+                const baseFiltered = proFilter === 'active' ? clientsInScope.filter(c => proSubscriptions.has(c.id))
+                  : proFilter === 'demo' ? clientsInScope.filter(c => c.pro_status === 'demo')
+                  : proFilter === 'cancel_scheduled' ? clientsInScope.filter(c => proCancelScheduled.has(c.id))
+                  : proFilter === 'activated' ? clientsInScope.filter(c => proActivated.has(c.id))
+                  : proFilter === 'inactive' ? clientsInScope.filter(c => !proActivated.has(c.id))
+                  : proFilter === 'canceled' ? clientsInScope.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id))
+                  : clientsInScope;
                 // 🆕 Application cumulative du filtre par type de profil
                 // Le filtre "agence" inclut tous les membres d'une agence (responsable, co-resp, agent),
                 // pas uniquement ceux dont pro_profile_type = 'agence'
@@ -8269,8 +8664,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       {sortedAgences.map(([agenceId, agenceMembers]) => {
                         const firstMember = agenceMembers[0];
                         const agenceName = agenceInfoByUser.get(firstMember.id)?.agence_name || 'Agence';
-                        const isCollapsed = collapsedAgences.has(agenceId);
-                        const responsable = agenceMembers.find(m => agenceInfoByUser.get(m.id)?.role === 'responsable');
+                        const isCollapsed = !expandedAgences.has(agenceId);
+                        // ⚠️ agenceMembers est la liste FILTRÉE : s'en servir pour le compteur
+                        // affichait « 1 membre » sur une agence qui en compte 3. On recalcule
+                        // donc les totaux réels sur la liste complète des clients.
+                        const membresReels = clients.filter(c => agenceInfoByUser.get(c.id)?.agence_id === agenceId);
+                        const responsable = membresReels.find(m => agenceInfoByUser.get(m.id)?.role === 'responsable');
+                        const masques = membresReels.length - agenceMembers.length;
                         return (
                           <div key={`agence-${agenceId}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             {/* Header agence */}
@@ -8292,7 +8692,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                               <span
                                 onClick={e => {
                                   e.stopPropagation();
-                                  setCollapsedAgences(prev => {
+                                  setExpandedAgences(prev => {
                                     const next = new Set(prev);
                                     if (next.has(agenceId)) next.delete(agenceId);
                                     else next.add(agenceId);
@@ -8318,12 +8718,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                                   Agence {agenceName}
                                 </div>
                                 <div style={{ fontSize: 11.5, color: '#92400e', marginTop: 1 }}>
-                                  {agenceMembers.length} membre{agenceMembers.length > 1 ? 's' : ''}
+                                  {membresReels.length} membre{membresReels.length > 1 ? 's' : ''}
                                   {responsable && ` · 👑 ${responsable.full_name}`}
+                                  {masques > 0 && ` · ${masques} masqué${masques > 1 ? 's' : ''} par le filtre`}
                                 </div>
                               </div>
                               <span style={{ fontSize: 11, fontWeight: 700, color: '#78350f', background: 'rgba(255,255,255,0.7)', padding: '4px 10px', borderRadius: 7 }}>
-                                {agenceMembers.length} {agenceMembers.length > 1 ? 'comptes' : 'compte'}
+                                {membresReels.length} {membresReels.length > 1 ? 'comptes' : 'compte'}
                               </span>
                               <ChevronRight size={16} style={{ color: '#b45309', flexShrink: 0 }} />
                             </div>
@@ -8392,14 +8793,33 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               </div>
             </div>
 
+            {/* 🏛 Rappel du fonctionnement agence */}
+            {demoForm.pro_profile_type === 'agence' && (
+              <AgenceRecapCallout raisonSociale={demoForm.pro_company_name} mode="demo" />
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label style={labelStyle}>Raison sociale</label>
-                <input value={demoForm.pro_company_name} onChange={e => setDemoForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont SARL" />
+                <label style={labelStyle}>
+                  Raison sociale{demoForm.pro_profile_type === 'agence' ? ' *' : ''}
+                </label>
+                <input value={demoForm.pro_company_name} onChange={e => setDemoForm(f => ({ ...f, pro_company_name: e.target.value }))}
+                  style={demoForm.pro_profile_type === 'agence' && !demoForm.pro_company_name.trim()
+                    ? { ...inputStyle, borderColor: '#fca5a5', background: '#fef2f2' }
+                    : inputStyle}
+                  placeholder="Agence Dupont SARL" />
+                {demoForm.pro_profile_type === 'agence' && (
+                  <div style={{ fontSize: 11.5, color: !demoForm.pro_company_name.trim() ? '#dc2626' : '#94a3b8', marginTop: 4, fontWeight: !demoForm.pro_company_name.trim() ? 600 : 400 }}>
+                    Ce nom sera celui de l'agence dans tout Verimo.
+                  </div>
+                )}
               </div>
               <div>
                 <label style={labelStyle}>Réseau</label>
                 <input value={demoForm.pro_network} onChange={e => setDemoForm(f => ({ ...f, pro_network: e.target.value }))} style={inputStyle} placeholder="IAD, Safti, Indépendant..." />
+                <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 4 }}>
+                  Informatif uniquement — n'est jamais utilisé comme nom d'agence.
+                </div>
               </div>
             </div>
 
@@ -8537,8 +8957,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: 13, fontWeight: 600, cursor: demoSending ? 'not-allowed' : 'pointer', opacity: demoSending ? 0.5 : 1 }}>
                 Annuler
               </button>
-              <button onClick={handleDemoInvite} disabled={demoSending || !demoForm.full_name || !demoForm.email}
-                style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: (demoSending || !demoForm.full_name || !demoForm.email) ? 'not-allowed' : 'pointer', opacity: (demoSending || !demoForm.full_name || !demoForm.email) ? 0.5 : 1, boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}>
+              <button onClick={handleDemoInvite}
+                disabled={demoSending || !demoForm.full_name || !demoForm.email || (demoForm.pro_profile_type === 'agence' && !demoForm.pro_company_name.trim())}
+                title={demoForm.pro_profile_type === 'agence' && !demoForm.pro_company_name.trim() ? "Renseignez la raison sociale : elle donnera son nom à l'agence." : undefined}
+                style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: (demoSending || !demoForm.full_name || !demoForm.email || (demoForm.pro_profile_type === 'agence' && !demoForm.pro_company_name.trim())) ? 'not-allowed' : 'pointer', opacity: (demoSending || !demoForm.full_name || !demoForm.email || (demoForm.pro_profile_type === 'agence' && !demoForm.pro_company_name.trim())) ? 0.5 : 1, boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}>
                 {demoSending ? 'Envoi en cours…' : '🎁 Envoyer l\'invitation'}
               </button>
             </div>
@@ -8565,9 +8987,31 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 </select>
               </div>
             </div>
+            {/* 🏛 Rappel du fonctionnement agence */}
+            {form.pro_profile_type === 'agence' && (
+              <AgenceRecapCallout raisonSociale={form.pro_company_name} mode="create" />
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-              <div><label style={labelStyle}>Raison sociale</label><input value={form.pro_company_name} onChange={e => setForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont SARL" /></div>
-              <div><label style={labelStyle}>Réseau</label><input value={form.pro_network} onChange={e => setForm(f => ({ ...f, pro_network: e.target.value }))} style={inputStyle} placeholder="IAD, Safti, Indépendant..." /></div>
+              <div>
+                <label style={labelStyle}>Raison sociale{form.pro_profile_type === 'agence' ? ' *' : ''}</label>
+                <input value={form.pro_company_name} onChange={e => setForm(f => ({ ...f, pro_company_name: e.target.value }))}
+                  style={form.pro_profile_type === 'agence' && !form.pro_company_name.trim()
+                    ? { ...inputStyle, borderColor: '#fca5a5', background: '#fef2f2' }
+                    : inputStyle}
+                  placeholder="Agence Dupont SARL" />
+                {form.pro_profile_type === 'agence' && (
+                  <div style={{ fontSize: 11.5, color: !form.pro_company_name.trim() ? '#dc2626' : '#94a3b8', marginTop: 4, fontWeight: !form.pro_company_name.trim() ? 600 : 400 }}>
+                    Ce nom sera celui de l'agence dans tout Verimo.
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={labelStyle}>Réseau</label>
+                <input value={form.pro_network} onChange={e => setForm(f => ({ ...f, pro_network: e.target.value }))} style={inputStyle} placeholder="IAD, Safti, Indépendant..." />
+                <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 4 }}>
+                  Informatif uniquement — n'est jamais utilisé comme nom d'agence.
+                </div>
+              </div>
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>SIRET</label>
@@ -8628,8 +9072,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 color: '#2a7d9c',
                 lineHeight: 1.6,
               }}>
-                ℹ️ <strong>Profil Agence détecté.</strong> À la création, la souscription Stripe sera automatiquement débloquée
-                et un mail de proposition (149,90 € HT/mois — 15 complètes + 30 simples — 3 agents) sera envoyé au compte.
+                ℹ️ Le mail de proposition (149,90 € HT/mois — 15 complètes + 30 simples — 3 agents) partira à la création.
               </div>
             )}
             <div style={{ marginBottom: 16 }}>
@@ -8637,12 +9080,23 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               <textarea value={form.pro_notes_admin} onChange={e => setForm(f => ({ ...f, pro_notes_admin: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="Notes internes..." />
             </div>
             {createError && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 12, fontSize: 13, color: '#dc2626' }}>{createError}</div>}
-            <button onClick={handleCreate} disabled={creating || !form.email || !form.full_name}
-              style={{ width: '100%', padding: '13px', borderRadius: 12, background: (!form.email || !form.full_name) ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: creating ? 0.7 : 1 }}>
-              {creating
-                ? 'Création en cours...'
-                : (form.pro_profile_type === 'agence' ? '🏛 Créer le compte et envoyer la proposition' : 'Créer le client pro')}
-            </button>
+            {(() => {
+              // 🏛 Raison sociale obligatoire pour une agence : c'est elle qui donne
+              // son nom à l'entité agence, et ce nom n'est plus modifiable ici ensuite.
+              const manqueRaisonSociale = form.pro_profile_type === 'agence' && !form.pro_company_name.trim();
+              const bloque = creating || !form.email || !form.full_name || manqueRaisonSociale;
+              return (
+                <button onClick={handleCreate} disabled={bloque}
+                  title={manqueRaisonSociale ? "Renseignez la raison sociale : elle donnera son nom à l'agence." : undefined}
+                  style={{ width: '100%', padding: '13px', borderRadius: 12, background: bloque ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: bloque ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}>
+                  {creating
+                    ? 'Création en cours...'
+                    : manqueRaisonSociale
+                    ? '🏛 Renseignez la raison sociale de l\'agence'
+                    : (form.pro_profile_type === 'agence' ? '🏛 Créer le compte et envoyer la proposition' : 'Créer le client pro')}
+                </button>
+              );
+            })()}
           </Modal>
         )}
       </AnimatePresence>
