@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 3 août 2026 (mis à jour après la session identité visuelle + garde-fous pages)
+# VERIMO — Contexte projet — 7 août 2026 (mis à jour après la session agences + métriques admin + fin de démo)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -26,7 +26,138 @@
 
 ---
 
-## 🆕 DERNIÈRE SESSION — 3 août 2026 ⭐⭐⭐
+## 🆕 DERNIÈRE SESSION — 7 août 2026 ⭐⭐⭐
+
+> Point de départ : « ma liste Clients Pro mélange les pros et les agences, c'est mal organisé ». La session a dérivé sur **quatre chantiers** — refonte agences, correction en profondeur des métriques admin, suppression d'agence en cascade, automatisation de la fin de démo — plus la découverte que **six compteurs du back-office mesuraient la mauvaise chose depuis le début**.
+>
+> 🧭 **Leçon n°1 — quand deux objets métier partagent une liste, l'un des deux est toujours mal servi.** La liste « Clients Pro » était construite à 100 % depuis `profiles`. L'agence n'était qu'un bandeau doré calculé, jamais une ligne à part entière. Conséquences en cascade : agences sans membre invisibles, compteurs faux dès qu'on filtrait, statut d'agence illisible sans cliquer. **Le correctif n'était pas cosmétique : il fallait faire de l'agence une entité de premier plan, lue depuis `agences`.**
+>
+> 🧭 **Leçon n°2 — un compteur qui n'a jamais été remis en question depuis sa création est probablement faux.** `email_verified` servait de preuve d'activation dans 6 endroits. Or `admin-user-management` crée tous les comptes avec `email_confirm: true` → **le drapeau est vrai à la seconde où l'admin crée le compte, avant toute action du prospect**. Le tableau de bord affichait donc « 7 nouveaux clients » pour 7 prospects qui n'avaient jamais ouvert leur lien.
+>
+> 🧭 **Leçon n°3 — Alex a tranché contre ma recommandation, et il avait raison.** J'ai proposé un entonnoir de prospection volontairement **non filtré** par le sélecteur de période (argument : une démo met des semaines à convertir). Alex : « si on met 7 jours, il faut voir les 7 jours, c'est aussi simple que ça ». **Un filtre qui ne filtre pas est un bug, quelle que soit la justification métier.** Corrigé en cohortes : le filtre porte sur la date d'envoi, le suivi reste complet ensuite.
+>
+> 🧭 **Leçon n°4 — vérifier les règles de suppression AVANT de coder un bouton destructeur.** Avant d'écrire la suppression d'agence, deux requêtes sur `information_schema` ont listé les 8 + 15 clés étrangères concernées. Résultat décisif : `payments.user_id` est en `SET NULL` → **le CA survit à la suppression des comptes**. Si ça avait été `CASCADE`, le bouton aurait effacé l'historique comptable (obligation légale de conservation 10 ans). **Ne jamais coder une cascade sans avoir lu les contraintes.**
+
+### ✅ Chantiers livrés
+
+**1. 🏛 CLIENTS PRO — l'agence devient une entité, pas un bandeau**
+
+- **Trois sous-onglets** en tête de page : `👤 Comptes individuels` · `🏛 Agences` · `Tous`. État `proScope`, défaut `individuels`.
+- **L'onglet Agences lit `agences` directement** (plus de dérivation depuis `profiles`) → une agence sans membre actif est enfin visible. Chaque ligne : nom, badge de statut, sièges `N/max`, pool de crédits (base + bonus), responsable, date de renouvellement.
+- ⚠️ **`agences.status` est INUTILISABLE comme signal démo/payant** : il vaut `'active'` dès la création dans les deux branches de `admin-user-management`. Le badge se base donc sur **l'abonnement réel des membres** (`pro_subscriptions`) + `nb_users_max <= 1`. Ne pas re-brancher sur `status`.
+- **Bandes repliées par défaut** (sémantique inversée : `expandedAgences` contient les agences OUVERTES, plus `collapsedAgences`).
+- **Bug corrigé** : la bande affichait `agenceMembers.length`, c'est-à-dire les membres **filtrés**. Une agence de 3 membres affichait « 1 membre » sous le filtre « Inscrits non activés ». Recalculé sur `clients` complet + mention « X masqués par le filtre ».
+- **En-tête honnête** : « 18 comptes individuels · 4 agences (2 sièges) » au lieu de « 20 clients pro ». Une agence = 1 contrat, ses membres sont des **sièges**.
+- **Compteurs de pastilles bornés à la portée active** (bug introduit puis corrigé le jour même : « Agences (1 · 4 comptes) » affichait 4 alors que 2 lignes seulement s'affichaient en mode Individuels).
+- **Pastille « 🏛 Agences » remplacée par « 🏛 Agence à structurer »** : ne fait plus doublon avec l'onglet, isole les profils `pro_profile_type='agence'` **sans entité agence** — ce sont des prospects à 149,90 €. Alex en avait 2 (Isabelle RIBARD / Maison Rouge, Julien DOMINGO).
+- **Animations** : pastille active glissante (`layoutId` framer-motion), fondu croisé au changement d'onglet, dépliement à hauteur animée (260 ms) sur les deux listes.
+
+**2. 🏛 AGENCE — création, renommage, mode démo, suppression**
+
+- **Bloc de rappel à la création** (`AgenceRecapCallout`, composant module-level) : s'affiche dès que « Agence » est sélectionné dans **les deux** formulaires. Carte à en-tête doré, points sur 2 colonnes. Rappelle : la personne devient Responsable · la raison sociale **devient le nom de l'agence** (affiché en direct pendant la saisie, en rouge si vide) · c'est le responsable qui invite son équipe · **1 place jusqu'au premier paiement** · aucun crédit offert à la création (les champs sont masqués pour ce profil).
+- **Raison sociale rendue obligatoire** pour un profil agence, dans les deux formulaires (champ rouge + bouton bloqué). C'est ce qui a produit « Agence Julio » : le champ était vide, le code retombe sur `full_name`.
+- **Renommage possible** (bouton ✏️ sur la fiche agence, Entrée pour valider, Échap pour annuler). Avant, `raison_sociale` n'était modifiable **nulle part** — il fallait passer par Supabase Studio. ⚠️ **Nécessite la policy RLS UPDATE admin sur `agences`** (SQL passé le 07/08, voir plus bas).
+- **Bouton « 🎬 Mode démo agence »** (visible seulement si `nb_users_max <= 1`) : ouvre 3 places + crédite le pool de 2 complètes / 5 simples en un clic. Sans ça, une démo agence reste à 1 place avec pool vide → le prospect ne peut pas tester le multi-utilisateurs, qui est pourtant ce qu'il achète.
+- **Alerte sur la fiche d'un membre** : encart orange rappelant que des crédits offerts **depuis cette fiche seront personnels**. Deux portes existent et rien ne les distinguait : fiche membre → `credit_grants` (perso) · fiche agence → `agences.credits_*_bonus` (pool partagé).
+- **🗑 Suppression d'agence en cascade totale** — nouvelle action `delete_agence` dans `admin-user-management` :
+  - Supprime les comptes auth des membres **puis** l'entité agence (dans cet ordre : si une suppression échoue à mi-parcours, l'agence existe encore et l'état reste lisible).
+  - Confirmation par **saisie du nom exact** de l'agence + décompte réel affiché avant (comptes / analyses / dossiers) + liste nominative.
+  - Garde-fous : un compte `role='admin'` n'est jamais supprimé ; si **aucun** compte n'a pu être effacé, l'agence est conservée.
+  - **Décision produit d'Alex** : suppression totale assumée. Un ex-agent qui veut revenir refait une demande pro depuis le site. Pas de case optionnelle, pas de détachement en pro solo.
+
+**3. 📊 MÉTRIQUES ADMIN — 6 compteurs corrigés + entonnoir**
+
+- **Cause racine unique** : `email_verified` ne mesure pas l'activation (voir Leçon n°2). Remplacé partout par `last_sign_in_at`, exposé par la fonction SQL `get_users_last_sign_in()` — **déjà utilisée par Clients Pro, qui était le seul onglet juste.**
+- **Onglet Utilisateurs** : badge « ✓ via Email » → **« ✓ Compte activé »** / « ⚠ Jamais connecté ». Filtres « Vérifiés / Non vérifiés » → **« Activés / Jamais connectés »**. Tri, fiche détail et `loadUsers` (qui ne chargeait pas les connexions) alignés.
+- **Tableau de bord** : « Nouveaux clients » → **« Nouveaux clients actifs »** + mention « X en attente ». « Nb de pro abonnés » précisé « En cours aujourd'hui » (c'est un **état**, pas un flux mensuel).
+- **Analyse/CA** : « Nouveaux abonnés pro » → **« Nouveaux comptes pro »** (le compteur lisait `profiles.role='pro'`, jamais les abonnements — le libellé était simplement faux). « Nouveaux inscrits » → « Nouveaux inscrits actifs ». Graphique hebdo → « Inscriptions activées par semaine ».
+- **🎁 Bloc OFFERTS réparé** : lisait `payments` avec `amount=0`, or les crédits offerts s'écrivent dans **`credit_grants`** puis `pro_unit_purchases` — **jamais dans `payments`**. Il affichait donc structurellement 0. Rebranché sur `credit_grants` + `agence_credit_grants`.
+- **`prevActiveProCount` : n'est plus codé en dur à 0.** `pro_subscriptions` ne stocke que l'état courant (un abonnement résilié ne laisse que `canceled`, sans trace de sa période d'activité). Reconstitution par les dates : *actif à la date D = souscrit avant D ET pas encore résilié à D* (`created_at`, `canceled_at`, repli `current_period_end`). **L'évolution est aussi AFFICHÉE** — elle était calculée mais n'apparaissait nulle part. ⚠️ Limite assumée : un abonnement résilié puis repris écrase la ligne, il compte comme un seul.
+- **🎯 Entonnoir de prospection** (Analyse/CA) : Démos envoyées → Activées → Ont testé → Payées, avec pourcentages + encart « démos en sommeil » (> 30 j sans conversion).
+  - **Filtré sur la période sélectionnée** (date d'envoi de la démo). Les 3 étapes suivantes suivent la cohorte **sans borne de date** — sinon une démo envoyée en fin de période et testée après serait invisible et les taux sous-évalués. Requête `analyses` dédiée pour cette cohorte, ne PAS réutiliser la liste `analyses` bornée à la période.
+  - ⚠️ **« Payées » croise `pro_demo_converted_at` AVEC un abonnement actif.** Le bouton admin pose `pro_demo_converted_at` sans paiement : sans ce croisement, chaque prolongation d'essai gonflerait le taux de conversion.
+- **Ruban démos sur le tableau de bord** : `X envoyées ce mois · Y activées (%)` (bornés au mois, cohérent avec le titre de la page) **puis, après un séparateur visuel**, `N en cours au total` + badge `⏰ à relancer`. Ces deux derniers sont volontairement hors période : une démo de juin qui dort est précisément celle à rappeler.
+- **Règle établie** : *Tableau de bord = le mois en cours, tout chiffre d'état doit le dire explicitement. Analyse/CA = tout suit le sélecteur, sans exception.*
+
+**4. 🎁 FIN DE DÉMO — automatisée**
+
+- **Diagnostic** : `pro_status='demo'` n'est lu qu'à **un seul endroit** dans tout le code client (`DashboardProPage`). Il ne bloque rien — il affiche le bandeau orange et **masque la carte de plan recommandé**. L'onglet « Mon abonnement » reste accessible en permanence : un client en démo a toujours pu payer.
+- **Le trou** : la bascule `demo → active` n'était déclenchée que par un paiement **ou un clic admin**. Un prospect ayant consommé ses 2 crédits restait étiqueté démo indéfiniment et **ne voyait jamais l'offre payante mise en avant**. Cas réel constaté sur Alain CADIER (2 analyses faites, 0 crédit restant, toujours en démo).
+- **Bascule automatique livrée** (`HomeViewPro`) : dès que le solde tombe à 0, `pro_status='active'` + `pro_demo_converted_at`. Garde-fou `.eq('pro_status','demo')` pour ne jamais écraser un compte passé actif entre-temps. État local `demoAutoConvertie` pour un affichage immédiat sans rechargement.
+- **Le bandeau bleu « Vous avez testé Verimo » est CONSERVÉ après la bascule** (`demoCreditsUsed` ne dépend plus de `isDemo`). Le prospect voit donc deux chemins : « je souhaite être rappelé » **et** la carte du plan recommandé.
+- **Champ « Plan recommandé » ajouté au formulaire « Inviter en démo »** — il n'existait que dans « Créer un client pro ». C'est précisément le formulaire qui sert à prospecter : les 17 démos existantes n'ont donc aucun plan recommandé et tomberont sur le bandeau générique. ⚠️ Nécessite le redéploiement de `admin-user-management` (`pro_recommended_plan` ajouté à `create_pro_demo`).
+- **Bouton admin renommé « Passer en compte actif »** (ex-« Activer le compte », puis « Terminer la démo »). Il ne sert plus que pour une démo qui traîne **sans avoir été consommée**. La modale explique les 4 effets réels et précise que la bascule est automatique dans les autres cas.
+- **Lien discret « Déjà convaincu ? Voir les forfaits »** dans le bandeau orange, dès qu'**un seul** des deux crédits est consommé. Angle mort corrigé : un pro qui teste une analyse et garde l'autre ne voyait aucune proposition.
+
+**5. 🪟 MODALES — verrou de défilement global**
+
+- `useScrollLock(actif)` (hook module-level) : fige `body.overflow` et compense la largeur de la barre de scroll (sinon la page saute latéralement à l'ouverture).
+- Branché sur le composant `Modal` **et** sur les 7 modales écrites à la main (fiche client pro, onglet Analyses).
+- Ajouts sur `Modal` uniquement : **fermeture par Échap** et **clic sur le fond**. Volontairement pas sur les modales manuelles — certaines bloquent la fermeture pendant un envoi en cours.
+
+### ⚠️ Découvertes NON corrigées
+
+**A. 🟠 Les liens d'invitation pro ne s'invalident jamais**
+- `resend_pro_invitation` crée un nouveau token **sans annuler les précédents**. Trois mails = trois liens valides, **sans date d'expiration** (contrairement aux invitations d'agence, expirées à 7 j).
+- ✅ **Mais le trou est refermé côté consommation** : `setup_pro_account` vérifie `profiles.pro_onboarding_done === true` et refuse (« Ce compte est déjà actif »). Contrôle **côté serveur**, un appel API direct est aussi bloqué.
+- Le risque résiduel ne concerne donc **que les comptes jamais activés** : un lien de mai fonctionne toujours. **Alex a tranché : on laisse tel quel.** Ne pas relancer le sujet.
+
+**B. 🟡 `profiles.agence_role` n'est jamais nettoyé**
+- `profiles.agence_id` est en `ON DELETE SET NULL`, mais `agence_role` est une simple colonne TEXT sans FK → elle survit à la suppression de l'agence.
+- Sans importance depuis que la suppression d'agence efface aussi les comptes. **Redeviendrait un bug** si un détachement en pro solo était implémenté un jour : un ex-agent garderait « Abonnement géré par votre agence » et ne pourrait plus jamais souscrire.
+
+**C. 🟡 `dossier_notes` part en CASCADE avec l'agence**
+- Contenu écrit par les clients (notes sur dossiers), détruit sans avertissement. Cohérent avec la décision de suppression totale, mais à savoir si la politique change.
+
+**D. 🟢 Délai d'activation non mesurable**
+- `last_sign_in_at` ne garde que la **dernière** connexion, pas la première. On sait « il s'est connecté », pas « il a mis 3 jours à ouvrir le lien ». Il faudrait une colonne dédiée — inutile au volume actuel.
+
+### 📁 Fichiers livrés (4)
+
+| Fichier | Contenu | Déploiement |
+|---|---|---|
+| `supabase/functions/admin-user-management/index.ts` | 🆕 action `delete_agence` · `pro_recommended_plan` dans `create_pro_demo` | ⚠️ **Supabase Studio → Edge Functions → Deploy** (le push GitHub ne suffit PAS) |
+| `src/pages/AdminPage.tsx` | onglets agences · métriques · entonnoir · suppression · `useScrollLock` | GitHub → Vercel |
+| `src/pages/DashboardProPage.tsx` | bascule auto fin de démo · lien forfaits dans le bandeau orange | GitHub → Vercel |
+| `src/pages/MonEquipePage.tsx` | 2 messages distincts selon abonnement jamais activé / places pleines | GitHub → Vercel |
+
+> **Ordre imposé** : SQL → edge function → frontend. Le bouton « Renommer » échoue **silencieusement** (0 ligne modifiée, aucune erreur) sans la policy RLS. `delete_agence` renvoie « Action inconnue » si l'edge function n'est pas redéployée.
+> `tsc --noEmit -p tsconfig.app.json` + `vite build` OK à chaque étape.
+
+### 🗄️ SQL de la session
+
+```sql
+-- Policy RLS : autoriser l'admin à MODIFIER une agence (renommage).
+-- Les policies du 22 juin ne donnaient que le SELECT.
+DROP POLICY IF EXISTS "Admin peut modifier les agences" ON public.agences;
+CREATE POLICY "Admin peut modifier les agences"
+  ON public.agences FOR UPDATE TO authenticated
+  USING (is_admin()) WITH CHECK (is_admin());
+```
+
+### 🔑 Règles de suppression vérifiées en prod (07/08) — À NE PAS REDÉCOUVRIR
+
+**Suppression d'une `agences`** :
+- `CASCADE` (lignes détruites) : `agence_members`, `agence_invitations`, `agence_credit_grants`, `dossier_notes`
+- `SET NULL` (données conservées) : `analyses`, `pro_folders`, `envois_rapports`, `profiles`
+
+**Suppression d'un compte (`profiles` / `auth.users`)** :
+- `CASCADE` : `analyses`, `documents`, `comparaisons`, `pro_folders`, `pro_subscriptions`, `credit_grants`, `report_shares`, `pro_invitations`, `emails_log`, `banners`
+- ✅ **`SET NULL` : `payments`, `pro_unit_purchases`, `credit_grants.granted_by`, `contact_pro.converted_profile_id`** → **le CA et l'historique de facturation survivent** (les paiements gardent `customer_email` / `customer_name`, et `PaymentsTab` sait déjà les afficher comme `_orphan`)
+- `NO ACTION` : `agence_credit_grants.granted_by` (ne concerne que les admins, jamais bloquant en pratique)
+
+### 🧾 Points annexes établis
+
+- **Découverte sur les données d'Alex** : 4 agences en base, dont **3 coquilles vides** (Boris, Kerlio Aga, Robin GEMOZ) créées la nuit du 28 mai entre 00h29 et 01h02 — soit pendant le développement de la fonction agence, avant que le rattachement du responsable ne marche. `membres_total = 0` sur les trois. Julio (23h02, la dernière) est la seule qui ait fonctionné. Elles étaient **invisibles dans l'admin** avant cette session.
+- **`agences.status` vaut `'active'` sur les 4**, y compris les démos → confirme qu'il ne sert à rien comme signal.
+- **Julio est à `nb_users_max = 5`** (réglage manuel d'Alex en test) avec 9 complètes / 5 simples au pool, sans abonnement. Le bouton « Mode démo agence » n'apparaît donc pas sur sa fiche (normal, il ne cible que `<= 1`).
+- **Les modales de création sont passées de 620/640 px à 880 px**, ce qui a permis de passer le bloc de rappel agence sur 2 colonnes.
+- **`pro_status` n'est lu qu'une seule fois côté client** (`DashboardProPage` l.~932). Toute évolution de la logique démo passe par là.
+- **Le formulaire « Créer un client pro » masque volontairement les champs de crédits pour un profil agence** (commentaire d'origine : « pas de geste commercial sur ce plan, la souscription gère les crédits »). Une agence créée par ce formulaire démarre donc à **0 crédit**, sans moyen d'en donner à la création → passer par le pool ensuite. C'est désormais écrit dans le bloc de rappel.
+
+---
+
+## 📌 SESSION — 3 août 2026 ⭐⭐⭐
 
 > Point de départ : Alex trouve que le site « fait un peu trop intelligence artificielle », et soupçonne la typographie. La session a dérivé sur trois chantiers — identité visuelle, garde-fous de pages à l'upload, refonte de l'affichage des fichiers déposés — plus un audit des limites d'analyse et **une découverte de coût API majeure non corrigée**.
 >
@@ -678,7 +809,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 | `comparer` | Compare 2 ou 3 rapports. 🆕 Écrit `status='processing'` dès le début puis `completed`/`failed` (24 juil) — permet au frontend d'afficher un spinner « en cours » comme une analyse classique. ⚠️ Nécessite la colonne `comparaisons.status` (migration SQL 24 juil). | **v2** (24 juil) |
 | `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max, relance analyser-run avec mode+existingReport). 🆕 25/07 : refund aligné sur le verrou idempotent `refund_analyse_credit` (le 4ᵉ rembourseur oublié contournait le verrou), abandon de complément mode-aware, fallback mode `'complete'` | **v2** (25 juil) |
 | `watchdog-stuck-analyses` | Cron 15 min — nettoie les analyses bloquées (processing > 1h, files_ready > 30 min, queued > 1h30) → failed + refund + notif ; comparaisons > 5 min → failed. 🆕 25/07 : garde `last_retry_at` (ne tue plus une (re)lance saine sur ligne ancienne) + branche complément (restaure completed, 0 refund) | **v3** (25 juil) |
-| `admin-user-management` | Actions admin (create, invite, delete, reset password, create_pro_demo enrichi, activate_pro_demo, unlock_agence_subscription, grant_agence_credits, 🆕 **set_agence_users_max** 23 juin) — **modifié 28 mai pour création auto entité agence** | **v4** (23 juin) |
+| `admin-user-management` | Actions admin (create, invite, delete, reset password, setup_pro_account, send/resend_pro_invitation, create_pro_demo, activate_pro_demo, unlock_agence_subscription, grant_agence_credits, set_agence_users_max, 🆕 **`delete_agence`** 07/08) — création auto entité agence si `pro_profile_type='agence'` · 🆕 `pro_recommended_plan` accepté dans `create_pro_demo` (07/08) | **v5** (7 août) |
 | `pro-checkout-create` | Stripe pro : subscribe / preview_upgrade / buy_unit / cancel / cancel_scheduled_change / reactivate / billing_portal / list_invoices | V3 |
 | `stripe-webhook-pro` | Webhook Stripe pro (5 events) + mail résiliation + auto-conversion démo→actif + recharge pool agence quand plan=agence + 🆕 **préserve `nb_users_max` custom au renouvellement** (`Math.max(3, valeur_actuelle)`, 23 juin) | **V10** (23 juin) |
 | `stripe-webhook` | Webhook Stripe particuliers (checkout.session.completed) | **V3.1** |
@@ -751,9 +882,16 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 - Mode `cancel_scheduled_change` permet d'annuler une bascule programmée
 - Stockage BDD dans colonnes `pro_subscriptions.scheduled_plan_change` + `scheduled_change_date`
 
-### Auto-conversion démo → actif (V8)
-- Quand un pro `pro_status='demo'` souscrit un abonnement Stripe → passage auto à `pro_status='active'` + `pro_demo_converted_at`
-- Bandeaux démo (orange + bleu) disparaissent automatiquement
+### Auto-conversion démo → actif (V8, étendue le 07/08)
+**Trois déclencheurs**, tous posent `pro_status='active'` + `pro_demo_converted_at` :
+1. **Paiement Stripe** (abonnement OU achat unitaire) → `convertDemoToActiveIfNeeded` dans `stripe-webhook-pro`
+2. 🆕 **Crédits démo épuisés** (07/08) → bascule côté client dans `HomeViewPro` (`DashboardProPage`), garde-fou `.eq('pro_status','demo')`
+3. **Clic admin** « Passer en compte actif » → action `activate_pro_demo`
+
+⚠️ Le déclencheur 3 pose `pro_demo_converted_at` **sans aucun paiement** : toute mesure de conversion doit croiser avec `pro_subscriptions` (voir l'entonnoir d'Analyse/CA).
+
+**Effet réel de `pro_status='demo'`** : lu à **un seul endroit** du code client (`DashboardProPage` l.~932). Il n'a **aucun pouvoir de blocage** — l'onglet « Mon abonnement » reste accessible en démo. Il affiche le bandeau orange et **masque la carte de plan recommandé**. C'est tout.
+- Le bandeau bleu « Vous avez testé Verimo » (avec « je souhaite être rappelé ») est **conservé après la bascule** — il ne dépend plus de `isDemo`.
 
 ### 🆕 Sync agence dans le webhook (V9 — 28 mai)
 - Quand un responsable d'agence paie le plan Agence (149,90€) → webhook met `agences.nb_users_max=3` et `agences.status='active'`
@@ -853,7 +991,16 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 - Fiche client : bandeau bleu agence avec liste cliquable des autres membres
 - Filtre "Agence" inclut tous les membres (responsable + co-resp + agents)
 - Filtre "Autre" exclut les membres d'agence
-- ✅ **Regroupement visuel par agence (header doré dépliable + membres indentés)** — RÉSOLU le 22 juin. Le code était bon ; cause = RLS (`agences` / `agence_members` sans policy admin). Fix = policies SELECT `is_admin()` sur les deux tables. + Vue détail agence complète, analyses cliquables paginées, filtre « Agences (N · M comptes) », bouton « Voir l'agence ». Voir session 22 juin.
+- ✅ **Regroupement visuel par agence (header doré dépliable + membres indentés)** — RÉSOLU le 22 juin. Le code était bon ; cause = RLS (`agences` / `agence_members` sans policy admin). Fix = policies SELECT `is_admin()` sur les deux tables. + Vue détail agence complète, analyses cliquables paginées, bouton « Voir l'agence ».
+- 🆕 **REFONTE DU 07/08 — l'agence est devenue une entité de premier plan.** Voir la session du 7 août pour le détail. En résumé :
+  - **3 sous-onglets** `proScope` : Comptes individuels / Agences / Tous. L'onglet Agences lit **`agences` directement** → une agence sans membre est enfin visible.
+  - Bandes **repliées par défaut** (`expandedAgences`, sémantique inversée).
+  - Bandes enrichies : statut réel, sièges `N/max`, pool de crédits, responsable, renouvellement.
+  - **Renommage de l'agence** (nécessite la policy RLS UPDATE admin, SQL du 07/08).
+  - **Bouton « Mode démo agence »** (3 places + pool en un clic, si `nb_users_max <= 1`).
+  - **Suppression totale en cascade** (`delete_agence`), confirmation par saisie du nom.
+  - Filtre profil « 🏛 Agences » → **« 🏛 Agence à structurer »** : isole les `pro_profile_type='agence'` SANS entité agence (= prospects à convertir), ne fait plus doublon avec l'onglet.
+- ⚠️ **`agences.status` est inutilisable comme signal démo/payant** : il vaut `'active'` dès la création. Se baser sur `pro_subscriptions` + `nb_users_max`.
 
 ### CGV Pro
 
@@ -924,7 +1071,9 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 - `analyses.status` : CHECK autorise `pending, processing, queued, completed, failed`
 - `profiles.pro_status` : TEXT nullable (`'demo'` | `'active'` | `null`)
 - `profiles.agence_id` : UUID nullable, FK vers `agences(id)` ON DELETE SET NULL
-- `profiles.agence_role` : TEXT (`'responsable'` | `'co_responsable'` | `'agent'`)
+- `profiles.agence_role` : TEXT (`'responsable'` | `'co_responsable'` | `'agent'`) — ⚠️ **aucune FK, jamais nettoyée** à la suppression d'une agence
+- 🆕 **Règles ON DELETE complètes (relevées en prod le 07/08)** : voir la section « Règles de suppression vérifiées en prod » dans la session du 7 août. Point clé : **`payments.user_id` est en SET NULL** → le CA survit à la suppression d'un compte.
+- ⚠️ **`email_verified` ne prouve PAS l'activation** : `admin-user-management` crée tous les comptes avec `email_confirm: true`, donc le drapeau est vrai dès la création. **Le seul signal fiable est `last_sign_in_at`** via la fonction SQL `get_users_last_sign_in()`. Corrigé partout le 07/08 — ne pas re-brancher un compteur dessus.
 - `callback_requests.status` : TEXT default 'pending' (`'pending' | 'called' | 'converted' | 'declined'`)
 
 ---
@@ -1180,6 +1329,7 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 45. **Créer un exemple de rapport Verimo anonymisé** en PDF
 46. **Rédiger 3 email templates** de démarchage
 47. **Argumentaire / objections-réponses** pour préparer les démos
+> ✅ **Le suivi chiffré du funnel est livré (07/08)** : entonnoir 4 étapes dans Analyse/CA + ruban démos sur le tableau de bord + signal « démos en sommeil ». Les items ci-dessus restent du contenu commercial à produire, plus de l'outillage.
 
 ---
 
@@ -1326,6 +1476,14 @@ Toutes dans `analyser-run/index.ts` sauf la n°3 — **un seul redéploiement Su
 - **Chiffres en police mono** (`IBM Plex Mono`) sur le score /20, les notes de catégories et les montants — proposé et montré, **non tranché par Alex**. C'est la piste la plus différenciante restante : Verimo est un produit de chiffres extraits, et personne en proptech française ne les traite comme des données.
 - **Déclarer les couleurs de marque dans `tailwind.config.js`**, maintenant que le fichier est ouvert. `#2a7d9c` est en dur **876 fois** dans `src/`.
 - **Contrôle serveur du `mode`** (`analyser/index.ts`) : si `mode === 'document'` et `storagePaths.length > 1` → 400. Même chantier que la faille `consume_pro_credit`.
+
+### 🧹 Suites de la session du 07/08 (après déploiement)
+- **Supprimer les 3 agences fantômes** (Boris, Kerlio Aga, Robin GEMOZ) — 0 membre, 0 analyse. Tester le bouton de suppression dessus en premier, aucun risque. Vérifier avant que les 5 colonnes liées sont bien à 0.
+- **Repasser Isabelle RIBARD et Julien DOMINGO** en « Agent solo », ou les traiter comme prospects Agence : ils sont typés `agence` sans entité (filtre « Agence à structurer »). Isabelle est chez Maison Rouge — probable vraie agence à 149,90 €.
+- **Renseigner un plan recommandé** sur les 17 démos existantes (fiche client → bloc identité). Aucune n'en a, elles tomberont toutes sur le bandeau générique à la fin de leur démo.
+- **Relancer les 9 démos en sommeil** (> 30 j) signalées sur le tableau de bord.
+- **Vérifier l'entonnoir** en « Depuis le début » : le 2ᵉ chiffre (taux d'activation) est le plus parlant. S'il reste très bas, le problème est le mail d'invitation ou le moment d'envoi, pas le produit.
+- **Non fait volontairement** : invalidation des anciens liens d'invitation (Alex a tranché, voir découverte A du 07/08).
 
 ### 🧪 À surveiller sur les prochains gros dossiers
 - Durée de la tranche la plus lente : **210 s constatées** sur 350. Si ça se tend → `DECOUPAGE_PAGES_PAR_TRANCHE` à 15.
