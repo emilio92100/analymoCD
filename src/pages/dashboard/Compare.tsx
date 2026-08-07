@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { GitCompare, ShieldCheck, Building2, CheckCircle, ArrowRight, Trash2, Clock, Eye } from 'lucide-react';
-import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
+import { GitCompare, ShieldCheck, Building2, CheckCircle, ArrowRight, Trash2, Clock, Eye, Search, X } from 'lucide-react';
+import { mapAnalyseDB, type Analyse } from '../../hooks/useAnalyses';
+import { fetchAnalysesPourComparaison, fetchMonAgenceId } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import DashboardLoader from '../../components/DashboardLoader';
 
@@ -156,6 +157,8 @@ type ComparaisonSaved = {
   analyse_ids: string;
   verdict: { titre_verdict?: string } & Record<string, unknown>;
   created_at: string;
+  user_id?: string;
+  agence_id?: string | null;
 };
 
 /* ══════════════════════════════════════════
@@ -167,9 +170,47 @@ type ComparaisonSaved = {
    ══════════════════════════════════════════ */
 export default function Compare() {
   const navigate = useNavigate();
-  const { analyses, loading: analysesLoading } = useAnalyses();
+  // 🆕 Source élargie à l'agence : un membre doit pouvoir comparer les biens
+  // analysés par ses collègues (les dossiers étaient déjà partagés, pas la
+  // comparaison). Comportement inchangé pour un particulier ou un pro solo.
+  type AnalysePourCompare = Analyse & { _createur?: string; _estCollegue?: boolean };
+  const [analyses, setAnalyses] = useState<AnalysePourCompare[]>([]);
+  const [analysesLoading, setAnalysesLoading] = useState(true);
+  const [monAgenceId, setMonAgenceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const [liste, agId] = await Promise.all([
+        fetchAnalysesPourComparaison(),
+        fetchMonAgenceId(),
+      ]);
+      // Même transformation que le hook useAnalyses, plus les métadonnées agence
+      setAnalyses(liste.map(a => ({
+        ...mapAnalyseDB(a),
+        _createur: a._createur,
+        _estCollegue: a._estCollegue,
+      })));
+      setMonAgenceId(agId);
+      setAnalysesLoading(false);
+    })();
+  }, []);
+
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
+  // 🔎 Recherche par adresse / titre — indispensable dès qu'une agence cumule
+  // les biens de plusieurs agents dans la même liste.
+  const [recherche, setRecherche] = useState('');
+
+  // Liste filtrée par la recherche : adresse, nom de document, dossier, créateur.
+  const analysesFiltrees = (() => {
+    const q = recherche.trim().toLowerCase();
+    if (!q) return completedAnalyses;
+    return completedAnalyses.filter(a => {
+      const dossier = a.folder_id ? (folderNames[a.folder_id] || '') : '';
+      return [a.adresse_bien, a.nom_document, dossier, (a as AnalysePourCompare)._createur]
+        .some(v => (v || '').toLowerCase().includes(q));
+    });
+  })();
 
   // Noms des dossiers pour les analyses pro
   const [folderNames, setFolderNames] = useState<Record<string, string>>({});
@@ -197,16 +238,22 @@ export default function Compare() {
 
   const loadHistorique = useCallback(async () => {
     try {
-      const { data } = await supabase
+      // 🆕 L'historique remonte aussi les comparaisons des collègues d'agence.
+      // Sans ça, deux agents relançaient la même comparaison sans le savoir —
+      // et l'appel API était refait pour un verdict déjà en base.
+      const { data: { user } } = await supabase.auth.getUser();
+      let q = supabase
         .from('comparaisons')
-        .select('id, analyse_ids, verdict, created_at')
-        .not('verdict', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .select('id, analyse_ids, verdict, created_at, user_id, agence_id')
+        .not('verdict', 'is', null);
+      if (monAgenceId && user) {
+        q = q.or(`user_id.eq.${user.id},agence_id.eq.${monAgenceId}`);
+      }
+      const { data } = await q.order('created_at', { ascending: false }).limit(10);
       if (data) setHistorique(data as ComparaisonSaved[]);
     } catch { /* ignore */ }
     setHistoriqueLoading(false);
-  }, []);
+  }, [monAgenceId]);
 
   useEffect(() => { loadHistorique(); }, [loadHistorique]);
 
@@ -297,6 +344,24 @@ export default function Compare() {
 
   const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
   const canLaunch = selected.length >= 2;
+
+  // Noms des membres, pour attribuer une comparaison d'agence à son auteur
+  const [nomsMembres, setNomsMembres] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!monAgenceId || historique.length === 0) return;
+    const ids = [...new Set(historique.map(h => h.user_id).filter(Boolean))] as string[];
+    if (ids.length === 0) return;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+      const map: Record<string, string> = {};
+      (data || []).forEach((p: { id: string; full_name: string }) => {
+        if (p.id !== user?.id) map[p.id] = p.full_name;   // « moi » reste implicite
+      });
+      setNomsMembres(map);
+    })();
+  }, [monAgenceId, historique]);
+
 
   // ─── LANCEMENT / RELANCE ──────────────────────────────────────────────────
   // Ordre canonique : les IDs sont TOUJOURS triés avant l'appel (le backend
@@ -645,7 +710,34 @@ export default function Compare() {
           </div>
         </div>
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {completedAnalyses.map((a, idx) => {
+        {/* 🔎 Recherche par adresse — affichée dès 4 biens, ou dès qu'on est en
+            agence (la liste cumule alors les biens de plusieurs agents). */}
+        {(completedAnalyses.length > 4 || monAgenceId) && (
+          <div style={{ position: 'relative', marginBottom: 2 }}>
+            <Search size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+            <input
+              value={recherche}
+              onChange={e => setRecherche(e.target.value)}
+              placeholder="Rechercher par adresse, dossier ou collègue…"
+              style={{ width: '100%', padding: '11px 36px 11px 38px', borderRadius: 11, border: '1.5px solid #edf2f7', fontSize: 13.5, background: '#fafbfc', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              onFocus={e => (e.currentTarget.style.borderColor = '#2a7d9c')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#edf2f7')}
+            />
+            {recherche && (
+              <button onClick={() => setRecherche('')}
+                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: 4 }}
+                title="Effacer">
+                <X size={15} />
+              </button>
+            )}
+          </div>
+        )}
+        {analysesFiltrees.length === 0 ? (
+          <div style={{ padding: '28px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 13.5 }}>
+            Aucun bien ne correspond à « {recherche.trim()} ».
+          </div>
+        ) : null}
+        {analysesFiltrees.map((a, idx) => {
           const isSel = selected.includes(a.id);
           const score = a.score ?? 0;
           const sc = getScoreColor(score);
@@ -672,6 +764,12 @@ export default function Compare() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: a.folder_id ? 4 : 0 }}>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>{a.date}</span>
                   {reco && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: reco === 'Acheter' ? '#f0fdf4' : reco === 'Négocier' ? '#fffbeb' : '#fef2f2', color: reco === 'Acheter' ? '#166534' : reco === 'Négocier' ? '#92400e' : '#991b1b', fontWeight: 700 }}>{reco}</span>}
+                  {/* 🆕 Provenance : sans ça, impossible de savoir que le bien vient d'un collègue */}
+                  {(a as AnalysePourCompare)._estCollegue && (
+                    <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: '#f0f7fb', color: '#0c4a6e', fontWeight: 700 }}>
+                      👤 {(a as AnalysePourCompare)._createur}
+                    </span>
+                  )}
                 </div>
                 {a.folder_id && folderNames[a.folder_id] && (
                   <div style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -723,7 +821,16 @@ export default function Compare() {
                         Comparaison déjà effectuée
                       </div>
                       <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-                        Vous avez déjà comparé ces {selected.length} biens le {dateExist}.
+                        {(() => {
+                          // 🆕 En agence, la comparaison peut venir d'un collègue :
+                          // le dire évite qu'on la relance en croyant l'avoir perdue.
+                          const auteur = existingComp.user_id
+                            ? nomsMembres[existingComp.user_id]
+                            : undefined;
+                          return auteur
+                            ? <>Ces {selected.length} biens ont déjà été comparés par <strong style={{ color: '#0f2d3d' }}>{auteur}</strong> le {dateExist}. Inutile de relancer l'analyse.</>
+                            : <>Vous avez déjà comparé ces {selected.length} biens le {dateExist}.</>;
+                        })()}
                       </div>
                     </div>
                   </div>
