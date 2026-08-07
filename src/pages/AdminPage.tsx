@@ -3050,7 +3050,7 @@ function StatsTab() {
         { data: connexions },
         { data: agenceGrantsData },
         { data: tousProfilsPro },
-        { data: abosActifs },
+        { data: tousAbonnements },
       ] = await Promise.all([
         // ─── CA V2 : on lit UNIQUEMENT payments avec customer_type, amount_ht, status remboursés ───
         supabase.from('payments')
@@ -3074,8 +3074,10 @@ function StatsTab() {
         // 🆕 Entonnoir démo : tous les comptes pro passés par la démo (hors période :
         // une démo lancée en mai peut convertir en août)
         supabase.from('profiles').select('id, pro_status, pro_demo_started_at, pro_demo_converted_at').eq('role', 'pro').not('pro_demo_started_at', 'is', null),
-        // 🆕 Abonnements réels — sert à ne compter comme « converti » que ceux qui ont payé
-        supabase.from('pro_subscriptions').select('user_id').eq('status', 'active'),
+        // 🆕 TOUS les abonnements avec leurs dates de début et de fin.
+        // Sert à deux choses : savoir qui a réellement payé (entonnoir), et
+        // reconstituer le nombre d'abonnés actifs à une date passée (comparaison).
+        supabase.from('pro_subscriptions').select('user_id, status, created_at, canceled_at, current_period_end'),
       ]);
 
       // Helpers V2 : montants nets après remboursement partiel
@@ -3096,8 +3098,32 @@ function StatsTab() {
           .filter(u => u.last_sign_in_at).map(u => u.id)
       );
 
+      // 🆕 Reconstitution du nombre d'abonnés actifs à une DATE PASSÉE.
+      // `pro_subscriptions` ne stocke que l'état courant : un abonnement résilié
+      // n'y laisse que « canceled », sans trace de la période où il était actif.
+      // On le reconstitue à partir des dates : un abonnement était actif à la date D
+      // s'il avait démarré avant D et n'était pas encore résilié à ce moment-là.
+      // Approximation assumée : un abonnement résilié puis repris compte comme un seul.
+      type AbonnementRow = { user_id: string; status: string; created_at: string | null; canceled_at: string | null; current_period_end: string | null };
+      const abonnements = (tousAbonnements || []) as AbonnementRow[];
+      const abonnesActifsAuMoment = (dateIso: string): number => {
+        const d = new Date(dateIso).getTime();
+        return abonnements.filter(a => {
+          if (!a.created_at || new Date(a.created_at).getTime() > d) return false; // pas encore souscrit
+          // Fin d'abonnement : date de résiliation, ou à défaut fin de la période payée
+          const finIso = a.canceled_at || (a.status !== 'active' ? a.current_period_end : null);
+          if (finIso && new Date(finIso).getTime() <= d) return false;             // déjà terminé
+          return true;
+        }).length;
+      };
+      // Abonnés réellement payants aujourd'hui (sert à l'entonnoir)
+      const abonnesSet = new Set<string>(abonnements.filter(a => a.status === 'active').map(a => a.user_id));
+
       // Prev period (if not "all") — même logique unifiée
       let prevCaPart = 0, prevCaPro = 0, prevNewUsers = 0, prevNewPro = 0, prevAnalyses = 0;
+      // 🆕 Nombre d'abonnés à la FIN de la période précédente (= début de la période courante).
+      // Remplace le `0` codé en dur qui faisait afficher « ↑ +N » même en cas de perte d'abonnés.
+      const prevActiveProCount = period !== 'all' && prevEnd ? abonnesActifsAuMoment(prevEnd) : 0;
       if (prevStart && prevEnd && period !== 'all') {
         const [{ data: pp }, { data: pu }, { count: ppr }, { count: pa }] = await Promise.all([
           supabase.from('payments')
@@ -3174,7 +3200,6 @@ function StatsTab() {
       // « Converti » = sorti de la démo ET abonnement réellement actif. Le bouton admin
       // « Terminer la démo » pose pro_demo_converted_at sans paiement : sans ce croisement,
       // le taux de conversion serait artificiellement gonflé.
-      const abonnesSet = new Set<string>(((abosActifs || []) as Array<{ user_id: string }>).map(a => a.user_id));
       const parcoursDemo = (tousProfilsPro || []) as Array<{ id: string; pro_status: string | null; pro_demo_started_at: string | null; pro_demo_converted_at: string | null }>;
       const idsAyantAnalyse = new Set<string>((analyses || []).map((a: any) => a.user_id));
       const seuil30j = new Date(Date.now() - 30 * 24 * 3600 * 1000);
@@ -3225,7 +3250,7 @@ function StatsTab() {
         }
       });
 
-      setStats({ caParticulier, caPro, caProHt, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newUsersCrees, funnel, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesPart, analysesPro, analysesByType, analysesByTypePart, analysesByTypePro, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
+      setStats({ caParticulier, caPro, caProHt, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newUsersCrees, funnel, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesPart, analysesPro, analysesByType, analysesByTypePart, analysesByTypePro, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount });
 
       // Graphiques 8 dernières semaines — basés sur payments uniquement
       const weeks: { week: string; caPart: number; caPro: number; users: number }[] = [];
@@ -3360,6 +3385,14 @@ function StatsTab() {
           <div style={{ padding: '14px', borderRadius: 12, background: '#0f2d3d' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', marginBottom: 4 }}>NB PRO ABONNÉS</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: '#fff' }}>{stats.activeProCount}</div>
+            {/* 🆕 Évolution réelle : reconstituée à partir des dates de souscription et
+                de résiliation. Une perte d'abonnés s'affiche donc bien en rouge. */}
+            {period !== 'all' && (stats.activeProCount !== stats.prevActiveProCount) && (
+              <div style={{ fontSize: 10, fontWeight: 700, marginTop: 3, color: stats.activeProCount > stats.prevActiveProCount ? '#4ade80' : '#fca5a5' }}>
+                {stats.activeProCount > stats.prevActiveProCount ? '↑ +' : '↓ '}
+                {stats.activeProCount - stats.prevActiveProCount} vs préc. ({stats.prevActiveProCount})
+              </div>
+            )}
           </div>
           <div style={{ padding: '14px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 4 }}>{totalPayments} TRANSACTION{totalPayments > 1 ? 'S' : ''}</div>
@@ -6031,41 +6064,88 @@ type AgenceRow = {
 // depuis ce formulaire.
 function AgenceRecapCallout({ raisonSociale, mode }: { raisonSociale: string; mode: 'create' | 'demo' }) {
   const nomAgence = raisonSociale.trim();
+
+  const points: { icone: string; titre: string; detail: React.ReactNode }[] = [
+    {
+      icone: '👑',
+      titre: 'Cette personne devient Responsable',
+      detail: <>Propriétaire du contrat et payeur de l'abonnement.</>,
+    },
+    {
+      icone: '🏷️',
+      titre: "La raison sociale donnera son nom à l'agence",
+      detail: nomAgence
+        ? <>Ici : <strong style={{ color: '#78350f' }}>« {nomAgence} »</strong>. Modifiable ensuite depuis la fiche agence.</>
+        : <span style={{ color: '#b91c1c', fontWeight: 700 }}>Le champ est vide — sans lui, l'agence portera le nom de la personne.</span>,
+    },
+    {
+      icone: '✉️',
+      titre: "C'est lui qui invitera son équipe",
+      detail: <>Depuis son dashboard, onglet « Mon équipe ». Vous n'ajoutez personne ici.</>,
+    },
+    {
+      icone: '🔒',
+      titre: "L'agence démarre à 1 place",
+      detail: <>Le <strong>premier paiement</strong> (149,90 € HT/mois) débloque les 3 places — et elles ne redescendent jamais ensuite.</>,
+    },
+  ];
+
+  if (mode === 'demo') {
+    points.push({
+      icone: '🎁',
+      titre: 'En démo, les crédits sont personnels',
+      detail: <>Les 2 analyses offertes vont au responsable seul, le pool partagé reste à 0. Pour démontrer le travail en équipe, utilisez « Mode démo agence » sur la fiche agence après création.</>,
+    });
+  } else {
+    points.push({
+      icone: '💳',
+      titre: 'Aucun crédit offert à la création',
+      detail: <>Les champs de crédits sont masqués pour ce profil. Pour en offrir, passez par « Ajouter des crédits au pool » sur la fiche agence.</>,
+    });
+    points.push({
+      icone: '📩',
+      titre: 'La proposition part automatiquement',
+      detail: <>Mail d'offre Agence : 149,90 € HT/mois, 15 complètes + 30 simples, 3 agents.</>,
+    });
+  }
+
   return (
     <div style={{
-      marginBottom: 14, padding: '14px 16px', borderRadius: 12,
-      background: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
-      border: '1.5px solid #fcd34d',
+      marginBottom: 16, borderRadius: 14, overflow: 'hidden',
+      border: '1.5px solid #fcd34d', background: '#fffdf7',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
-        <span style={{ fontSize: 17 }}>🏛</span>
-        <span style={{ fontSize: 13.5, fontWeight: 800, color: '#78350f' }}>
-          Vous allez créer une AGENCE, pas un compte pro classique
-        </span>
+      {/* En-tête */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 11, padding: '13px 18px',
+        background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderBottom: '1px solid #fcd34d',
+      }}>
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>🏛</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: '#78350f' }}>
+            Vous allez créer une AGENCE
+          </div>
+          <div style={{ fontSize: 11.5, color: '#92400e', marginTop: 1 }}>
+            Ce n'est pas un compte pro classique — voici ce que ça déclenche
+          </div>
+        </div>
       </div>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: '#92400e', lineHeight: 1.75 }}>
-        <li>Cette personne devient le <strong>Responsable</strong> (propriétaire du contrat et payeur).</li>
-        <li>
-          Le champ <strong>Raison sociale</strong> deviendra le <strong>nom de l'agence</strong>
-          {nomAgence
-            ? <> — ici : « <strong>{nomAgence}</strong> ».</>
-            : <> — <strong style={{ color: '#b91c1c' }}>il est vide, remplissez-le</strong> ou l'agence portera le nom de la personne.</>}
-        </li>
-        <li>C'est <strong>lui</strong> qui invitera son équipe depuis son dashboard, onglet « Mon équipe ». Vous n'avez rien à ajouter ici.</li>
-        <li>
-          L'agence démarre à <strong>1 place</strong>. Le <strong>premier paiement</strong> du plan Agence (149,90 € HT/mois)
-          débloque les 3 places — et elles ne redescendent jamais ensuite.
-        </li>
-        {mode === 'demo' && (
-          <li>
-            <strong>En démo</strong> : les 2 crédits offerts sont <strong>personnels au responsable</strong>, le pool partagé reste à 0.
-            Pour démontrer le multi-utilisateurs, utilisez « Mode démo agence » sur la fiche agence après création.
-          </li>
-        )}
-        {mode === 'create' && (
-          <li>La souscription Stripe est débloquée automatiquement et le mail de proposition part à la création.</li>
-        )}
-      </ul>
+
+      {/* Points, sur deux colonnes pour tirer parti de la largeur */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#fde68a' }}>
+        {points.map((p, i) => (
+          <div key={i} style={{
+            display: 'flex', gap: 10, padding: '12px 16px', background: '#fffdf7',
+            // La dernière carte occupe toute la largeur si le nombre de points est impair
+            gridColumn: (points.length % 2 === 1 && i === points.length - 1) ? 'span 2' : undefined,
+          }}>
+            <span style={{ fontSize: 15, lineHeight: 1.35, flexShrink: 0 }}>{p.icone}</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#78350f', lineHeight: 1.4 }}>{p.titre}</div>
+              <div style={{ fontSize: 11.5, color: '#92400e', marginTop: 2, lineHeight: 1.5 }}>{p.detail}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -9036,7 +9116,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       <AnimatePresence>
         {/* 🆕 MODAL INVITATION DÉMO */}
         {showDemoInvite && (
-          <Modal title="🎁 Inviter en démo" onClose={() => !demoSending && setShowDemoInvite(false)} width={620}>
+          <Modal title="🎁 Inviter en démo" onClose={() => !demoSending && setShowDemoInvite(false)} width={880}>
             <div style={{ padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg,#fef9e7,#fef3c7)', border: '1px solid #fde68a', marginBottom: 18, fontSize: 13, color: '#78350f', lineHeight: 1.5 }}>
               <strong>📣 Le prospect recevra :</strong> 1 analyse simple + 1 analyse complète offertes pour tester Verimo Pro.
               Il pourra créer son compte via le lien, puis convertir vers un plan payant plus tard.
@@ -9245,7 +9325,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
         )}
 
         {showCreate && (
-          <Modal title="Créer un client pro" onClose={() => setShowCreate(false)} width={640}>
+          <Modal title="Créer un client pro" onClose={() => setShowCreate(false)} width={880}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div><label style={labelStyle}>Nom complet *</label><input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} placeholder="Jean Dupont" /></div>
               <div><label style={labelStyle}>Email *</label><input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} placeholder="jean@agence.fr" type="email" /></div>
@@ -9338,20 +9418,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <div><label style={labelStyle}>Crédits complètes offerts</label><input type="number" value={form.credits_complete} onChange={e => setForm(f => ({ ...f, credits_complete: e.target.value }))} style={inputStyle} min="0" /></div>
               </div>
             )}
-            {form.pro_profile_type === 'agence' && (
-              <div style={{
-                marginBottom: 14,
-                padding: '11px 14px',
-                borderRadius: 10,
-                background: '#f0f7fb',
-                border: '1px solid #c7dde8',
-                fontSize: 12.5,
-                color: '#2a7d9c',
-                lineHeight: 1.6,
-              }}>
-                ℹ️ Le mail de proposition (149,90 € HT/mois — 15 complètes + 30 simples — 3 agents) partira à la création.
-              </div>
-            )}
+            {/* Le rappel Agence complet est déjà affiché plus haut (AgenceRecapCallout) */}
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Notes admin</label>
               <textarea value={form.pro_notes_admin} onChange={e => setForm(f => ({ ...f, pro_notes_admin: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="Notes internes..." />
