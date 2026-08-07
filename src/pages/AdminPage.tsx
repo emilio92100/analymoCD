@@ -2835,6 +2835,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span style={{ fontSize: 19, fontWeight: 900, color: '#78350f' }}>{data.demoStats.total}</span>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>démo{data.demoStats.total > 1 ? 's' : ''} en cours</span>
+            <span style={{ fontSize: 11, color: '#b45309', fontWeight: 600 }}>(toutes périodes)</span>
           </div>
           <span style={{ color: '#fcd34d' }}>·</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -3071,9 +3072,12 @@ function StatsTab() {
         supabase.rpc('get_users_last_sign_in'),
         // 🆕 Crédits offerts au pool d'une agence (table séparée)
         supabase.from('agence_credit_grants').select('credit_type, quantity').gte('created_at', start).lte('created_at', end),
-        // 🆕 Entonnoir démo : tous les comptes pro passés par la démo (hors période :
-        // une démo lancée en mai peut convertir en août)
-        supabase.from('profiles').select('id, pro_status, pro_demo_started_at, pro_demo_converted_at').eq('role', 'pro').not('pro_demo_started_at', 'is', null),
+        // 🆕 Entonnoir démo : démos ENVOYÉES sur la période sélectionnée.
+        // On suit ensuite ce groupe jusqu'au bout (activation, test, paiement),
+        // même si la conversion a lieu après la fin de la période.
+        supabase.from('profiles').select('id, pro_status, pro_demo_started_at, pro_demo_converted_at')
+          .eq('role', 'pro').not('pro_demo_started_at', 'is', null)
+          .gte('pro_demo_started_at', start).lte('pro_demo_started_at', end),
         // 🆕 TOUS les abonnements avec leurs dates de début et de fin.
         // Sert à deux choses : savoir qui a réellement payé (entonnoir), et
         // reconstituer le nombre d'abonnés actifs à une date passée (comparaison).
@@ -3201,7 +3205,15 @@ function StatsTab() {
       // « Terminer la démo » pose pro_demo_converted_at sans paiement : sans ce croisement,
       // le taux de conversion serait artificiellement gonflé.
       const parcoursDemo = (tousProfilsPro || []) as Array<{ id: string; pro_status: string | null; pro_demo_started_at: string | null; pro_demo_converted_at: string | null }>;
-      const idsAyantAnalyse = new Set<string>((analyses || []).map((a: any) => a.user_id));
+      // ⚠️ On ne peut PAS réutiliser `analyses` ici : cette liste est bornée à la période,
+      // alors qu'une démo envoyée en début de période peut être testée après sa fin.
+      // On interroge donc les analyses de cette cohorte sans borne de date.
+      let idsAyantAnalyse = new Set<string>();
+      if (parcoursDemo.length > 0) {
+        const { data: analysesCohorte } = await supabase
+          .from('analyses').select('user_id').in('user_id', parcoursDemo.map(p => p.id));
+        idsAyantAnalyse = new Set<string>((analysesCohorte || []).map((a: any) => a.user_id));
+      }
       const seuil30j = new Date(Date.now() - 30 * 24 * 3600 * 1000);
       const funnel = {
         envoyees: parcoursDemo.length,
@@ -3442,15 +3454,23 @@ function StatsTab() {
         </div>
       </div>
 
-      {/* 🎯 ENTONNOIR DE PROSPECTION — indépendant du sélecteur de période :
-           une démo met des semaines à convertir, un entonnoir sur 7 jours n'aurait
-           aucun sens. On mesure donc TOUS les comptes passés par la démo. */}
-      {stats.funnel.envoyees > 0 && (source === 'all' || source === 'pro') && (
+      {/* 🎯 ENTONNOIR DE PROSPECTION — filtré sur la période sélectionnée.
+           Le filtre porte sur la DATE D'ENVOI de la démo ; le suivi (activation,
+           test, paiement) reste complet même si la conversion a eu lieu après. */}
+      {(source === 'all' || source === 'pro') && (
         <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' as const }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>🎯 Entonnoir de prospection</div>
-            <div style={{ fontSize: 11.5, color: '#94a3b8' }}>Tous les comptes passés par une démo, depuis le début</div>
+            <div style={{ fontSize: 11.5, color: '#94a3b8' }}>Démos envoyées {periodLabel}, suivies jusqu'à la conversion</div>
           </div>
+
+          {stats.funnel.envoyees === 0 ? (
+            <div style={{ padding: '26px 20px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+              Aucune démo envoyée sur cette période.<br />
+              <span style={{ fontSize: 12, color: '#cbd5e1' }}>Élargissez la période pour voir vos démos précédentes.</span>
+            </div>
+          ) : (
+          <>
           <div style={{ fontSize: 11.5, color: '#94a3b8', marginBottom: 16, lineHeight: 1.5 }}>
             « Payées » croise la sortie de démo avec un abonnement réellement actif — sortir un compte
             de la démo à la main ne le compte donc jamais comme une conversion.
@@ -3497,6 +3517,8 @@ function StatsTab() {
               </>
             );
           })()}
+          </>
+          )}
         </div>
       )}
 
