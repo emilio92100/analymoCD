@@ -108,10 +108,41 @@ function Badge({ color, bg, children }: { color: string; bg: string; children: R
   return <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 700, color, background: bg, padding: '3px 9px', borderRadius: 100, whiteSpace: 'nowrap' as const }}>{children}</span>;
 }
 
+// 🆕 Fige le défilement de la page tant qu'une surcouche est ouverte.
+// Utilisé par le composant Modal ET par les modales écrites à la main
+// (fiche client, agence…) pour un comportement identique partout.
+function useScrollLock(actif: boolean) {
+  useEffect(() => {
+    if (!actif) return;
+    const overflowInitial = document.body.style.overflow;
+    const paddingInitial = document.body.style.paddingRight;
+    const largeurBarre = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if (largeurBarre > 0) document.body.style.paddingRight = `${largeurBarre}px`;
+    return () => {
+      document.body.style.overflow = overflowInitial;
+      document.body.style.paddingRight = paddingInitial;
+    };
+  }, [actif]);
+}
+
 function Modal({ title, onClose, children, width = 500 }: { title: string; onClose: () => void; children: React.ReactNode; width?: number }) {
+  // 🆕 Tant qu'une modale est ouverte : on fige le défilement du fond et on écoute
+  // la touche Échap. Sans ça, scroller faisait bouger la page derrière la modale.
+  useScrollLock(true);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(2px)' }}>
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(2px)' }}
+    >
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+        onClick={e => e.stopPropagation()}
         style={{ background: '#fff', borderRadius: 20, padding: '28px', width: '100%', maxWidth: width, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>{title}</h3>
@@ -1175,6 +1206,7 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser, composeToUserI
   const [filter, setFilter] = useState<'all' | 'open' | 'resolved' | 'archived'>('open');
   const [search, setSearch] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  useScrollLock(!!showDeleteConfirm);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [lastMessages, setLastMessages] = useState<Record<string, string>>({});
   // 🆕 Composeur admin -> client : ouvrir un ticket sans attendre que le client écrive.
@@ -6951,6 +6983,14 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [agenceActionLoading, setAgenceActionLoading] = useState(false);
   const [showConfirmUnlockAgence, setShowConfirmUnlockAgence] = useState(false);
   const [showConfirmCancelAgence, setShowConfirmCancelAgence] = useState(false);
+
+  // 🆕 Les modales de cette fiche sont écrites à la main (pas via <Modal/>) :
+  // on applique ici le même verrou de défilement, sinon la page continuait à
+  // scroller derrière la surcouche.
+  useScrollLock(
+    showDeleteConfirm || showResetPwd || showUpdateEmail ||
+    showActivateModal || showConfirmCancelAgence
+  );
 
   // Envoyer la proposition agence : débloque la souscription Stripe + envoie le mail HTML
   const handleUnlockAgenceProposal = async (isResend = false) => {
