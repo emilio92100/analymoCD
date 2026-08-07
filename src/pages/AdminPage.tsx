@@ -8231,17 +8231,29 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   return (
                     <button key={s.id} onClick={() => setProScope(s.id)}
                       style={{
-                        flex: 1, padding: '11px 14px', borderRadius: 10, border: 'none',
-                        background: isActive ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : 'transparent',
+                        position: 'relative' as const, flex: 1, padding: '11px 14px', borderRadius: 10, border: 'none',
+                        background: 'transparent',
                         color: isActive ? '#fff' : '#64748b',
                         fontSize: 13, fontWeight: isActive ? 800 : 600, cursor: 'pointer',
-                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                        boxShadow: isActive ? '0 4px 12px rgba(15,45,61,0.18)' : 'none',
+                        transition: 'color 0.2s ease',
                         fontFamily: 'inherit',
                       }}
-                      onMouseOver={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
-                      onMouseOut={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                      {s.label} ({s.count})
+                      onMouseOver={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = '#0f172a'; }}
+                      onMouseOut={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = '#64748b'; }}>
+                      {/* Pastille active partagée : framer-motion l'anime d'un onglet
+                          à l'autre via layoutId, au lieu d'un saut brusque. */}
+                      {isActive && (
+                        <motion.div
+                          layoutId="proScopeIndicator"
+                          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                          style={{
+                            position: 'absolute', inset: 0, borderRadius: 10,
+                            background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)',
+                            boxShadow: '0 4px 12px rgba(15,45,61,0.18)',
+                          }}
+                        />
+                      )}
+                      <span style={{ position: 'relative' as const, zIndex: 1 }}>{s.label} ({s.count})</span>
                     </button>
                   );
                 })}
@@ -8249,6 +8261,15 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             );
           })()}
 
+          {/* Contenu de l'onglet : fondu enchaîné au changement de portée */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={proScope}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
           {/* ─── Bloc filtres : Statut (ligne 1) + Type de profil (ligne 2) ───
                Masqué en mode « Agences » : ces filtres sont personne-centrés et
                fausseraient les compteurs de membres affichés sur chaque agence. */}
@@ -8269,19 +8290,25 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   { id: 'inactive', label: 'Inscrits non activés' },
                   { id: 'canceled', label: '🔴 Résilié' },
                 ] as const).map(f => {
+                  // ⚠️ Les compteurs doivent porter sur la PORTÉE active, sinon ils
+                  // annoncent des lignes que la liste n'affiche pas (ex. « 4 » en mode
+                  // Comptes individuels alors que 2 des 4 sont des membres d'agence).
+                  const pool = proScope === 'individuels'
+                    ? clients.filter(c => !agenceInfoByUser.has(c.id))
+                    : clients;
                   const count = f.id === 'active'
-                    ? clients.filter(c => proSubscriptions.has(c.id)).length
+                    ? pool.filter(c => proSubscriptions.has(c.id)).length
                     : f.id === 'demo'
-                    ? clients.filter(c => c.pro_status === 'demo').length
+                    ? pool.filter(c => c.pro_status === 'demo').length
                     : f.id === 'cancel_scheduled'
-                    ? clients.filter(c => proCancelScheduled.has(c.id)).length
+                    ? pool.filter(c => proCancelScheduled.has(c.id)).length
                     : f.id === 'activated'
-                    ? clients.filter(c => proActivated.has(c.id)).length
+                    ? pool.filter(c => proActivated.has(c.id)).length
                     : f.id === 'inactive'
-                    ? clients.filter(c => !proActivated.has(c.id)).length
+                    ? pool.filter(c => !proActivated.has(c.id)).length
                     : f.id === 'canceled'
-                    ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id)).length
-                    : clients.length;
+                    ? pool.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id)).length
+                    : pool.length;
                   const isActive = proFilter === f.id;
                   return (
                     <button key={f.id} onClick={() => setProFilter(f.id)}
@@ -8321,16 +8348,22 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 {([
                   { id: 'all', label: 'Tous' },
                   { id: 'agent', label: '🏠 Agent solo' },
-                  { id: 'agence', label: '🏛 Agences' },
+                  // 🏛 Ce filtre ne fait plus doublon avec l'onglet « Agences » : il isole
+                  // les profils qui se sont DÉCLARÉS agence sans qu'aucune entité agence
+                  // existe derrière. Ce sont des prospects à structurer, pas des agences.
+                  { id: 'agence', label: '🏛 Agence à structurer' },
                   { id: 'investisseur', label: '📈 Investisseur' },
                   { id: 'notaire', label: '⚖️ Notaire' },
                   { id: 'autre', label: '💼 Autre' },
                 ] as const).map(t => {
+                  const pool = proScope === 'individuels'
+                    ? clients.filter(c => !agenceInfoByUser.has(c.id))
+                    : clients;
                   const count = t.id === 'all'
-                    ? clients.length
+                    ? pool.length
                     : t.id === 'agence'
-                    ? clients.filter(c => (c.pro_profile_type === 'agence') || agenceInfoByUser.has(c.id)).length
-                    : clients.filter(c => (c.pro_profile_type || 'autre') === t.id && !agenceInfoByUser.has(c.id)).length;
+                    ? pool.filter(c => c.pro_profile_type === 'agence' && !agenceInfoByUser.has(c.id)).length
+                    : pool.filter(c => (c.pro_profile_type || 'autre') === t.id && !agenceInfoByUser.has(c.id)).length;
                   const isActive = filterByType === t.id;
                   return (
                     <button key={t.id} onClick={() => setFilterByType(t.id)}
@@ -8348,9 +8381,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; } }}
                       onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = '#edf2f7'; e.currentTarget.style.background = '#fff'; } }}
                     >
-                      {t.id === 'agence'
-                        ? `${t.label} (${new Set(clients.filter(c => agenceInfoByUser.has(c.id)).map(c => agenceInfoByUser.get(c.id)!.agence_id)).size} · ${count} comptes)`
-                        : `${t.label} (${count})`}
+                      {`${t.label} (${count})`}
                     </button>
                   );
                 })}
@@ -8493,33 +8524,44 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                         </div>
                         <ChevronRight size={16} style={{ color: '#b45309', flexShrink: 0 }} />
                       </div>
-                      {isExpanded && (
-                        membres.length === 0 ? (
-                          <div style={{ padding: '13px 18px 13px 46px', fontSize: 12.5, color: '#94a3b8', background: '#fdfdfe' }}>
-                            Aucun membre actif rattaché à cette agence.
-                          </div>
-                        ) : membres.map(m => {
-                          const info = agenceInfoByUser.get(m.id);
-                          const icon = info?.role === 'responsable' ? '👑' : info?.role === 'co_responsable' ? '🤝' : '👤';
-                          const roleLabel = info?.role === 'responsable' ? 'Responsable' : info?.role === 'co_responsable' ? 'Co-resp.' : 'Agent';
-                          return (
-                            <div key={m.id} onClick={() => loadClientDetail(m)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px 11px 46px', background: '#fdfdfe', borderTop: '1px solid #f8fafc', cursor: 'pointer' }}
-                              onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f4f8fb'}
-                              onMouseOut={e => (e.currentTarget as HTMLElement).style.background = '#fdfdfe'}>
-                              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                                {(m.full_name?.charAt(0) || 'P').toUpperCase()}
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            key="membres"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                            style={{ overflow: 'hidden' }}
+                          >
+                            {membres.length === 0 ? (
+                              <div style={{ padding: '13px 18px 13px 46px', fontSize: 12.5, color: '#94a3b8', background: '#fdfdfe' }}>
+                                Aucun membre actif rattaché à cette agence.
                               </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{icon} {m.full_name} <span style={{ fontSize: 10.5, fontWeight: 600, color: '#64748b' }}>({roleLabel})</span></div>
-                                <div style={{ fontSize: 11.5, color: '#94a3b8' }}>{m.email}</div>
-                              </div>
-                              {proActivated.has(m.id) && <span style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '3px 9px', borderRadius: 100, border: '1px solid #bfdbfe', flexShrink: 0 }}>Compte activé</span>}
-                              <ChevronRight size={13} style={{ color: '#cbd5e1', flexShrink: 0 }} />
-                            </div>
-                          );
-                        })
-                      )}
+                            ) : membres.map(m => {
+                              const info = agenceInfoByUser.get(m.id);
+                              const icon = info?.role === 'responsable' ? '👑' : info?.role === 'co_responsable' ? '🤝' : '👤';
+                              const roleLabel = info?.role === 'responsable' ? 'Responsable' : info?.role === 'co_responsable' ? 'Co-resp.' : 'Agent';
+                              return (
+                                <div key={m.id} onClick={() => loadClientDetail(m)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px 11px 46px', background: '#fdfdfe', borderTop: '1px solid #f8fafc', cursor: 'pointer' }}
+                                  onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f4f8fb'}
+                                  onMouseOut={e => (e.currentTarget as HTMLElement).style.background = '#fdfdfe'}>
+                                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                                    {(m.full_name?.charAt(0) || 'P').toUpperCase()}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{icon} {m.full_name} <span style={{ fontSize: 10.5, fontWeight: 600, color: '#64748b' }}>({roleLabel})</span></div>
+                                    <div style={{ fontSize: 11.5, color: '#94a3b8' }}>{m.email}</div>
+                                  </div>
+                                  {proActivated.has(m.id) && <span style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '3px 9px', borderRadius: 100, border: '1px solid #bfdbfe', flexShrink: 0 }}>Compte activé</span>}
+                                  <ChevronRight size={13} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+                                </div>
+                              );
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 });
@@ -8543,13 +8585,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   : proFilter === 'inactive' ? clientsInScope.filter(c => !proActivated.has(c.id))
                   : proFilter === 'canceled' ? clientsInScope.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id))
                   : clientsInScope;
-                // 🆕 Application cumulative du filtre par type de profil
-                // Le filtre "agence" inclut tous les membres d'une agence (responsable, co-resp, agent),
-                // pas uniquement ceux dont pro_profile_type = 'agence'
+                // 🆕 Application cumulative du filtre par type de profil.
+                // « Agence à structurer » = profil déclaré agence SANS entité agence.
                 const filteredByType = filterByType === 'all'
                   ? baseFiltered
                   : filterByType === 'agence'
-                  ? baseFiltered.filter(c => (c.pro_profile_type === 'agence') || agenceInfoByUser.has(c.id))
+                  ? baseFiltered.filter(c => c.pro_profile_type === 'agence' && !agenceInfoByUser.has(c.id))
                   : baseFiltered.filter(c => (c.pro_profile_type || 'autre') === filterByType && !agenceInfoByUser.has(c.id));
                 // 🔎 Recherche : nom, email, entreprise ou nom d'agence
                 const q = proSearch.trim().toLowerCase();
@@ -8728,10 +8769,23 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                               </span>
                               <ChevronRight size={16} style={{ color: '#b45309', flexShrink: 0 }} />
                             </div>
-                            {/* Membres de l'agence (si dépliée) */}
-                            {!isCollapsed && agenceMembers.map((m, idx) =>
-                              renderClientCard(m, idx === agenceMembers.length - 1, true)
-                            )}
+                            {/* Membres de l'agence (si dépliée) — même animation que l'onglet Agences */}
+                            <AnimatePresence initial={false}>
+                              {!isCollapsed && (
+                                <motion.div
+                                  key="membres"
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                                  style={{ overflow: 'hidden' }}
+                                >
+                                  {agenceMembers.map((m, idx) =>
+                                    renderClientCard(m, idx === agenceMembers.length - 1, true)
+                                  )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         );
                       })}
@@ -8752,6 +8806,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 })();
               })()}
           </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       )}
 
