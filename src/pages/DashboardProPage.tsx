@@ -1015,9 +1015,27 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
                 </div>
               </div>
 
-              <p style={{ fontSize: 12.5, color: '#9a3412', margin: 0, fontStyle: 'italic' as const, lineHeight: 1.5 }}>
-                💡 Lancez votre première analyse et constatez par vous-même ce que vos clients vont découvrir.
-              </p>
+              {/* 🆕 Tant qu'il n'a rien testé, on ne parle pas d'argent. Dès qu'une analyse
+                  a été lancée, on ouvre une porte discrète vers les forfaits : sans ça, un
+                  pro convaincu après sa 1re analyse ne voit AUCUNE offre tant qu'il lui
+                  reste un crédit (la bannière de recommandation est masquée en démo). */}
+              {(demoSimpleLeft === 0 || demoCompleteLeft === 0) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                  <p style={{ fontSize: 12.5, color: '#9a3412', margin: 0, fontStyle: 'italic' as const, lineHeight: 1.5 }}>
+                    Déjà convaincu ?
+                  </p>
+                  <Link
+                    to="/dashboard/abonnement"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#b45309', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    Voir les forfaits <ArrowRight size={13} />
+                  </Link>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12.5, color: '#9a3412', margin: 0, fontStyle: 'italic' as const, lineHeight: 1.5 }}>
+                  💡 Lancez votre première analyse et constatez par vous-même ce que vos clients vont découvrir.
+                </p>
+              )}
             </div>
           </div>
         </div>
