@@ -6296,6 +6296,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     pro_postal_code: '',
     pro_ville: '',
     pro_notes_admin: '',
+    pro_recommended_plan: '',
     custom_message: '',
   });
   const [demoFile, setDemoFile] = useState<File | null>(null);
@@ -6910,6 +6911,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           pro_postal_code: demoForm.pro_postal_code || null,
           pro_ville: demoForm.pro_ville || null,
           pro_notes_admin: demoForm.pro_notes_admin || null,
+          pro_recommended_plan: demoForm.pro_recommended_plan || null,
           custom_message: demoForm.custom_message || null,
           attachment,
         }),
@@ -6923,7 +6925,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       await logAction('Compte démo créé + mail envoyé', demoForm.email);
       showToast(`Invitation démo envoyée à ${demoForm.email}${data.attachment_sent ? ' avec PJ' : ''}`);
       setShowDemoInvite(false);
-      setDemoForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_network: '', pro_siret: '', pro_company_address: '', pro_postal_code: '', pro_ville: '', pro_notes_admin: '', custom_message: '' });
+      setDemoForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_network: '', pro_siret: '', pro_company_address: '', pro_postal_code: '', pro_ville: '', pro_notes_admin: '', pro_recommended_plan: '', custom_message: '' });
       setDemoFile(null);
       loadClients();
     } catch (e) { setDemoError(String(e)); }
@@ -7099,7 +7101,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
           <button onClick={() => {
-            setDemoForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_network: '', pro_siret: '', pro_company_address: '', pro_postal_code: '', pro_ville: '', pro_notes_admin: '', custom_message: '' });
+            setDemoForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_network: '', pro_siret: '', pro_company_address: '', pro_postal_code: '', pro_ville: '', pro_notes_admin: '', pro_recommended_plan: '', custom_message: '' });
             setDemoFile(null);
             setDemoError('');
             setShowDemoInvite(true);
@@ -7781,9 +7783,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 {/* 🆕 Bouton Activer le compte (visible uniquement pour les comptes démo) */}
                 {selected.pro_status === 'demo' && (
                   <button onClick={() => { setActivateForm({ credits_simple: '0', credits_complete: '0' }); setShowActivateModal(true); }}
-                    title="Sortir ce compte du mode démo (aucun effet sur la connexion du client)"
+                    title="Retirer l'étiquette démo : le plan recommandé s'affichera sur son tableau de bord"
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#dcfce7', border: '1px solid #86efac', color: '#166534', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <CheckCircle size={12} /> Terminer la démo
+                    <CheckCircle size={12} /> Passer en compte actif
                   </button>
                 )}
                 <button onClick={() => setShowDeleteConfirm(true)}
@@ -8605,7 +8607,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     <CheckCircle size={20} style={{ color: '#16a34a' }} />
                   </div>
                   <div>
-                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Terminer la démo</h3>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Passer en compte actif</h3>
                     <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Passage de « démo » à « actif »</p>
                   </div>
                 </div>
@@ -8619,16 +8621,14 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <div style={{ fontSize: 12.5, fontWeight: 800, color: '#0f2d3d', marginBottom: 7 }}>Ce que ça change concrètement</div>
                   <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12, color: '#2a7d9c', lineHeight: 1.7 }}>
                     <li>Le bandeau orange « version découverte » disparaît de son dashboard.</li>
-                    <li><strong>L'offre payante lui sera enfin proposée</strong> — elle est masquée pendant la démo.</li>
+                    <li><strong>Le plan que vous lui avez recommandé s'affichera</strong> — il est masqué pendant la démo.</li>
                     <li>Ses crédits restants et ses analyses sont <strong>conservés</strong>.</li>
-                    <li>
-                      Aucun effet sur sa connexion : ça ne crée pas son mot de passe et ça ne remplace pas
-                      le lien d'activation.
-                    </li>
+                    <li>Aucun effet sur sa connexion : ça ne crée pas son mot de passe et ça ne remplace pas le lien d'activation.</li>
                   </ul>
                   <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 9, paddingTop: 9, borderTop: '1px solid #d8e9f0', lineHeight: 1.5 }}>
-                    À noter : s'il paie de lui-même, la démo se termine <strong>automatiquement</strong>.
-                    Ce bouton ne sert donc que pour un prospect qui n'a pas encore payé.
+                    À noter : la bascule est <strong>automatique</strong> dès que le client a consommé ses
+                    2 analyses offertes, ou dès qu'il paie. Ce bouton ne sert donc que pour une démo
+                    qui traîne <strong>sans avoir été utilisée</strong>.
                   </div>
                 </div>
 
@@ -9449,6 +9449,25 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <input value={demoForm.pro_ville} onChange={e => setDemoForm(f => ({ ...f, pro_ville: e.target.value }))} style={inputStyle} placeholder="Paris" />
               </div>
             </div>
+
+            {/* 🆕 Plan recommandé : masqué pendant toute la démo, il s'affiche sur le
+                dashboard du prospect dès que ses 2 crédits sont consommés. C'est le
+                moment le plus chaud — autant lui montrer l'offre qu'on a en tête. */}
+            {demoForm.pro_profile_type !== 'agence' && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Plan à recommander à la fin de la démo</label>
+                <select value={demoForm.pro_recommended_plan} onChange={e => setDemoForm(f => ({ ...f, pro_recommended_plan: e.target.value }))} style={inputStyle as React.CSSProperties}>
+                  <option value="">Aucun — il verra une invitation générique</option>
+                  <option value="decouverte">Découverte — 19,90€ HT/mois (1 complète + 3 simples)</option>
+                  <option value="starter">Starter — 49,90€ HT/mois (5 complètes + 15 simples)</option>
+                  <option value="power">Power — 89,90€ HT/mois (10 complètes + 30 simples)</option>
+                </select>
+                <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 5, lineHeight: 1.5 }}>
+                  Ce plan reste <strong>invisible pendant la démo</strong>. Il apparaît automatiquement
+                  sur son tableau de bord dès qu'il a utilisé ses 2 analyses offertes.
+                </div>
+              </div>
+            )}
 
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>Notes internes (visible uniquement par l'admin)</label>
