@@ -6195,6 +6195,11 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [savingAgenceName, setSavingAgenceName] = useState(false);
   // 🎬 Mode démo agence : 3 places + crédits au pool en un clic
   const [demoAgenceLoading, setDemoAgenceLoading] = useState(false);
+  // 🗑 Suppression totale d'une agence (entité + comptes + analyses)
+  const [showDeleteAgence, setShowDeleteAgence] = useState(false);
+  const [deleteAgenceConfirm, setDeleteAgenceConfirm] = useState('');
+  const [deletingAgence, setDeletingAgence] = useState(false);
+  const [deleteAgenceImpact, setDeleteAgenceImpact] = useState<{ comptes: number; analyses: number; dossiers: number; membres: { nom: string; email: string; role: string }[] } | null>(null);
   // 📋 Analyses de l'agence — pagination "Voir plus" (10 par page)
   const [agenceAnalyses, setAgenceAnalyses] = useState<AgenceAnalysisItem[]>([]);
   const [agenceAnalysesHasMore, setAgenceAnalysesHasMore] = useState(false);
@@ -6648,6 +6653,71 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setDemoAgenceLoading(false);
   };
 
+  // 🗑 Compte exactement ce qui sera détruit, avant d'ouvrir la confirmation.
+  // On affiche des chiffres RÉELS plutôt qu'un avertissement générique : c'est ce
+  // qui permet de se rendre compte qu'on s'apprête à effacer le travail de quelqu'un.
+  const ouvrirSuppressionAgence = async () => {
+    if (!selectedAgence) return;
+    setDeleteAgenceConfirm('');
+    setDeleteAgenceImpact(null);
+    setShowDeleteAgence(true);
+
+    const { data: membres } = await supabase
+      .from('agence_members').select('user_id, role').eq('agence_id', selectedAgence.id);
+    const userIds = [...new Set((membres || []).map((m: { user_id: string }) => m.user_id))];
+
+    if (userIds.length === 0) {
+      setDeleteAgenceImpact({ comptes: 0, analyses: 0, dossiers: 0, membres: [] });
+      return;
+    }
+
+    const [{ data: profils }, { count: nbAnalyses }, { count: nbDossiers }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, email').in('id', userIds),
+      supabase.from('analyses').select('*', { count: 'exact', head: true }).in('user_id', userIds),
+      supabase.from('pro_folders').select('*', { count: 'exact', head: true }).in('user_id', userIds),
+    ]);
+
+    const roleParUser = new Map((membres || []).map((m: any) => [m.user_id, m.role]));
+    setDeleteAgenceImpact({
+      comptes: userIds.length,
+      analyses: nbAnalyses || 0,
+      dossiers: nbDossiers || 0,
+      membres: (profils || []).map((p: any) => ({
+        nom: p.full_name || '—',
+        email: p.email || '—',
+        role: roleParUser.get(p.id) === 'responsable' ? 'Responsable'
+          : roleParUser.get(p.id) === 'co_responsable' ? 'Co-resp.' : 'Agent',
+      })),
+    });
+  };
+
+  const handleDeleteAgence = async () => {
+    if (!selectedAgence) return;
+    setDeletingAgence(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'delete_agence', agence_id: selectedAgence.id, confirm_nom: deleteAgenceConfirm.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast('Erreur : ' + data.error); setDeletingAgence(false); return; }
+
+      await logAction('Agence supprimée', `"${data.raison_sociale}" — ${data.comptes_supprimes} compte(s) : ${(data.emails_supprimes || []).join(', ')}`);
+      if ((data.echecs || []).length > 0) {
+        showToast(`Agence supprimée, mais ${data.echecs.length} compte(s) n'ont pas pu être effacés`);
+      } else {
+        showToast(`Agence "${data.raison_sociale}" et ${data.comptes_supprimes} compte(s) supprimés`);
+      }
+      setShowDeleteAgence(false);
+      setSelectedAgence(null);
+      setAgenceDetail(null);
+      await loadClients();
+    } catch (e) { showToast('Erreur : ' + String(e)); }
+    setDeletingAgence(false);
+  };
+
   // Auto-open client from external navigation (e.g. from Users tab)
   useEffect(() => {
     if (!focusClientId || clients.length === 0) return;
@@ -6964,9 +7034,18 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       {selectedAgence ? (
         /* ── 🏛 Fiche AGENCE détaillée ── */
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
-          <button onClick={() => { setSelectedAgence(null); setAgenceDetail(null); }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
-            <ChevronLeft size={14} /> Retour à la liste
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' as const }}>
+            <button onClick={() => { setSelectedAgence(null); setAgenceDetail(null); }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, padding: 0 }}>
+              <ChevronLeft size={14} /> Retour à la liste
+            </button>
+            <button onClick={ouvrirSuppressionAgence}
+              title="Supprimer définitivement l'agence, ses comptes et leurs analyses"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 15px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; }}
+              onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2'; }}>
+              <Trash2 size={13} /> Supprimer l'agence
+            </button>
+          </div>
 
           {agenceDetailLoading || !agenceDetail ? (
             <div style={{ padding: 48, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement de l'agence…</div>
@@ -7312,6 +7391,92 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           })()}
 
           {/* 🎁 Modal : offrir des crédits au pool bonus */}
+          {/* 🗑 Confirmation de suppression totale — saisie du nom exigée.
+              Sur une action qui détruit des comptes clients, un simple bouton
+              « Confirmer » est trop facile à cliquer par erreur. */}
+          {showDeleteAgence && selectedAgence && (
+            <Modal title="🗑 Supprimer l'agence" onClose={() => !deletingAgence && setShowDeleteAgence(false)} width={620}>
+              <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fef2f2', border: '1.5px solid #fecaca', marginBottom: 16 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: '#991b1b', marginBottom: 6 }}>
+                  Action irréversible
+                </div>
+                <div style={{ fontSize: 12.5, color: '#b91c1c', lineHeight: 1.6 }}>
+                  L'agence <strong>{selectedAgence.name}</strong>, tous ses comptes utilisateurs et
+                  l'intégralité de leurs analyses seront <strong>définitivement supprimés</strong>.
+                  Un ex-membre qui souhaite revenir devra refaire une demande pro depuis le site.
+                </div>
+              </div>
+
+              {!deleteAgenceImpact ? (
+                <div style={{ padding: 24, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Calcul de l'impact…</div>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+                    {[
+                      { l: 'Comptes', v: deleteAgenceImpact.comptes },
+                      { l: 'Analyses', v: deleteAgenceImpact.analyses },
+                      { l: 'Dossiers', v: deleteAgenceImpact.dossiers },
+                    ].map((k, i) => (
+                      <div key={i} style={{ padding: '13px 12px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', textAlign: 'center' as const }}>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: '#dc2626' }}>{k.v}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b', marginTop: 2 }}>{k.l}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {deleteAgenceImpact.membres.length > 0 && (
+                    <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 11, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8 }}>
+                        Comptes qui seront supprimés
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+                        {deleteAgenceImpact.membres.map((m, i) => (
+                          <div key={i} style={{ fontSize: 12.5, color: '#0f172a', display: 'flex', gap: 7, flexWrap: 'wrap' as const }}>
+                            <strong>{m.nom}</strong>
+                            <span style={{ color: '#94a3b8' }}>{m.email}</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '1px 7px', borderRadius: 5 }}>{m.role}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ padding: '11px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 16, fontSize: 12, color: '#15803d', lineHeight: 1.55 }}>
+                    ✅ <strong>Conservé :</strong> l'historique de facturation et le chiffre d'affaires.
+                    Les paiements restent rattachés au nom et à l'email du client, vos totaux ne bougeront pas.
+                  </div>
+
+                  <label style={labelStyle}>
+                    Pour confirmer, saisissez « <strong>{selectedAgence.name}</strong> »
+                  </label>
+                  <input
+                    value={deleteAgenceConfirm}
+                    onChange={e => setDeleteAgenceConfirm(e.target.value)}
+                    placeholder={selectedAgence.name}
+                    autoFocus
+                    style={{ ...inputStyle, marginBottom: 16, borderColor: deleteAgenceConfirm.trim() === selectedAgence.name ? '#86efac' : '#edf2f7' }}
+                  />
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={() => setShowDeleteAgence(false)} disabled={deletingAgence}
+                      style={{ flex: 1, padding: '12px', borderRadius: 11, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: deletingAgence ? 'wait' : 'pointer' }}>
+                      Annuler
+                    </button>
+                    <button onClick={handleDeleteAgence}
+                      disabled={deletingAgence || deleteAgenceConfirm.trim() !== selectedAgence.name}
+                      style={{
+                        flex: 1, padding: '12px', borderRadius: 11, border: 'none', fontSize: 13, fontWeight: 700, color: '#fff',
+                        background: (deletingAgence || deleteAgenceConfirm.trim() !== selectedAgence.name) ? '#cbd5e1' : '#dc2626',
+                        cursor: (deletingAgence || deleteAgenceConfirm.trim() !== selectedAgence.name) ? 'not-allowed' : 'pointer',
+                      }}>
+                      {deletingAgence ? 'Suppression…' : '🗑 Supprimer définitivement'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </Modal>
+          )}
+
           {grantModal && selectedAgence && (
             <Modal title={`🎁 Offrir des crédits à ${selectedAgence.name}`} onClose={() => !granting && setGrantModal(false)} width={480}>
               <p style={{ fontSize: 12.5, color: '#64748b', margin: '0 0 16px', lineHeight: 1.5 }}>
