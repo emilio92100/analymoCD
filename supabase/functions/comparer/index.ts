@@ -349,12 +349,30 @@ Deno.serve(async (req) => {
       }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const { data: analyses, error: fetchError } = await supabaseAdmin
+    // 🆕 Portée élargie à l'agence : un membre peut comparer les biens analysés
+    // par ses collègues (les dossiers sont déjà partagés). On récupère d'abord
+    // son agence — null pour un particulier ou un pro solo, le comportement est
+    // alors strictement identique à avant.
+    const { data: membreAgence } = await supabaseAdmin
+      .from('agence_members')
+      .select('agence_id')
+      .eq('user_id', user.id)
+      .is('removed_at', null)
+      .limit(1)
+      .maybeSingle();
+    const monAgenceId: string | null = membreAgence?.agence_id ?? null;
+
+    let analysesQuery = supabaseAdmin
       .from('analyses')
       .select('id, title, result, score, user_id')
       .in('id', analyseIds)
-      .eq('user_id', user.id)
       .eq('status', 'completed');
+
+    analysesQuery = monAgenceId
+      ? analysesQuery.or(`user_id.eq.${user.id},agence_id.eq.${monAgenceId}`)
+      : analysesQuery.eq('user_id', user.id);
+
+    const { data: analyses, error: fetchError } = await analysesQuery;
 
     if (fetchError || !analyses || analyses.length < 2) {
       return new Response(JSON.stringify({
@@ -387,12 +405,32 @@ Deno.serve(async (req) => {
     });
 
     const sortedIds = analyseIds.join(','); // déjà triés (ordre canonique v3)
-    const { data: existing } = await supabaseAdmin
-      .from('comparaisons')
-      .select('verdict, status, updated_at')
-      .eq('user_id', user.id)
-      .eq('analyse_ids', sortedIds)
-      .maybeSingle();
+    // 🆕 Cache partagé à l'échelle de l'agence : si un collègue a déjà comparé
+    // exactement ces biens, on sert son verdict au lieu de rappeler l'API.
+    // C'était le vrai gaspillage : deux agents relançaient la même comparaison
+    // sans le savoir. On lit d'abord la ligne de l'agence, sinon la sienne.
+    let existing: { verdict?: unknown; status?: string; updated_at?: string } | null = null;
+
+    if (monAgenceId) {
+      const { data } = await supabaseAdmin
+        .from('comparaisons')
+        .select('verdict, status, updated_at')
+        .eq('agence_id', monAgenceId)
+        .eq('analyse_ids', sortedIds)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      existing = data;
+    }
+    if (!existing) {
+      const { data } = await supabaseAdmin
+        .from('comparaisons')
+        .select('verdict, status, updated_at')
+        .eq('user_id', user.id)
+        .eq('analyse_ids', sortedIds)
+        .maybeSingle();
+      existing = data;
+    }
 
     // Cache : on ne sert que les verdicts v4 (champ ordre_affichage présent :
     // recommandé = Bien 1, ordre d'affichage stocké). Les verdicts plus
