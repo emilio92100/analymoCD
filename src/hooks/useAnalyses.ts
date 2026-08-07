@@ -62,14 +62,10 @@ export function titreAnalyse(a: {
   return 'Analyse complète en cours…';
 }
 
-export function useAnalyses() {
-  const [analyses, setAnalyses] = useState<Analyse[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-      setLoading(true);
-      const data = await fetchAnalyses();
-      const mapped: Analyse[] = data.map((a: AnalyseDB) => {
+/* 🆕 Mapping DB → Analyse extrait du hook pour être réutilisable.
+   La page Comparaison charge sa propre liste (élargie à l'agence) et doit
+   appliquer exactement la même transformation. */
+export function mapAnalyseDB(a: AnalyseDB): Analyse {
         const result = a.result as Record<string, unknown> | null;
         const score = result?.score as number | undefined;
         const reco = result?.recommandation as string | undefined;
@@ -106,9 +102,17 @@ export function useAnalyses() {
           result: a.result,
           folder_id: a.folder_id || null,
           progress_message: a.progress_message || undefined,
-        };
-      });
-      setAnalyses(mapped);
+  };
+}
+
+export function useAnalyses() {
+  const [analyses, setAnalyses] = useState<Analyse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+      setLoading(true);
+      const data = await fetchAnalyses();
+      setAnalyses(data.map(mapAnalyseDB));
       setLoading(false);
   }, []);
 
