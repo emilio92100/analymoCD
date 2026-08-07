@@ -928,14 +928,44 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
   };
   const recommendedPlanId = proProfile.pro_recommended_plan || '';
   const recommendedPlan = PLAN_INFO[recommendedPlanId] || null;
-  // 🆕 Détection du mode démo — masque les autres bannières d'abonnement
-  const isDemo = proProfile.pro_status === 'demo';
+
+  // 🆕 BASCULE AUTOMATIQUE DE FIN DE DÉMO.
+  // Avant : le compte restait étiqueté « demo » jusqu'à ce qu'un admin clique dans
+  // le back-office — donc l'offre payante n'était jamais proposée au moment où le
+  // prospect vient justement de tester le produit. On bascule dès que les 2 crédits
+  // offerts sont consommés. L'état local évite d'attendre un rechargement.
+  const [demoAutoConvertie, setDemoAutoConvertie] = useState(false);
+  const isDemo = proProfile.pro_status === 'demo' && !demoAutoConvertie;
+
+  useEffect(() => {
+    if (proProfile.pro_status !== 'demo' || demoAutoConvertie) return;
+    if (!proCredits) return;                       // solde pas encore chargé
+    const restants = (proCredits.total_complete ?? 0) + (proCredits.total_document ?? 0);
+    if (restants > 0) return;                      // démo encore en cours
+
+    let annule = false;
+    (async () => {
+      // `.eq('pro_status', 'demo')` = garde-fou : n'écrase jamais un compte
+      // déjà passé actif entre-temps (paiement, action admin).
+      const { error } = await supabase
+        .from('profiles')
+        .update({ pro_status: 'active', pro_demo_converted_at: new Date().toISOString() })
+        .eq('id', proProfile.id)
+        .eq('pro_status', 'demo');
+      if (!error && !annule) setDemoAutoConvertie(true);
+    })();
+    return () => { annule = true; };
+  }, [proProfile.pro_status, proProfile.id, proCredits, demoAutoConvertie]);
+
   const showRecommendedBanner = !subscription && !hasEverSubscribed && recommendedPlan && !isDemo;
 
   // 🆕 Crédits démo restants (pour personnaliser le message)
   const demoSimpleLeft = proCredits?.total_document ?? 0;
   const demoCompleteLeft = proCredits?.total_complete ?? 0;
-  const demoCreditsUsed = isDemo && demoSimpleLeft === 0 && demoCompleteLeft === 0;
+  // 🆕 « Démo consommée » reste vrai même après la bascule automatique : le bandeau
+  // de fin de démo (avec « je souhaite être rappelé ») garde toute sa valeur
+  // commerciale, il ne doit pas disparaître au moment où le compte passe actif.
+  const demoCreditsUsed = (isDemo || demoAutoConvertie) && demoSimpleLeft === 0 && demoCompleteLeft === 0;
 
   // 🆕 État de la modal "Être rappelé"
   const [callbackModalOpen, setCallbackModalOpen] = useState(false);
@@ -1044,7 +1074,7 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
       {/* 🆕 BANNIÈRE DÉMO ÉPUISÉE — Affichée quand tous les crédits démo ont été utilisés
            🏛 Version adaptée selon le profil : agence (un seul bouton "Je souhaite être rappelé") vs solo (2 boutons)
            🏛 Masquée pour les agents d'agence (géré par le responsable) */}
-      {isDemo && demoCreditsUsed && proProfile.agence_role !== 'agent' && (
+      {demoCreditsUsed && proProfile.agence_role !== 'agent' && (
         <div style={{
           background: 'linear-gradient(135deg, #0a1f2d 0%, #1a4a5e 100%)',
           borderRadius: 18,
