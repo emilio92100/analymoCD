@@ -2552,6 +2552,8 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
     caProMonthHt: 0,
     caProMonthPrev: 0,
     newClientsMonth: 0,
+    newClientsCrees: 0,
+    demoStats: { total: 0, activees: 0, dormantes: 0 },
     newProMonth: 0,
     activeProCount: 0,
     analysesThisMonth: 0,
@@ -2575,12 +2577,14 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       const [
         { data: paymentsMonth },
         { data: paymentsPrevMonth },
-        { count: newClients },
+        { data: profilesMonth },
         { data: analysesMonth },
         { count: msgUnread },
         { count: proUnreadCount },
         { count: newProMonth },
         { count: activeProCount },
+        { data: connexions },
+        { data: demosEnCours },
       ] = await Promise.all([
         // ─── CA V2 : on lit UNIQUEMENT payments, avec customer_type + amount_ht + status refunded ───
         supabase.from('payments')
@@ -2594,12 +2598,19 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
           .gt('amount', 0)
           .gte('created_at', startOfPrevMonth)
           .lte('created_at', endOfPrevMonth),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', startOfMonth),
+        // 🆕 « Nouveaux clients » = comptes réellement ACTIVÉS (première connexion),
+        // et non `email_verified` qui vaut true d'office sur tout compte créé en admin.
+        // On charge les profils du mois + les connexions, le croisement se fait en JS.
+        supabase.from('profiles').select('id').gte('created_at', startOfMonth),
         supabase.from('analyses').select('type').gte('created_at', startOfMonth),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', startOfMonth),
         supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        // 🆕 Connexions réelles (schema auth), exposées aux admins par la fonction SQL
+        supabase.rpc('get_users_last_sign_in'),
+        // 🆕 Démos en cours, tous mois confondus (une démo vit plusieurs semaines)
+        supabase.from('profiles').select('id, pro_demo_started_at').eq('pro_status', 'demo'),
       ]);
 
       // Helper : montant TTC net (déduit le refunded_amount sur les remboursements partiels)
@@ -2678,13 +2689,35 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         if (a.type in analysesByType) analysesByType[a.type as keyof typeof analysesByType]++;
       });
 
+      // 🆕 Croisement profils du mois × connexions réelles.
+      // Un prospect créé par l'admin mais qui n'a jamais ouvert son lien ne compte pas
+      // comme un nouveau client : il n'a encore rien fait.
+      const signInSet = new Set<string>(
+        ((connexions as Array<{ id: string; last_sign_in_at: string | null }> | null) || [])
+          .filter(u => u.last_sign_in_at)
+          .map(u => u.id)
+      );
+      const newClientsActives = (profilesMonth || []).filter((p: { id: string }) => signInSet.has(p.id)).length;
+      const newClientsCrees = (profilesMonth || []).length;
+
+      // 🆕 Suivi des démos : envoyées / activées / en sommeil (> 30 jours sans conversion)
+      const demos = (demosEnCours || []) as Array<{ id: string; pro_demo_started_at: string | null }>;
+      const il30j = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+      const demoStats = {
+        total: demos.length,
+        activees: demos.filter(d => signInSet.has(d.id)).length,
+        dormantes: demos.filter(d => d.pro_demo_started_at && new Date(d.pro_demo_started_at) < il30j).length,
+      };
+
       setData({
         caMonth,
         caMonthPrev,
         caProMonth,
         caProMonthHt,
         caProMonthPrev,
-        newClientsMonth: newClients || 0,
+        newClientsMonth: newClientsActives,
+        newClientsCrees,
+        demoStats,
         newProMonth: newProMonth || 0,
         activeProCount: activeProCount || 0,
         analysesThisMonth: (analysesMonth || []).length,
@@ -2757,9 +2790,12 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       {/* BLOC "CE MOIS-CI" — KPIs compacts */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
         <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #edf2f7', padding: '16px 18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Nouveaux clients</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Nouveaux clients actifs</div>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.newClientsMonth}</div>
-          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Vérifiés{data.newProMonth > 0 ? ` · ${data.newProMonth} pro` : ''}</div>
+          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
+            Connectés au moins une fois
+            {data.newClientsCrees > data.newClientsMonth && ` · ${data.newClientsCrees - data.newClientsMonth} en attente`}
+          </div>
         </div>
         <div style={{ background: '#0f2d3d', borderRadius: 12, padding: '16px 18px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Nb de pro abonnés</div>
@@ -2783,6 +2819,39 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
           <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Par paiement ce mois</div>
         </div>
       </div>
+
+      {/* 🎁 SUIVI DES DÉMOS — ligne discrète, visible seulement s'il y a des démos en cours */}
+      {data.demoStats.total > 0 && (
+        <div
+          onClick={() => onNavigate('clients')}
+          style={{
+            background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1.5px solid #fde68a',
+            borderRadius: 12, padding: '13px 18px', marginBottom: 16, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const,
+          }}
+          title="Ouvrir la liste des clients pro"
+        >
+          <span style={{ fontSize: 18 }}>🎁</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ fontSize: 19, fontWeight: 900, color: '#78350f' }}>{data.demoStats.total}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>démo{data.demoStats.total > 1 ? 's' : ''} en cours</span>
+          </div>
+          <span style={{ color: '#fcd34d' }}>·</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ fontSize: 19, fontWeight: 900, color: '#16a34a' }}>{data.demoStats.activees}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#92400e' }}>
+              activée{data.demoStats.activees > 1 ? 's' : ''}
+              {` (${Math.round((data.demoStats.activees / data.demoStats.total) * 100)}%)`}
+            </span>
+          </div>
+          {data.demoStats.dormantes > 0 && (
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b91c1c', background: '#fee2e2', border: '1px solid #fecaca', padding: '3px 10px', borderRadius: 100 }}>
+              ⏰ {data.demoStats.dormantes} à relancer (plus de 30 j)
+            </span>
+          )}
+          <ArrowRight size={14} style={{ color: '#b45309', marginLeft: 'auto' }} />
+        </div>
+      )}
 
       {/* BLOC CA PAR CATÉGORIE */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px', marginBottom: 16 }}>
@@ -2925,7 +2994,8 @@ function StatsTab() {
   const [stats, setStats] = useState({
     caParticulier: 0, caPro: 0, caProHt: 0, caProSubs: 0, caProUnits: 0,
     paymentsCountPart: 0, paymentsCountPro: 0,
-    newUsersVerified: 0, newProUsers: 0,
+    newUsersVerified: 0, newUsersCrees: 0, newProUsers: 0,
+    funnel: { envoyees: 0, activees: 0, utilisees: 0, payees: 0, dormantes: 0 },
     analysesTotal: 0,
     analysesPart: 0,
     analysesPro: 0,
@@ -2972,11 +3042,15 @@ function StatsTab() {
 
       const [
         { data: paymentsData },
-        { count: newUsersVerified },
+        { data: profilsPeriode },
         { count: newProUsers },
         { data: analyses },
-        { data: freePaymentsData },
+        { data: creditGrantsData },
         { count: activeProCount },
+        { data: connexions },
+        { data: agenceGrantsData },
+        { data: tousProfilsPro },
+        { data: abosActifs },
       ] = await Promise.all([
         // ─── CA V2 : on lit UNIQUEMENT payments avec customer_type, amount_ht, status remboursés ───
         supabase.from('payments')
@@ -2984,11 +3058,24 @@ function StatsTab() {
           .in('status', ['completed', 'partially_refunded'])
           .gt('amount', 0)
           .gte('created_at', start).lte('created_at', end),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', start).lte('created_at', end),
+        // 🆕 Profils créés sur la période — le croisement avec les connexions réelles
+        // se fait en JS (email_verified est vrai d'office sur les comptes créés en admin)
+        supabase.from('profiles').select('id, role, pro_status, pro_demo_started_at, pro_demo_converted_at').gte('created_at', start).lte('created_at', end),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', start).lte('created_at', end),
         supabase.from('analyses').select('type,paid,stripe_payment_id,created_at,user_id,profiles!inner(role)').gte('created_at', start).lte('created_at', end),
-        supabase.from('payments').select('credits_added,credit_type').eq('status', 'completed').eq('amount', 0).gte('created_at', start).lte('created_at', end),
+        // 🆕 Crédits offerts : ils s'écrivent dans credit_grants, JAMAIS dans payments.
+        // L'ancienne requête (payments amount=0) renvoyait toujours 0.
+        supabase.from('credit_grants').select('credit_type, quantity').gte('created_at', start).lte('created_at', end),
         supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        // 🆕 Connexions réelles (première activation d'un compte)
+        supabase.rpc('get_users_last_sign_in'),
+        // 🆕 Crédits offerts au pool d'une agence (table séparée)
+        supabase.from('agence_credit_grants').select('credit_type, quantity').gte('created_at', start).lte('created_at', end),
+        // 🆕 Entonnoir démo : tous les comptes pro passés par la démo (hors période :
+        // une démo lancée en mai peut convertir en août)
+        supabase.from('profiles').select('id, pro_status, pro_demo_started_at, pro_demo_converted_at').eq('role', 'pro').not('pro_demo_started_at', 'is', null),
+        // 🆕 Abonnements réels — sert à ne compter comme « converti » que ceux qui ont payé
+        supabase.from('pro_subscriptions').select('user_id').eq('status', 'active'),
       ]);
 
       // Helpers V2 : montants nets après remboursement partiel
@@ -3002,22 +3089,30 @@ function StatsTab() {
         return ht;
       };
 
+      // 🆕 Connexions réelles : sert à distinguer un compte créé d'un compte activé.
+      // Déclaré ici car utilisé aussi par le bloc « période précédente » plus bas.
+      const signInSet = new Set<string>(
+        ((connexions as Array<{ id: string; last_sign_in_at: string | null }> | null) || [])
+          .filter(u => u.last_sign_in_at).map(u => u.id)
+      );
+
       // Prev period (if not "all") — même logique unifiée
       let prevCaPart = 0, prevCaPro = 0, prevNewUsers = 0, prevNewPro = 0, prevAnalyses = 0;
       if (prevStart && prevEnd && period !== 'all') {
-        const [{ data: pp }, { count: pu }, { count: ppr }, { count: pa }] = await Promise.all([
+        const [{ data: pp }, { data: pu }, { count: ppr }, { count: pa }] = await Promise.all([
           supabase.from('payments')
             .select('amount,refunded_amount,customer_type,status')
             .in('status', ['completed', 'partially_refunded'])
             .gt('amount', 0)
             .gte('created_at', prevStart).lte('created_at', prevEnd),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', prevStart).lte('created_at', prevEnd),
+          // 🆕 Même définition que la période courante : profils réellement activés
+          supabase.from('profiles').select('id').gte('created_at', prevStart).lte('created_at', prevEnd),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', prevStart).lte('created_at', prevEnd),
           supabase.from('analyses').select('*', { count: 'exact', head: true }).gte('created_at', prevStart).lte('created_at', prevEnd),
         ]);
         prevCaPart = (pp || []).filter((p: any) => p.customer_type === 'particulier').reduce((s: number, p: any) => s + netTtc(p), 0);
         prevCaPro = (pp || []).filter((p: any) => p.customer_type === 'pro').reduce((s: number, p: any) => s + netTtc(p), 0);
-        prevNewUsers = pu || 0;
+        prevNewUsers = ((pu || []) as Array<{ id: string }>).filter(p => signInSet.has(p.id)).length;
         prevNewPro = ppr || 0;
         prevAnalyses = pa || 0;
       }
@@ -3065,10 +3160,33 @@ function StatsTab() {
       });
 
       const creditsOffered = { document: 0, complete: 0 };
-      (freePaymentsData || []).forEach(p => {
-        if (p.credit_type === 'document') creditsOffered.document += (p.credits_added || 0);
-        else if (p.credit_type === 'complete') creditsOffered.complete += (p.credits_added || 0);
+      [...(creditGrantsData || []), ...(agenceGrantsData || [])].forEach((g: any) => {
+        if (g.credit_type === 'document') creditsOffered.document += (g.quantity || 0);
+        else if (g.credit_type === 'complete') creditsOffered.complete += (g.quantity || 0);
       });
+
+      // 🆕 Nouveaux inscrits RÉELS = profils créés sur la période qui se sont connectés.
+      const profils = (profilsPeriode || []) as Array<{ id: string; role: string }>;
+      const newUsersVerified = profils.filter(p => signInSet.has(p.id)).length;
+      const newUsersCrees = profils.length;
+
+      // 🆕 ENTONNOIR DÉMO (toutes périodes confondues — une démo met des semaines à convertir)
+      // « Converti » = sorti de la démo ET abonnement réellement actif. Le bouton admin
+      // « Terminer la démo » pose pro_demo_converted_at sans paiement : sans ce croisement,
+      // le taux de conversion serait artificiellement gonflé.
+      const abonnesSet = new Set<string>(((abosActifs || []) as Array<{ user_id: string }>).map(a => a.user_id));
+      const parcoursDemo = (tousProfilsPro || []) as Array<{ id: string; pro_status: string | null; pro_demo_started_at: string | null; pro_demo_converted_at: string | null }>;
+      const idsAyantAnalyse = new Set<string>((analyses || []).map((a: any) => a.user_id));
+      const seuil30j = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+      const funnel = {
+        envoyees: parcoursDemo.length,
+        activees: parcoursDemo.filter(p => signInSet.has(p.id)).length,
+        utilisees: parcoursDemo.filter(p => idsAyantAnalyse.has(p.id)).length,
+        payees: parcoursDemo.filter(p => abonnesSet.has(p.id)).length,
+        dormantes: parcoursDemo.filter(p =>
+          p.pro_status === 'demo' && p.pro_demo_started_at && new Date(p.pro_demo_started_at) < seuil30j
+        ).length,
+      };
 
       // CA par catégorie particulier (basé sur description)
       const caPartCateg = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
@@ -3107,7 +3225,7 @@ function StatsTab() {
         }
       });
 
-      setStats({ caParticulier, caPro, caProHt, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesPart, analysesPro, analysesByType, analysesByTypePart, analysesByTypePro, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
+      setStats({ caParticulier, caPro, caProHt, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newUsersCrees, funnel, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesPart, analysesPro, analysesByType, analysesByTypePart, analysesByTypePro, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
 
       // Graphiques 8 dernières semaines — basés sur payments uniquement
       const weeks: { week: string; caPart: number; caPro: number; users: number }[] = [];
@@ -3117,18 +3235,20 @@ function StatsTab() {
         const weekEnd = new Date(now); weekEnd.setDate(now.getDate() - (i * 7)); weekEnd.setHours(23, 59, 59, 999);
         const ws = weekStart.toISOString(); const we = weekEnd.toISOString();
 
-        const [{ data: wPay }, { count: wUsers }] = await Promise.all([
+        const [{ data: wPay }, { data: wProfils }] = await Promise.all([
           supabase.from('payments')
             .select('amount,refunded_amount,customer_type,status')
             .in('status', ['completed', 'partially_refunded'])
             .gt('amount', 0)
             .gte('created_at', ws).lte('created_at', we),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', ws).lte('created_at', we),
+          // 🆕 Même définition partout : inscription = compte réellement activé
+          supabase.from('profiles').select('id').gte('created_at', ws).lte('created_at', we),
         ]);
+        const wUsers = ((wProfils || []) as Array<{ id: string }>).filter(p => signInSet.has(p.id)).length;
         const wCaPart = (wPay || []).filter((p: any) => p.customer_type === 'particulier').reduce((s: number, p: any) => s + netTtc(p), 0);
         const wCaPro = (wPay || []).filter((p: any) => p.customer_type === 'pro').reduce((s: number, p: any) => s + netTtc(p), 0);
         const label = `${weekStart.getDate().toString().padStart(2, '0')}/${(weekStart.getMonth() + 1).toString().padStart(2, '0')}`;
-        weeks.push({ week: label, caPart: wCaPart, caPro: wCaPro, users: wUsers || 0 });
+        weeks.push({ week: label, caPart: wCaPart, caPro: wCaPro, users: wUsers });
       }
       setWeeklyData(weeks);
       setLoading(false);
@@ -3259,17 +3379,23 @@ function StatsTab() {
       <div style={{ display: 'grid', gridTemplateColumns: source === 'all' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
         {(source === 'all' || source === 'particulier') && (
           <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX INSCRITS</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX INSCRITS ACTIFS</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.newUsersVerified}</div>
             {usersEvo && <div style={{ fontSize: 10, color: usersEvo.up ? '#16a34a' : '#dc2626', marginTop: 2, fontWeight: 600 }}>{usersEvo.up ? '↑' : '↓'} {usersEvo.diff > 0 ? '+' : ''}{usersEvo.diff} vs préc.</div>}
-            {source === 'all' && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>dont {stats.newProUsers} pro</div>}
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+              Connectés au moins une fois
+              {stats.newUsersCrees > stats.newUsersVerified && ` · ${stats.newUsersCrees - stats.newUsersVerified} en attente`}
+            </div>
           </div>
         )}
         {(source === 'all' || source === 'pro') && (
           <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#0f2d3d', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX ABONNÉS PRO</div>
+            {/* ⚠️ Ce compteur mesure les COMPTES pro créés, pas les abonnés payants.
+                Les abonnés réels sont dans « NB PRO ABONNÉS » (lecture pro_subscriptions). */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#0f2d3d', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX COMPTES PRO</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.newProUsers}</div>
             {evo(stats.newProUsers, stats.prevNewPro) && <div style={{ fontSize: 10, color: evo(stats.newProUsers, stats.prevNewPro)!.up ? '#16a34a' : '#dc2626', marginTop: 2, fontWeight: 600 }}>{evo(stats.newProUsers, stats.prevNewPro)!.up ? '↑' : '↓'} {evo(stats.newProUsers, stats.prevNewPro)!.diff > 0 ? '+' : ''}{evo(stats.newProUsers, stats.prevNewPro)!.diff} vs préc.</div>}
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Créés sur la période (≠ abonnés)</div>
           </div>
         )}
         <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
@@ -3282,6 +3408,64 @@ function StatsTab() {
           </div>
         </div>
       </div>
+
+      {/* 🎯 ENTONNOIR DE PROSPECTION — indépendant du sélecteur de période :
+           une démo met des semaines à convertir, un entonnoir sur 7 jours n'aurait
+           aucun sens. On mesure donc TOUS les comptes passés par la démo. */}
+      {stats.funnel.envoyees > 0 && (source === 'all' || source === 'pro') && (
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' as const }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>🎯 Entonnoir de prospection</div>
+            <div style={{ fontSize: 11.5, color: '#94a3b8' }}>Tous les comptes passés par une démo, depuis le début</div>
+          </div>
+          <div style={{ fontSize: 11.5, color: '#94a3b8', marginBottom: 16, lineHeight: 1.5 }}>
+            « Payées » croise la sortie de démo avec un abonnement réellement actif — sortir un compte
+            de la démo à la main ne le compte donc jamais comme une conversion.
+          </div>
+
+          {(() => {
+            const f = stats.funnel;
+            const pct = (n: number) => f.envoyees > 0 ? Math.round((n / f.envoyees) * 100) : 0;
+            const etapes = [
+              { label: 'Démos envoyées', valeur: f.envoyees, couleur: '#94a3b8', bg: '#f8fafc', aide: 'Comptes créés en mode démo' },
+              { label: 'Activées', valeur: f.activees, couleur: '#2a7d9c', bg: '#f0f7fb', aide: 'Se sont connectés au moins une fois' },
+              { label: 'Ont testé', valeur: f.utilisees, couleur: '#7c3aed', bg: '#f5f3ff', aide: 'Ont lancé au moins une analyse' },
+              { label: 'Payées', valeur: f.payees, couleur: '#16a34a', bg: '#f0fdf4', aide: 'Abonnement Stripe actif' },
+            ];
+            return (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+                  {etapes.map((e, i) => (
+                    <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: e.bg, border: `1.5px solid ${e.couleur}22` }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                        <span style={{ fontSize: 26, fontWeight: 900, color: e.couleur, lineHeight: 1 }}>{e.valeur}</span>
+                        {i > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: e.couleur, opacity: 0.75 }}>{pct(e.valeur)}%</span>}
+                      </div>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginTop: 5 }}>{e.label}</div>
+                      <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.4 }}>{e.aide}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {f.dormantes > 0 && (
+                  <div style={{ padding: '12px 15px', borderRadius: 11, background: '#fffbeb', border: '1.5px solid #fde68a', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                    <span style={{ fontSize: 16 }}>⏰</span>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, color: '#78350f' }}>
+                        {f.dormantes} démo{f.dormantes > 1 ? 's' : ''} en sommeil
+                      </div>
+                      <div style={{ fontSize: 11.5, color: '#92400e', marginTop: 2, lineHeight: 1.5 }}>
+                        Ouvertes depuis plus de 30 jours et toujours pas converties. C'est le bon moment
+                        pour relancer, ou pour terminer la démo afin que l'offre payante leur soit enfin proposée.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
 
       {/* BLOC CA PAR CATÉGORIE */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
@@ -3391,8 +3575,8 @@ function StatsTab() {
       {/* Graphique inscriptions — masqué si filtre Pro */}
       {source !== 'pro' && (
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>👤 Inscriptions vérifiées par semaine</div>
-        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>8 dernières semaines (comptes vérifiés uniquement)</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>👤 Inscriptions activées par semaine</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>8 dernières semaines (comptes connectés au moins une fois)</div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
           {weeklyData.map((w, i) => (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
@@ -3757,11 +3941,22 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setUsers(data || []);
+    // 🆕 `email_verified` ne dit PAS que la personne a activé son compte : les comptes
+    // créés depuis l'admin sont posés avec email_confirm:true, donc vérifiés d'office.
+    // Le seul signal fiable d'une action humaine est last_sign_in_at, exposé aux admins
+    // par la fonction SQL get_users_last_sign_in().
+    const [{ data }, { data: connexions }] = await Promise.all([
+      supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabase.rpc('get_users_last_sign_in'),
+    ]);
+    const signInMap = new Map<string, string | null>(
+      ((connexions as Array<{ id: string; last_sign_in_at: string | null }> | null) || [])
+        .map(u => [u.id, u.last_sign_in_at])
+    );
+    setUsers((data || []).map((u: AdminUser) => ({
+      ...u,
+      last_sign_in_at: signInMap.get(u.id) || u.last_sign_in_at || undefined,
+    })));
     setLoading(false);
   }, []);
 
@@ -3821,14 +4016,21 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   const filtered = users
     .filter(u => {
       const matchSearch = u.email?.toLowerCase().includes(search.toLowerCase()) || u.full_name?.toLowerCase().includes(search.toLowerCase());
-      const matchTab = filterTab === 'all' ? true : filterTab === 'verified' ? u.email_verified === true : filterTab === 'unverified' ? u.email_verified === false : filterTab === 'pro' ? u.role === 'pro' : true;
+      // 🆕 « Activé » = s'est connecté au moins une fois (et non « email vérifié »,
+      // qui est vrai d'office sur tout compte créé depuis l'admin).
+      const estActive = !!u.last_sign_in_at;
+      const matchTab = filterTab === 'all' ? true
+        : filterTab === 'verified' ? estActive
+        : filterTab === 'unverified' ? !estActive
+        : filterTab === 'pro' ? u.role === 'pro'
+        : true;
       return matchSearch && matchTab;
     })
     .sort((a, b) => {
-      // Vérifiés en premier dans l'onglet "Tous"
+      // Comptes réellement activés en premier dans l'onglet "Tous"
       if (filterTab === 'all') {
-        if (a.email_verified && !b.email_verified) return -1;
-        if (!a.email_verified && b.email_verified) return 1;
+        if (a.last_sign_in_at && !b.last_sign_in_at) return -1;
+        if (!a.last_sign_in_at && b.last_sign_in_at) return 1;
       }
       return 0;
     });
@@ -3986,9 +4188,9 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                 {detailUser.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
                 {detailUser.role === 'pro' && <Badge color="#2a7d9c" bg="#f0f7fb">⚡ pro</Badge>}
                 {detailUser.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
-                {detailUser.email_verified === true
-                  ? <Badge color="#16a34a" bg="#f0fdf4">✓ {detailUser.provider === 'google' ? 'via Google' : 'via Email'}</Badge>
-                  : <Badge color="#f0a500" bg="#fffbeb">⚠ non vérifié</Badge>
+                {detailUser.last_sign_in_at
+                  ? <Badge color="#16a34a" bg="#f0fdf4">✓ Compte activé{detailUser.provider === 'google' ? ' (Google)' : ''}</Badge>
+                  : <Badge color="#f0a500" bg="#fffbeb">⚠ Jamais connecté</Badge>
                 }
               </div>
             </div>
@@ -4307,8 +4509,8 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
       <div className="admin-filter-tabs" style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {([
           { id: 'all', label: `Tous (${users.length})` },
-          { id: 'verified', label: `✓ Vérifiés (${users.filter(u => u.email_verified === true).length})` },
-          { id: 'unverified', label: `⚠ Non vérifiés (${users.filter(u => u.email_verified === false).length})` },
+          { id: 'verified', label: `✓ Activés (${users.filter(u => !!u.last_sign_in_at).length})` },
+          { id: 'unverified', label: `⚠ Jamais connectés (${users.filter(u => !u.last_sign_in_at).length})` },
           { id: 'pro', label: `🏢 Pro (${users.filter(u => u.role === 'pro').length})` },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setFilterTab(t.id)}
@@ -4340,9 +4542,9 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                   {user.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
                   {user.role === 'pro' && <Badge color="#2a7d9c" bg="#f0f7fb">⚡ pro</Badge>}
                   {user.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
-                  {user.email_verified === true
-                    ? <Badge color="#16a34a" bg="#f0fdf4">✓ {user.provider === 'google' ? 'via Google' : 'via Email'}</Badge>
-                    : <Badge color="#f0a500" bg="#fffbeb">⚠ non vérifié</Badge>
+                  {user.last_sign_in_at
+                    ? <Badge color="#16a34a" bg="#f0fdf4">✓ Compte activé</Badge>
+                    : <Badge color="#f0a500" bg="#fffbeb">⚠ Jamais connecté</Badge>
                   }
                 </div>
               </button>
@@ -7250,8 +7452,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 {/* 🆕 Bouton Activer le compte (visible uniquement pour les comptes démo) */}
                 {selected.pro_status === 'demo' && (
                   <button onClick={() => { setActivateForm({ credits_simple: '0', credits_complete: '0' }); setShowActivateModal(true); }}
+                    title="Sortir ce compte du mode démo (aucun effet sur la connexion du client)"
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#dcfce7', border: '1px solid #86efac', color: '#166534', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <CheckCircle size={12} /> Activer le compte
+                    <CheckCircle size={12} /> Terminer la démo
                   </button>
                 )}
                 <button onClick={() => setShowDeleteConfirm(true)}
@@ -8073,14 +8276,32 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     <CheckCircle size={20} style={{ color: '#16a34a' }} />
                   </div>
                   <div>
-                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Activer le compte</h3>
-                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Sortie du mode démo</p>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Terminer la démo</h3>
+                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Passage de « démo » à « actif »</p>
                   </div>
                 </div>
 
-                <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px', lineHeight: 1.5 }}>
-                  Le compte de <strong style={{ color: '#0f172a' }}>{selected.full_name || selected.email}</strong> va passer de <strong>démo</strong> à <strong>actif</strong>. Les bandeaux démo disparaîtront côté client.
+                <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 14px', lineHeight: 1.5 }}>
+                  Vous mettez fin à la période découverte de <strong style={{ color: '#0f172a' }}>{selected.full_name || selected.email}</strong>.
                 </p>
+
+                {/* Rappel : ce bouton est souvent confondu avec le badge « Compte activé » */}
+                <div style={{ padding: '13px 15px', borderRadius: 11, background: '#f0f7fb', border: '1px solid #c7dde8', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: '#0f2d3d', marginBottom: 7 }}>Ce que ça change concrètement</div>
+                  <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12, color: '#2a7d9c', lineHeight: 1.7 }}>
+                    <li>Le bandeau orange « version découverte » disparaît de son dashboard.</li>
+                    <li><strong>L'offre payante lui sera enfin proposée</strong> — elle est masquée pendant la démo.</li>
+                    <li>Ses crédits restants et ses analyses sont <strong>conservés</strong>.</li>
+                    <li>
+                      Aucun effet sur sa connexion : ça ne crée pas son mot de passe et ça ne remplace pas
+                      le lien d'activation.
+                    </li>
+                  </ul>
+                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 9, paddingTop: 9, borderTop: '1px solid #d8e9f0', lineHeight: 1.5 }}>
+                    À noter : s'il paie de lui-même, la démo se termine <strong>automatiquement</strong>.
+                    Ce bouton ne sert donc que pour un prospect qui n'a pas encore payé.
+                  </div>
+                </div>
 
                 <div style={{ padding: 12, background: '#f8fafc', borderRadius: 10, marginBottom: 16, border: '1px solid #f1f5f9' }}>
                   <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px', lineHeight: 1.5 }}>
