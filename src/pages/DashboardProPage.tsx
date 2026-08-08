@@ -1161,15 +1161,29 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
             </div>
           </div>
         ) : (
-          <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
-            <div>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Activez votre abonnement</h3>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Choisissez Découverte, Starter ou Power pour commencer à analyser vos dossiers.</p>
-            </div>
-            <Link to="/dashboard/abonnement" style={{ padding: '11px 24px', borderRadius: 10, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' as const }}>
-              Voir les offres <ArrowRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
-            </Link>
-          </div>
+          /* 🆕 Ce bandeau générique était écrit avant l'offre Agence : il proposait
+             « Découverte, Starter ou Power » à un responsable d'agence, dont c'est
+             précisément le seul plan qui ne le concerne pas. On l'adapte au profil. */
+          (() => {
+            const estAgence = proProfile.pro_profile_type === 'agence' || proProfile.agence_role === 'responsable';
+            return (
+              <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 4 }}>
+                    {estAgence ? 'Activez votre forfait Agence' : 'Activez votre abonnement'}
+                  </h3>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: 0 }}>
+                    {estAgence
+                      ? '149,90 € HT/mois — 15 analyses complètes + 30 simples, jusqu\'à 3 agents et un pool de crédits partagé.'
+                      : 'Choisissez Découverte, Starter ou Power pour commencer à analyser vos dossiers.'}
+                  </p>
+                </div>
+                <Link to="/dashboard/abonnement" style={{ padding: '11px 24px', borderRadius: 10, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' as const }}>
+                  {estAgence ? 'Activer mon forfait' : 'Voir les offres'} <ArrowRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+                </Link>
+              </div>
+            );
+          })()
         )
       )}
 
@@ -3990,7 +4004,12 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
             <span style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Offre recommandée pour vous</span>
           </div>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px 0', lineHeight: 1.5 }}>
-            L'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> est pré-sélectionnée pour votre activité — <strong>{recommendedPlan.simples} analyse{recommendedPlan.simples > 1 ? 's' : ''} simple{recommendedPlan.simples > 1 ? 's' : ''} d'un document immobilier + {recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} d'un bien</strong> par mois à <strong style={{ color: '#fff' }}>{recommendedPlan.price}€ HT/mois</strong>. Vous pouvez choisir une autre offre ci-dessous.
+            L'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> est pré-sélectionnée pour votre activité — <strong>{recommendedPlan.simples} analyse{recommendedPlan.simples > 1 ? 's' : ''} simple{recommendedPlan.simples > 1 ? 's' : ''} d'un document immobilier + {recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} d'un bien</strong> par mois à <strong style={{ color: '#fff' }}>{recommendedPlan.price}€ HT/mois</strong>.
+            {/* 🆕 « choisir une autre offre » n'a aucun sens pour une agence : les 3 autres
+                plans sont mono-utilisateur, ils ne couvrent pas son besoin d'équipe. */}
+            {recommendedPlanId === 'agence'
+              ? <> C'est la seule formule multi-utilisateurs : elle inclut jusqu'à 3 agents et un pool de crédits partagé.</>
+              : <> Vous pouvez choisir une autre offre ci-dessous.</>}
           </p>
         </motion.div>
       )}
