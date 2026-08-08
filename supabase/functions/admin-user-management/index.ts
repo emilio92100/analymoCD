@@ -48,9 +48,31 @@ async function sendMailjet(
 }
 
 /* ── Template mail invitation pro ────────────────────── */
-function buildInvitationEmail(prenom: string, token: string, plan?: string) {
+function buildInvitationEmail(prenom: string, token: string, plan?: string, estAgence?: boolean) {
   const setupUrl = `https://pro.verimo.fr/setup-account?token=${token}`
   const planLabel = plan === 'starter' ? 'Starter' : plan === 'power' ? 'Power' : plan === 'decouverte' ? 'Découverte' : null
+
+  // 🆕 Récap de l'offre Agence directement dans le mail d'activation.
+  // Avant, cette information partait dans un SECOND mail dont le bouton menait
+  // au dashboard — donc à une page de connexion, sans mot de passe. Un seul mail
+  // désormais : il informe ET mène au bon endroit.
+  const agenceBlock = estAgence
+    ? `<tr><td style="padding:0 28px 24px;">
+        <div style="background:#fffbeb;border-radius:12px;padding:18px 20px;border:1px solid #fde68a;">
+          <p style="color:#78350f;font-size:14px;font-weight:800;margin:0 0 10px;text-align:center;">
+            🏛 Votre formule Agence vous attend
+          </p>
+          <p style="color:#92400e;font-size:13px;line-height:1.7;margin:0 0 10px;text-align:center;">
+            <strong>149,90 € HT/mois</strong> — 15 analyses complètes + 30 analyses simples,
+            jusqu'à 3 agents, pool de crédits partagé, rapports en marque blanche.
+          </p>
+          <p style="color:#92400e;font-size:12.5px;line-height:1.6;margin:0;text-align:center;">
+            Activez votre compte ci-dessus : la formule vous sera proposée dans votre espace,
+            et vous pourrez y inviter votre équipe.
+          </p>
+        </div>
+      </td></tr>`
+    : ''
 
   const planBlock = planLabel
     ? `<tr><td style="padding:0 28px 24px;">
@@ -91,6 +113,7 @@ function buildInvitationEmail(prenom: string, token: string, plan?: string) {
         </td></tr>
 
         ${planBlock}
+        ${agenceBlock}
 
         <tr><td style="padding:0 28px;"><hr style="border:none;border-top:1px solid #f1f5f9;margin:0;"></td></tr>
 
@@ -913,10 +936,13 @@ Deno.serve(async (req) => {
       // ════════════════════════════════════════════════════════════════
       try {
         const prenom = (full_name as string)?.split(' ')[0] || 'Bonjour'
-        const htmlActivation = buildInvitationEmail(prenom, inviteToken, pro_recommended_plan)
+        const estAgence = pro_profile_type === 'agence'
+        const htmlActivation = buildInvitationEmail(prenom, inviteToken, pro_recommended_plan, estAgence)
         const mailActivationResult = await sendMailjet(
           email,
-          '🏢 Bienvenue sur Verimo Pro — Activez votre compte',
+          estAgence
+            ? '🏛 Bienvenue sur Verimo Pro — Activez votre compte Agence'
+            : '🏢 Bienvenue sur Verimo Pro — Activez votre compte',
           htmlActivation
         )
         if (mailActivationResult.success) {
@@ -1066,7 +1092,10 @@ Deno.serve(async (req) => {
        Action déclenchée par le bouton admin "🏛 Envoyer la proposition agence".
     ───────────────────────────────────────────────────────────── */
     if (action === 'unlock_agence_subscription') {
-      const { profile_id } = body
+      // 🆕 skip_email : débloque la souscription SANS envoyer la proposition.
+      // Utilisé à la création d'un compte agence, où le mail d'activation part déjà.
+      // Sans ça, le prospect recevait 2 mails à la même minute.
+      const { profile_id, skip_email } = body
 
       const { data: proProfile, error: profileErr } = await adminClient
         .from('profiles')
@@ -1093,6 +1122,13 @@ Deno.serve(async (req) => {
 
       if (updErr) {
         return new Response(JSON.stringify({ error: 'Erreur DB: ' + updErr.message }), { status: 500, headers: corsHeaders })
+      }
+
+      // Déblocage seul (création de compte) : on s'arrête ici, sans mail.
+      if (skip_email) {
+        return new Response(JSON.stringify({
+          success: true, mail_sent: false, skipped: true,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
       // Envoi du mail HTML
