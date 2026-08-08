@@ -6825,22 +6825,26 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       if (data.error) { setCreateError(data.error); setCreating(false); return; }
       await logAction('Compte pro créé', form.email);
 
-      // 🏛 Si type=agence : enchaîner avec l'envoi automatique de la proposition agence
+      // 🏛 Si type=agence : débloquer la souscription Stripe SANS envoyer de mail.
+      // Avant, on enchaînait `unlock_agence_subscription` qui envoyait une seconde
+      // proposition commerciale. Le prospect recevait donc 2 mails à la même minute,
+      // dont le plus visible menait à une page de connexion alors qu'il n'avait pas
+      // encore de mot de passe. Un seul mail part désormais : l'activation.
+      // Le déblocage reste indispensable, sinon le responsable ne pourrait pas
+      // souscrire depuis son espace une fois connecté.
       if (form.pro_profile_type === 'agence' && data.user?.id) {
         try {
           const resAgence = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-            body: JSON.stringify({ action: 'unlock_agence_subscription', profile_id: data.user.id }),
+            body: JSON.stringify({ action: 'unlock_agence_subscription', profile_id: data.user.id, skip_email: true }),
           });
           const dataAgence = await resAgence.json();
           if (dataAgence.error) {
-            showToast(`Compte créé mais ⚠️ proposition agence non envoyée : ${dataAgence.error}`);
-          } else if (dataAgence.mail_sent === false) {
-            showToast(`Compte créé mais ⚠️ mail proposition non envoyé : ${dataAgence.mail_error || 'erreur Mailjet'}`);
+            showToast(`Compte créé mais ⚠️ souscription agence non débloquée : ${dataAgence.error}`);
           } else {
-            showToast(`🏛 Compte agence créé et proposition envoyée à ${form.email}`);
-            await logAction('Proposition agence envoyée (auto à la création)', form.email);
+            showToast(`🏛 Compte agence créé — mail d'activation envoyé à ${form.email}`);
+            await logAction('Souscription agence débloquée (auto à la création)', form.email);
           }
         } catch (e) {
           showToast(`Compte créé mais ⚠️ erreur envoi proposition : ${String(e)}`);
